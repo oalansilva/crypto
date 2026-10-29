@@ -73,6 +73,26 @@ class OpportunityResponse(BaseModel):
     last_price: float
     timestamp: str
     details: dict
+    # Card #1122: classe, moeda, configuração, estado do mercado e alerta ligado do favorito.
+    asset_class: Optional[str] = None
+    currency: Optional[str] = None
+    configuration: Optional[Dict[str, Any]] = None
+    market_state: Optional[Dict[str, Any]] = None
+    notify_telegram: bool = False
+    candle_time: Optional[str] = None
+    is_curated_fallback: bool = False
+
+
+class AlertOriginResponse(BaseModel):
+    """Faixa da vitrine no Monitor (card #1122, decisão 16)."""
+
+    telegram_alerts_enabled: bool
+    # Favorito próprio com estrela (no Monitor) e quantos deles com o alerta ligado.
+    has_monitored_strategy: bool
+    alerts_on: int = 0
+    received_catalog_alerts: bool
+    catalog_until: Optional[str] = None
+    show_banner: bool
 
 
 from fastapi import Query
@@ -114,9 +134,36 @@ def _write_cached_opportunities(
         }
 
 
+def apply_favorite_update_to_cache(
+    user_id: str,
+    favorite_id: int,
+    *,
+    notify_telegram: bool | None = None,
+    tier_changed: bool = False,
+) -> None:
+    """Card #1122 (d2): o Monitor do dono reflete o alerta (e a estrela) logo depois do PATCH.
+
+    O alerta muda a linha em cache no lugar (sem recalcular a lista); a estrela muda quem está na
+    lista, então as entradas do dono saem do cache.
+    """
+
+    with _CACHE_LOCK:
+        for key in [k for k in _OPPORTUNITIES_CACHE if k[0] == str(user_id)]:
+            if tier_changed:
+                _OPPORTUNITIES_CACHE.pop(key, None)
+                continue
+            if notify_telegram is None:
+                continue
+            for item in _OPPORTUNITIES_CACHE[key].get("payload") or []:
+                if isinstance(item, dict) and str(item.get("id")) == str(favorite_id):
+                    if not item.get("is_curated_fallback"):
+                        item["notify_telegram"] = bool(notify_telegram)
+
+
 def _user_has_crypto_favorites(service: OpportunityService, user_id: str) -> bool:
+    """Card #1122: qualquer favorito (cripto, ação ou ETF) torna a lista vazia um erro de carga."""
     favorites = service.get_favorites(user_id=user_id, tier_filter=None)
-    return any("/" in str(favorite.get("symbol") or "").strip() for favorite in favorites)
+    return any(str(favorite.get("symbol") or "").strip() for favorite in favorites)
 
 
 _MONITOR_LOAD_ERROR_DETAIL = (
@@ -226,3 +273,19 @@ async def get_opportunities(
     except Exception as e:
         logger.error(f"Error getting opportunities: {e}")
         raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/alert-origin", response_model=AlertOriginResponse)
+def get_alert_origin(
+    current_user_id: str = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Origem dos alertas para a faixa da vitrine do Monitor (card #1122, decisão 16).
+
+    A faixa aparece quando o Monitor mostra o catálogo: quem não é admin e não tem favorito próprio
+    com estrela; a frase com data ("Até <data> você recebia…") só para quem recebia pelo catálogo.
+    """
+
+    from app.services.monitor_telegram_alerts import alert_origin_for_user
+
+    return alert_origin_for_user(db, current_user_id)

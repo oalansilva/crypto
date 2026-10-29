@@ -1,8 +1,8 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
-  Check, ChevronLeft, ChevronRight, Copy, Edit3, History, Pause, Play, RefreshCw,
-  Shield, Square, Star, Trash2, X,
+  Check, ChevronLeft, ChevronRight, CircleX, Clock, Copy, Edit3, History, Pause, Play, RefreshCw,
+  Shield, Square, Star, Target, Trash2, TriangleAlert, X,
 } from 'lucide-react'
 import { authFetch } from '../lib/authFetch'
 import { API_BASE_URL } from '../lib/apiBase'
@@ -21,6 +21,66 @@ import {
 } from '../lib/sweepPeriod'
 import { formatCompoundReturn, type CompoundReturnSource } from '../lib/compoundReturn'
 import { SelectionWorkbench } from '../components/SelectionWorkbench'
+import { AssetPicker } from '../components/AssetPicker'
+import { AssetsBoard, CandidateBlock, InsufficientBlock, ModalIdentity } from '../components/DiscoveryMulticlass'
+import {
+  ASSET_PAGE,
+  CALENDAR_COVERAGE_NOTE,
+  DISCOVERY_CLASS_NOTE,
+  DISCOVERY_COST_NOTE,
+  PROMOTED_LABEL,
+  PROMOTION_DESTINATION,
+  LIMIT_ADVICE,
+  LIMIT_TITLE,
+  ON_DEMAND_TEXT_DISCOVERY,
+  SURVIVORSHIP_PREFLIGHT,
+  classEmptyText,
+  classOptions,
+  classesPresent,
+  collectionLine,
+  limitText,
+  liveAnnouncement,
+  multiclassMeta,
+  noResultNote,
+  orderAssets,
+  precisionLine,
+  promotionDestinationNote,
+  promotionSuccessText,
+  promotionTitle,
+  rowClass,
+  runLine,
+  survivorshipDecidir,
+  survivorshipWindowSuffix,
+  type ByClass,
+  type ClassCounts,
+  type ClassFilter,
+  type CollectionForecast,
+  type PrecisionForecast,
+  type Survivorship,
+  type SweepAsset,
+} from '../lib/discoveryMulticlass'
+import type { ConventionsInfo, ExecutionInfo, ResultAsset } from '../lib/equityExecution'
+import {
+  fmtInt,
+  outEntries,
+  outOfSweepTitle,
+  outReason,
+  outWhy,
+  preflightExcludedLabel,
+  preflightRestLine,
+  selectionCounts,
+  type PreflightExcludedAsset,
+} from '../lib/assetSelection'
+import { useSelectionView } from '../lib/assetStore'
+import { evidenceSample, rowSampleWithColumn, seriesLine, type SampleInfo, type ResultProvenance } from '../lib/sampleState'
+import {
+  RankingExportButton,
+  ReferenceColumnCell,
+  ReferenceColumnHeader,
+  ReferenceColumnStrip,
+  type RefColumnState,
+} from '../components/results/ReferenceColumn'
+import { promotionReferenceNote, showPromotionReferenceNote, type CellSummary } from '../lib/benchmarkComparison'
 import type { WorkingAxis, SelectionSnapshot, CatalogItem } from '../components/SelectionWorkbench'
 import './DiscoveryPage.css'
 
@@ -28,6 +88,7 @@ type PreflightResult = {
   axes: { templates: string[]; symbols: string[]; timeframes: string[]; directions: string[] }
   raw_total: number
   exclusions: Record<string, { reasons: string[] }>
+  excluded_assets?: PreflightExcludedAsset[]
   excluded_count: number
   valid_total: number
   limits: { max_total: number }
@@ -38,6 +99,12 @@ type PreflightResult = {
   period_type?: string | null
   start_date?: string | null
   end_date?: string | null
+  /** Card #1121: o que vai rodar por classe e moeda, coleta e precisão previstas e viés de sobrevivência. */
+  by_class?: ByClass | null
+  asset_classes?: Record<string, string> | null
+  collection?: CollectionForecast | null
+  precision_forecast?: PrecisionForecast | null
+  survivorship?: Survivorship | null
 }
 
 type SweepState =
@@ -60,6 +127,8 @@ type Sweep = {
   updated_at?: string | null
   wake_up_state?: string | null
   dispatch_status?: string | null
+  /** Card #1121 (decisão 7): estado de cada ativo; varredura antiga não tem (painel de antes). */
+  assets?: SweepAsset[] | null
 }
 
 type HistoryRun = {
@@ -111,10 +180,20 @@ type LeaderboardRow = {
   candle_version: string | null
   expected_candles: number | null
   observed_valid_candles: number | null
+  /** Card #1118: série (fonte, classe, sessão, ajuste, origem do timeframe, versão) e amostra congelada. */
+  provenance?: ResultProvenance | null
+  snapshot_id?: string | null
+  sample?: SampleInfo | null
   parameters?: Record<string, unknown>
   fees_slippage: { fees?: number; slippage?: number; fee_pct?: number; slippage_pct?: number } | null
   oos_verdict?: OosVerdict | null
   metrics?: (CompoundReturnSource & { oos_verdict?: OosVerdict | null }) | null
+  /** Card #1121: identidade do ativo, precisão efetiva e convenções da execução. */
+  asset?: ResultAsset | null
+  execution?: ExecutionInfo | null
+  conventions?: ConventionsInfo | null
+  /** Card #1123: célula da coluna extra (lida do que foi gravado; nunca calculada na leitura). */
+  reference_comparison?: CellSummary | null
 }
 
 type Metric = 'calmar_ratio' | 'delta_cagr_vs_bh'
@@ -234,8 +313,6 @@ const DISCOVERY_SWING_TIMEFRAME_OPTIONS: { id: string; label: string }[] = [
   { id: '1d', label: '1 dia' },
 ]
 
-const DISCOVERY_COST_NOTE =
-  'taxa 0,075% · slippage do timeframe (0,02% em 4h e 1d · 0,03% em 1h · 0,05% em 15m) · sem campo para alterar'
 function compoundSource(row: LeaderboardRow): CompoundReturnSource {
   const nested = row.metrics && typeof row.metrics === 'object' ? row.metrics : null
   return {
@@ -297,21 +374,11 @@ const TEMPLATE_CATEGORIES: Record<string, string> = {
   breakout: 'Tendência',
 }
 
-const TOP_CODES = new Set(['BTC', 'ETH', 'SOL', 'BNB', 'XRP', 'ADA', 'DOGE', 'AVAX', 'TRX', 'DOT'])
-
 function catalogFromTemplates(list: { name: string; display_name?: string; description: string }[]): CatalogItem[] {
   return list.map((t) => {
     const prefix = (t.name.split('_')[0] ?? 'outros').toLowerCase()
     const cat = TEMPLATE_CATEGORIES[prefix] ?? 'Outros'
     return { id: t.name, label: t.display_name || t.name, category: cat, meta: t.description || '' }
-  })
-}
-
-function catalogFromSymbols(list: string[]): CatalogItem[] {
-  return list.map((code) => {
-    const base = code.split('/')[0] ?? code
-    const cat = TOP_CODES.has(base) ? 'Alta liquidez' : 'Demais pares'
-    return { id: code, label: code, category: cat, meta: 'Spot · cotação USDT' }
   })
 }
 
@@ -351,8 +418,6 @@ function sameStringSet(a: string[], b: string[] | undefined): boolean {
 export function DiscoveryPage() {
   const navigate = useNavigate()
 
-  // Catálogos
-  const [symbols, setSymbols] = useState<string[]>([])
   // Seleção
   const [selectedTemplates, setSelectedTemplates] = useState<string[]>([])
   const [selectedSymbols, setSelectedSymbols] = useState<string[]>([])
@@ -365,10 +430,9 @@ export function DiscoveryPage() {
   const [metric, setMetric] = useState<Metric>('calmar_ratio')
   // Workbench
   const [workbenchOpen, setWorkbenchOpen] = useState(false)
-  const [workbenchTrigger, setWorkbenchTrigger] = useState<'templates' | 'symbols'>('templates')
+  const [workbenchTrigger] = useState<'templates' | 'symbols'>('templates')
   const workbenchTriggerRef = useRef<HTMLButtonElement | null>(null)
   const [templatesCatalog, setTemplatesCatalog] = useState<CatalogItem[]>([])
-  const [symbolsCatalog, setSymbolsCatalog] = useState<CatalogItem[]>([])
   const [committedSelection, setCommittedSelection] = useState<SelectionSnapshot>(() => makeEmptySelection())
   // Preflight
   const [preflight, setPreflight] = useState<PreflightResult | null>(null)
@@ -387,6 +451,8 @@ export function DiscoveryPage() {
   const [busy, setBusy] = useState(false)
   // Leaderboard
   const [rows, setRows] = useState<LeaderboardRow[]>([])
+  // Card #1123: coluna extra gravada por varredura e usuário (resumo vem com o leaderboard).
+  const [refColumn, setRefColumn] = useState<RefColumnState | null>(null)
   // Card 852: parciais do Acompanhar vivem separadas do leaderboard do
   // Decidir (top-5 travadas do sweep em curso, sem paginação).
   const [partials, setPartials] = useState<LeaderboardRow[]>([])
@@ -399,6 +465,12 @@ export function DiscoveryPage() {
   const [fSymbol, setFSymbol] = useState('all')
   const [fTimeframe, setFTimeframe] = useState('all')
   const [fDirection, setFDirection] = useState('all')
+  // Card #1121: filtro Classe (contagem da varredura inteira, rank global preservado).
+  const [fClass, setFClass] = useState<ClassFilter>('all')
+  const [classCounts, setClassCounts] = useState<ClassCounts | null>(null)
+  // Quadro "Por ativo": 50 por vez; "ver Por ativo" pode abrir uma varredura do histórico.
+  const [assetLimit, setAssetLimit] = useState(ASSET_PAGE)
+  const [acompView, setAcompView] = useState<Sweep | null>(null)
   // Modal / toast / estados críticos
   const [promoteTarget, setPromoteTarget] = useState<LeaderboardRow | null>(null)
   const [promoteConflict, setPromoteConflict] = useState<string | null>(null)
@@ -415,7 +487,7 @@ export function DiscoveryPage() {
   // do sweep escolhido). Eventos movem o modo; tabs permitem revisitar.
   const [mode, setMode] = useState<'montar' | 'acomp' | 'decidir'>('montar')
   const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set())
-  const [inlineQuery, setInlineQuery] = useState({ templates: '', symbols: '' })
+  const [inlineQuery, setInlineQuery] = useState({ templates: '' })
 
   const pollRef = useRef<number | null>(null)
   const preflightTimer = useRef<number | null>(null)
@@ -433,6 +505,7 @@ export function DiscoveryPage() {
   const promotionTriggerRef = useRef<HTMLButtonElement | null>(null)
   const discardTriggerRef = useRef<HTMLButtonElement | null>(null)
   const progressHeadingRef = useRef<HTMLSpanElement | null>(null)
+  const assetsTitleRef = useRef<HTMLHeadingElement | null>(null)
   const leaderboardTitleRef = useRef<HTMLHeadingElement | null>(null)
   const previousActiveStateRef = useRef<SweepState | null>(null)
   // Métrica travada do top-5 Acompanhar (draftMetric ao iniciar; calmar no restore).
@@ -444,26 +517,22 @@ export function DiscoveryPage() {
 
   // ---- catalog helpers ----
 
+  // O eixo Ativos usa o seletor do catálogo; o workbench edita só os templates.
   function applySelectionFromWorkbench(state: SelectionSnapshot) {
     const t = [...(state.templates.mode === 'all'
       ? templatesCatalog.filter((i) => !state.templates.excluded.has(i.id))
       : [...state.templates.selected].map((id) => templatesCatalog.find((i) => i.id === id)).filter(Boolean))
     ] as CatalogItem[]
-    const s = [...(state.symbols.mode === 'all'
-      ? symbolsCatalog.filter((i) => !state.symbols.excluded.has(i.id))
-      : [...state.symbols.selected].map((id) => symbolsCatalog.find((i) => i.id === id)).filter(Boolean))
-    ] as CatalogItem[]
     setSelectedTemplates(t.map((i) => i.id))
-    setSelectedSymbols(s.map((i) => i.id))
-    setCommittedSelection(state)
+    setCommittedSelection((prev) => ({ ...prev, templates: state.templates }))
   }
 
   // summary helpers
-  function selectionSummary(axis: 'templates' | 'symbols') {
+  function selectionSummary(axis: 'templates') {
     const a = committedSelection[axis]
-    const total = axis === 'templates' ? templatesCatalog.length : symbolsCatalog.length
+    const total = templatesCatalog.length
     if (a.mode === 'all') {
-      const excluded = [...a.excluded].map((id) => (axis === 'templates' ? templatesCatalog : symbolsCatalog).find((i) => i.id === id)?.label ?? id)
+      const excluded = [...a.excluded].map((id) => templatesCatalog.find((i) => i.id === id)?.label ?? id)
       return {
         count: `${Math.max(0, total - a.excluded.size)} de ${total} selecionados`,
         detail: excluded.length ? `Catálogo inteiro · ${excluded.length} exceções` : 'Catálogo inteiro · nenhuma exceção',
@@ -472,7 +541,7 @@ export function DiscoveryPage() {
       }
     }
     const ids = [...a.selected]
-    const chips = ids.slice(0, 3).map((id) => (axis === 'templates' ? templatesCatalog : symbolsCatalog).find((i) => i.id === id)?.label ?? id)
+    const chips = ids.slice(0, 3).map((id) => templatesCatalog.find((i) => i.id === id)?.label ?? id)
     return {
       count: `${a.selected.size} de ${total} selecionados`,
       detail: 'Seleção manual',
@@ -511,22 +580,6 @@ export function DiscoveryPage() {
     })()
   }, [])
 
-  useEffect(() => {
-    void (async () => {
-      try {
-        const res = await fetch(`${API_BASE_URL}/exchanges/binance/symbols`)
-        if (!res.ok) return
-        const data = await res.json()
-        const list: string[] = data.symbols || []
-        setSymbols(list)
-        const catS = catalogFromSymbols(list)
-        setSymbolsCatalog(catS)
-      } catch {
-        /* catálogo auxiliar */
-      }
-    })()
-  }, [])
-
   // ---------- Histórico ----------
   const hydrateFromSweep = useCallback((sweep: Sweep) => {
     const snapshot = sweep.snapshot
@@ -552,7 +605,7 @@ export function DiscoveryPage() {
     if (sweep.draft_key) setDraftKey(sweep.draft_key)
     setCommittedSelection({
       templates: { ...makeEmptyAxis(), selected: new Set(axes.templates || []) },
-      symbols: { ...makeEmptyAxis(), selected: new Set(axes.symbols || []) },
+      symbols: makeEmptyAxis(),
     })
     return true
   }, [])
@@ -644,15 +697,31 @@ export function DiscoveryPage() {
     runPreflight,
   ])
 
-  const axisCount = [
-    ...(committedSelection.templates.mode === 'all'
-      ? templatesCatalog.filter((i) => !committedSelection.templates.excluded.has(i.id))
-      : [...committedSelection.templates.selected].filter((id) => templatesCatalog.some((i) => i.id === id))),
-  ].length * [
-    ...(committedSelection.symbols.mode === 'all'
-      ? symbolsCatalog.filter((i) => !committedSelection.symbols.excluded.has(i.id))
-      : [...committedSelection.symbols.selected].filter((id) => symbolsCatalog.some((i) => i.id === id))),
-  ].length * timeframes.length * directions.length
+  // O que o catálogo diz da seleção (card #1121, decisão 2): cripto, ação e ETF negociáveis rodam;
+  // ativo marcado e fora do catálogo ficam fora com o motivo.
+  const { entries: selectionEntries } = useSelectionView(selectedSymbols, { equitiesRun: true })
+  const selCounts = useMemo(() => selectionCounts(selectionEntries), [selectionEntries])
+  const clientOutAssets = useMemo<PreflightExcludedAsset[]>(
+    () =>
+      outEntries(selectionEntries).map((entry) => ({
+        symbol: entry.symbol,
+        asset_class: entry.asset?.asset_class ?? null,
+        state: entry.asset?.state ?? null,
+        kind: entry.kind === 'marked' ? 'marked' : entry.kind === 'missing' ? 'missing' : 'class',
+        reason: outReason(entry),
+        combinations: 0,
+      })),
+    [selectionEntries],
+  )
+  const axisCount = selectedTemplates.length * selCounts.runs * timeframes.length * directions.length
+  // Fora da varredura: o servidor é a fonte (conta combinações); sem preflight, a leitura da tela.
+  const outAssetsList: PreflightExcludedAsset[] = useMemo(() => {
+    const server = !draftFrozen ? preflight?.excluded_assets : undefined
+    if (server && server.length) return server
+    if (!clientOutAssets.length) return []
+    const perAsset = selectedTemplates.length * timeframes.length * directions.length
+    return clientOutAssets.map((asset) => ({ ...asset, combinations: perAsset }))
+  }, [clientOutAssets, directions.length, draftFrozen, preflight, selectedTemplates.length, timeframes.length])
   const overLimit = Boolean(preflight?.errors?.total)
   // Com varredura em curso, Iniciar de outra seleção fica bloqueado com aviso
   // para cancelar antes (card #837, aceite 4); a repetição da mesma seleção
@@ -698,16 +767,19 @@ export function DiscoveryPage() {
   // operação (nunca JSON técnico no caminho feliz).
   const impediments: string[] = []
   if (selectedTemplates.length === 0) impediments.push('Escolha ao menos 1 template.')
-  if (selectedSymbols.length === 0) impediments.push('Escolha ao menos 1 símbolo.')
+  if (selectedSymbols.length === 0) impediments.push('Escolha ao menos 1 ativo.')
+  else if (selCounts.runs === 0) {
+    impediments.push(
+      `Nenhuma combinação válida: ${outWhy(selCounts)}. Inclua ao menos 1 ativo negociável: par cripto em USDT, ação ou ETF.`,
+    )
+  } else if (preflight?.errors?.symbols) impediments.push(preflight.errors.symbols)
   if (timeframes.length === 0) impediments.push('Escolha 1 timeframe (4h, 1h, 15m ou 1d).')
   if (directions.length === 0) impediments.push('Escolha a direção Long.')
   impediments.push(...customPeriodImpediments(period, customStartDate, customEndDate))
   if (preflight?.errors?.period) impediments.push(preflight.errors.period)
-  if (overLimit) {
-    impediments.push(
-      `Reduza o escopo: ${axisCount} combinações passam do limite de ${preflight?.limits.max_total ?? '—'}.`,
-    )
-  }
+  // Acima do teto (decisão 8) a recusa fica no bloco do Preflight, com o total e as classes; não
+  // entra de novo em "Falta fazer" (uma recusa só).
+  const blocked = impediments.length > 0 || overLimit
   const preflightWindow =
     preflight?.start_date || preflight?.end_date
       ? ` [${fmtDate(preflight?.start_date ?? null)}, ${fmtDate(preflight?.end_date ?? null)})`
@@ -723,13 +795,12 @@ export function DiscoveryPage() {
 
   // Card 852: seleção inline (busca + marcar/desmarcar, sem modal). Espelha
   // o eixo no snapshot aplicado para que o contador inline reflita na hora.
-  const isInlineSelected = (axis: 'templates' | 'symbols', id: string): boolean => {
+  const isInlineSelected = (axis: 'templates', id: string): boolean => {
     const a = committedSelection[axis]
     return a.mode === 'all' ? !a.excluded.has(id) : a.selected.has(id)
   }
-  const toggleInline = (axis: 'templates' | 'symbols', id: string) => {
-    const catalog = axis === 'templates' ? templatesCatalog : symbolsCatalog
-    const ids = catalog.map((i) => i.id)
+  const toggleInline = (axis: 'templates', id: string) => {
+    const ids = templatesCatalog.map((i) => i.id)
     const prevAxis = committedSelection[axis]
     const selected = isInlineSelected(axis, id)
     const nextAxis = {
@@ -748,8 +819,7 @@ export function DiscoveryPage() {
       else nextAxis.selected.add(id)
       nextSelected = [...nextAxis.selected]
     }
-    if (axis === 'templates') setSelectedTemplates(nextSelected)
-    else setSelectedSymbols(nextSelected)
+    setSelectedTemplates(nextSelected)
     setCommittedSelection((prev) => ({ ...prev, [axis]: nextAxis }))
   }
 
@@ -875,6 +945,8 @@ export function DiscoveryPage() {
       setPage(1)
       // Card 852: iniciar colapsa o rascunho e trava no sweep em curso —
       // o modo vira Acompanhando e as parciais (top-5) vêm do leaderboard.
+      setAcompView(null)
+      setAssetLimit(ASSET_PAGE)
       setMode('acomp')
       setExpandedRows(new Set())
       void loadPartials(fullSweep.sweep_id, draftMetric)
@@ -908,7 +980,16 @@ export function DiscoveryPage() {
   }, [activeSweep])
 
   const loadLeaderboard = useCallback(
-    async (sweepId: string, m: Metric, symbol: string, timeframe: string, direction: string, pg: number, silent = false) => {
+    async (
+      sweepId: string,
+      m: Metric,
+      symbol: string,
+      timeframe: string,
+      direction: string,
+      pg: number,
+      silent = false,
+      assetClass: ClassFilter = 'all',
+    ) => {
       const req = ++lbReqRef.current
       if (!silent) setLbLoading(true)
       setLbError(false)
@@ -921,6 +1002,7 @@ export function DiscoveryPage() {
         if (symbol !== 'all') params.set('symbol', symbol)
         if (timeframe !== 'all') params.set('timeframe', timeframe)
         if (direction !== 'all') params.set('direction', direction)
+        if (assetClass !== 'all') params.set('asset_class', assetClass)
         const res = await authFetch(
           `${API_BASE_URL}/combos/discovery/sweeps/${sweepId}/leaderboard?${params.toString()}`,
         )
@@ -942,6 +1024,8 @@ export function DiscoveryPage() {
         setRows(data.results || [])
         setTotalMatched(data.total || 0)
         setTotalAvailable(data.unfiltered_total ?? data.total ?? 0)
+        setClassCounts(data.class_counts ?? null)
+        setRefColumn(data.reference_column ?? null)
       } catch {
         if (req !== lbReqRef.current) return
         setLbError(true)
@@ -971,10 +1055,12 @@ export function DiscoveryPage() {
         setFSymbol('all')
         setFTimeframe('all')
         setFDirection('all')
+        setFClass('all')
         await loadLeaderboard(newest.sweep_id, 'calmar_ratio', 'all', 'all', 'all', 1)
         if (gen !== restoreGenRef.current) return
       }
       if (gen !== restoreGenRef.current) return
+      setAcompView(null)
       setMode('acomp')
       void loadPartials(newest.sweep_id, 'calmar_ratio')
       setReconnected(hydrated)
@@ -1034,6 +1120,7 @@ export function DiscoveryPage() {
           setFSymbol('all')
           setFTimeframe('all')
           setFDirection('all')
+          setFClass('all')
           await loadLeaderboard(newest.sweep_id, 'calmar_ratio', 'all', 'all', 'all', 1)
           return
         }
@@ -1092,6 +1179,7 @@ export function DiscoveryPage() {
         setFSymbol('all')
         setFTimeframe('all')
         setFDirection('all')
+        setFClass('all')
         setPage(1)
         await loadLeaderboard(data.sweep_id, metric, 'all', 'all', 'all', 1, true)
         void loadHistory()
@@ -1176,6 +1264,7 @@ export function DiscoveryPage() {
         setFSymbol('all')
         setFTimeframe('all')
         setFDirection('all')
+        setFClass('all')
         setPage(1)
         await loadLeaderboard(sweepId, metric, 'all', 'all', 'all', 1)
       } finally {
@@ -1202,6 +1291,7 @@ export function DiscoveryPage() {
     setSnapshotStale(false)
     setStartError(null)
     // Card 852: novo rascunho volta ao modo Montar (live preservada).
+    setAcompView(null)
     setMode('montar')
     showToast('Novo rascunho', 'Sweep ativo preservado no histórico; configurador liberado.')
   }, [showToast])
@@ -1215,10 +1305,10 @@ export function DiscoveryPage() {
 
   // Filtros / paginação do leaderboard
   const applyFilters = useCallback(
-    (m: Metric, symbol: string, timeframe: string, direction: string, pg: number) => {
+    (m: Metric, symbol: string, timeframe: string, direction: string, pg: number, assetClass: ClassFilter = 'all') => {
       if (!viewSweep) return
       setExpandedRows(new Set())
-      void loadLeaderboard(viewSweep.sweep_id, m, symbol, timeframe, direction, pg)
+      void loadLeaderboard(viewSweep.sweep_id, m, symbol, timeframe, direction, pg, false, assetClass)
     },
     [viewSweep, loadLeaderboard],
   )
@@ -1226,7 +1316,7 @@ export function DiscoveryPage() {
   const handleSortChange = (m: Metric) => {
     setMetric(m)
     setPage(1)
-    applyFilters(m, fSymbol, fTimeframe, fDirection, 1)
+    applyFilters(m, fSymbol, fTimeframe, fDirection, 1, fClass)
   }
   const handleFilterChange = (key: 'symbol' | 'timeframe' | 'direction', value: string) => {
     const updaters = {
@@ -1237,18 +1327,24 @@ export function DiscoveryPage() {
     updaters[key](value)
     const next = { symbol: fSymbol, timeframe: fTimeframe, direction: fDirection, ...{ [key]: value } }
     setPage(1)
-    applyFilters(metric, next.symbol, next.timeframe, next.direction, 1)
+    applyFilters(metric, next.symbol, next.timeframe, next.direction, 1, fClass)
+  }
+  const handleClassChange = (value: ClassFilter) => {
+    setFClass(value)
+    setPage(1)
+    applyFilters(metric, fSymbol, fTimeframe, fDirection, 1, value)
   }
   const clearFilters = () => {
     setFSymbol('all')
     setFTimeframe('all')
     setFDirection('all')
+    setFClass('all')
     setPage(1)
-    applyFilters(metric, 'all', 'all', 'all', 1)
+    applyFilters(metric, 'all', 'all', 'all', 1, 'all')
   }
   const goPage = (pg: number) => {
     setPage(pg)
-    applyFilters(metric, fSymbol, fTimeframe, fDirection, pg)
+    applyFilters(metric, fSymbol, fTimeframe, fDirection, pg, fClass)
   }
 
   // ---------- Promoção ----------
@@ -1270,7 +1366,8 @@ export function DiscoveryPage() {
         {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ tier: 3, idempotency_key: idempotencyKey('promote', promoteTarget.result_id) }),
+          // Card #1122 (d2): a promoção não leva estrela (um pedido com tier é recusado).
+          body: JSON.stringify({ idempotency_key: idempotencyKey('promote', promoteTarget.result_id) }),
         },
       )
       const data = await res.json().catch(() => null)
@@ -1301,7 +1398,12 @@ export function DiscoveryPage() {
       closePromotion(false)
       showToast(
         'Candidato promovido.',
-        `Favorito tier 3 criado${fid ? ` (${String(fid)})` : ''} com origem #${viewSweep?.sweep_id ?? '—'}.`,
+        promotionSuccessText(
+          promoteTarget.symbol,
+          rowClass(promoteTarget),
+          fid ? String(fid) : null,
+          viewSweep?.sweep_id ?? '—',
+        ),
       )
     } finally {
       setPromoting(false)
@@ -1381,7 +1483,7 @@ export function DiscoveryPage() {
         `O candidato saiu do ranking da varredura #${viewSweep?.sweep_id ?? '—'}.`,
       )
       setPage(1)
-      applyFilters(metric, fSymbol, fTimeframe, fDirection, 1)
+      applyFilters(metric, fSymbol, fTimeframe, fDirection, 1, fClass)
       const live = activeSweepRef.current
       if (live && !TERMINAL.has(live.state)) {
         const reloaded = await loadPartials(live.sweep_id, partialsMetricRef.current)
@@ -1409,6 +1511,7 @@ export function DiscoveryPage() {
     fSymbol,
     fTimeframe,
     fDirection,
+    fClass,
     loadPartials,
     partials,
   ])
@@ -1445,6 +1548,12 @@ export function DiscoveryPage() {
     }
   }, [discardTarget, closeDiscard])
 
+  const extraColumn = refColumn?.column ?? null
+  const reloadLeaderboardSilently = useCallback(() => {
+    if (!viewSweep) return
+    void loadLeaderboard(viewSweep.sweep_id, metric, fSymbol, fTimeframe, fDirection, page, true, fClass)
+  }, [viewSweep, loadLeaderboard, metric, fSymbol, fTimeframe, fDirection, page, fClass])
+
   const renderLeaderboardActionCell = (row: LeaderboardRow) => {
     const insufficient = row.eligibility === 'insufficient_sample'
     const lowSample = row.eligibility === 'low_sample'
@@ -1453,10 +1562,21 @@ export function DiscoveryPage() {
     const promoteDisabled = busy || promoting || lowSample || duplicate || promoted
     return (
       <td className="action-cell" data-label="Ação">
-        {promoted ? (
+        {promoted && rowClass(row) !== 'crypto' ? (
+          // Card #1122 (d2): a linha promovida diz "Em Favoritos" (sem estrela, fora do Monitor).
+          <span className="mc-promoted">
+            <span className="promoted-state" tabIndex={-1} data-promoted-result={row.result_id}>
+              <Check className="h-3.5 w-3.5" />
+              {PROMOTED_LABEL}
+            </span>
+            <a href="/favorites" data-testid={`see-favorite-${row.result_id}`}>
+              Ver em Favoritos
+            </a>
+          </span>
+        ) : promoted ? (
           <span className="promoted-state" tabIndex={-1} data-promoted-result={row.result_id}>
             <Check className="h-3.5 w-3.5" />
-            Favorito tier 3
+            {PROMOTED_LABEL}
           </span>
         ) : (
           <div className="action-stack">
@@ -1532,28 +1652,58 @@ export function DiscoveryPage() {
     return {
       start: fmtDate(row.start_at),
       end: fmtDate(row.end_at),
-      candles: `${row.observed_valid_candles ?? '—'}/${row.expected_candles ?? '—'} candles ${row.candle_source ?? '—'}${row.candle_version ? ` v${row.candle_version}` : ''}`,
+      candles: `${row.observed_valid_candles ?? '—'}/${row.expected_candles ?? '—'} candles ${seriesLine(row)}`,
       fees: fee != null ? `taxa ${fmtPct(fee)}` : '',
       slippage: slippage != null ? `slippage ${fmtPct(slippage)}` : '',
+      // Estado da amostra da varredura (card #1118): até quando fica guardada, ou "não reproduzível exatamente".
+      sample: evidenceSample(rows),
     }
   }, [rows])
 
   const totalPages = Math.max(1, Math.ceil(totalMatched / PAGE_SIZE))
-  const running = activeSweep !== null && !TERMINAL.has(activeSweep.state)
+  // Card #1121: o Acompanhando mostra a varredura ativa ou, pelo "ver Por ativo", a do Decidir.
+  const progressSweep = acompView ?? activeSweep
+  const progressRunning = progressSweep !== null && !TERMINAL.has(progressSweep.state)
+  const progressAssets = useMemo(
+    () =>
+      progressSweep?.assets
+        ? orderAssets(progressSweep.assets, progressSweep.state === 'cancelled' || progressSweep.state === 'cancelling')
+        : null,
+    [progressSweep],
+  )
+  // O cabeçalho do Decidir segue o estado real (decisão 11): a varredura ativa é a fonte quando é a mesma.
+  const viewLive = viewSweep && activeSweep && activeSweep.sweep_id === viewSweep.sweep_id ? activeSweep : viewSweep
+  const viewState: SweepState | null = viewLive?.state ?? null
+  const viewNote = viewLive && viewState ? noResultNote(viewLive.assets, viewState) : null
+  const viewWindow = viewLive?.snapshot?.survivorship?.window ?? null
+  // Servidor anterior ao #1121 não manda `class_counts`: a Descoberta dele só rodava cripto.
+  const effectiveCounts: ClassCounts = classCounts ?? { all: totalAvailable, crypto: totalAvailable, stock: 0, etf: 0 }
+  const multiClasses = classesPresent(effectiveCounts)
+  const classOpts = classOptions(effectiveCounts, fClass)
+  const classEmpty = fClass !== 'all' && rows.length === 0 && !lbLoading && !lbError
+  const openAssetsBoard = () => {
+    if (!viewSweep) return
+    // Só a varredura viva (mesma do Decidir) dispensa a visão só-leitura; terminada, ela vira o
+    // `acompView` para a aba Acompanhando ficar habilitada, com o id, e as setas partirem dela.
+    setAcompView(liveSweep && liveSweep.sweep_id === viewSweep.sweep_id ? null : viewLive)
+    setAssetLimit(ASSET_PAGE)
+    setMode('acomp')
+    window.setTimeout(() => assetsTitleRef.current?.focus(), 0)
+  }
   const symbolOptions = useMemo(() => {
     const fromSnapshot = viewSweep?.snapshot?.axes?.symbols ?? preflight?.axes?.symbols ?? []
     const fromRows = [...new Set(rows.map((r) => r.symbol))]
     const merged = [...new Set([...fromSnapshot, ...fromRows])]
-    return merged.length ? merged : symbols
-  }, [preflight, viewSweep, rows, symbols])
+    return merged
+  }, [preflight, viewSweep, rows])
   const activeSnapshotHash = activeSweep?.snapshot?.snapshot_hash ?? preflight?.snapshot_hash ?? null
   const periodLabel = periodDisplayLabel(period)
   const periodSummary =
     preflightWindow.length > 0 ? `${periodLabel}${preflightWindow}` : periodLabel
 
   // Card 852: bloco inline por eixo (busca + marcar/desmarcar, sem modal).
-  const renderInlineAxis = (axis: 'templates' | 'symbols') => {
-    const catalog = axis === 'templates' ? templatesCatalog : symbolsCatalog
+  const renderInlineAxis = (axis: 'templates') => {
+    const catalog = templatesCatalog
     const query = inlineQuery[axis].toLowerCase()
     const filtered = query
       ? catalog.filter(
@@ -1561,7 +1711,7 @@ export function DiscoveryPage() {
         )
       : catalog
     const shown = filtered.slice(0, 30)
-    const searchLabel = axis === 'templates' ? 'Buscar templates' : 'Buscar símbolos'
+    const searchLabel = 'Buscar templates'
     return (
       <div className="mt-3">
         <input
@@ -1571,7 +1721,7 @@ export function DiscoveryPage() {
           onChange={(e) => setInlineQuery((prev) => ({ ...prev, [axis]: e.target.value }))}
           placeholder={searchLabel}
           aria-label={searchLabel}
-          data-testid={axis === 'templates' ? 'inline-templates-search' : 'inline-symbols-search'}
+          data-testid="inline-templates-search"
           className="w-full rounded-md border border-[var(--border-default)] bg-[var(--bg-input)] px-3 py-2 text-sm text-[var(--text-primary)]"
         />
         {catalog.length === 0 ? (
@@ -1579,7 +1729,7 @@ export function DiscoveryPage() {
         ) : (
           <div
             role="group"
-            aria-label={`${axis === 'templates' ? 'Templates' : 'Símbolos'} (seleção inline)`}
+            aria-label="Templates (seleção inline)"
             className="mt-2 flex max-h-[190px] flex-col gap-1.5 overflow-auto"
           >
             {shown.map((item) => (
@@ -1650,7 +1800,7 @@ export function DiscoveryPage() {
             e.preventDefault()
             const order: Array<'montar' | 'acomp' | 'decidir'> = ['montar', 'acomp', 'decidir']
             const enabled = order.filter((m) =>
-              m === 'montar' ? true : m === 'acomp' ? liveSweep != null : viewSweep != null,
+              m === 'montar' ? true : m === 'acomp' ? liveSweep != null || acompView != null : viewSweep != null,
             )
             const current = enabled.indexOf(mode)
             const next = enabled[(current + (e.key === 'ArrowRight' ? 1 : -1) + enabled.length) % enabled.length]
@@ -1669,8 +1819,8 @@ export function DiscoveryPage() {
               { id: 'montar', label: 'Montar', enabled: true },
               {
                 id: 'acomp',
-                label: `Acompanhando #${liveSweep ? liveSweep.sweep_id.slice(0, 8) : '—'}`,
-                enabled: liveSweep != null,
+                label: `Acompanhando #${(liveSweep ?? acompView) ? (liveSweep ?? acompView)!.sweep_id.slice(0, 8) : '—'}`,
+                enabled: liveSweep != null || acompView != null,
               },
               { id: 'decidir', label: 'Decidir', enabled: viewSweep != null },
             ] as const
@@ -1685,7 +1835,10 @@ export function DiscoveryPage() {
               tabIndex={mode === tab.id ? 0 : -1}
               disabled={!tab.enabled}
               data-mode-tab={tab.id}
-              onClick={() => setMode(tab.id)}
+              onClick={() => {
+                if (tab.id !== 'acomp') setAcompView(null)
+                setMode(tab.id)
+              }}
               className={`min-h-[48px] border-0 px-2 py-3 text-[13px] font-semibold leading-tight ${
                 mode === tab.id
                   ? 'bg-[rgba(252,213,53,0.12)] text-[var(--accent-primary)] shadow-[inset_0_-2px_0_var(--accent-primary)]'
@@ -1828,7 +1981,7 @@ export function DiscoveryPage() {
         ) : null}
 
         {/* Progress card — modo Acompanhar (1 visível por vez) */}
-        {activeSweep && mode === 'acomp' ? (
+        {progressSweep && mode === 'acomp' ? (
           <section
             role="tabpanel"
             id="panel-acomp"
@@ -1843,24 +1996,24 @@ export function DiscoveryPage() {
             <div className="flex items-start justify-between gap-4 border-b border-[var(--border-default)] px-5 py-4">
               <div>
                 <h2 className="text-lg font-semibold">
-                  Sweep ativo · <span className="font-mono">#{activeSweep.sweep_id}</span>
+                  Sweep ativo · <span className="font-mono">#{progressSweep.sweep_id}</span>
                 </h2>
                 <p className="mt-1 text-xs text-[var(--text-tertiary)]">
-                  Reconectado ao servidor · snapshot <span className="font-mono">{snapshotLabel(activeSnapshotHash, activeSweep.total)}</span>
+                  Reconectado ao servidor · snapshot <span className="font-mono">{snapshotLabel(activeSnapshotHash, progressSweep.total)}</span>
                   {' · '}separado do histórico exibido
                 </p>
               </div>
               <span
                 className={`inline-flex min-h-[28px] items-center rounded border px-2 py-1 text-[11px] font-bold ${
-                  activeSweep.state === 'paused'
+                  progressSweep.state === 'paused'
                     ? 'border-[rgba(245,158,11,0.42)] text-[#fbbf24]'
-                    : TERMINAL.has(activeSweep.state)
+                    : TERMINAL.has(progressSweep.state)
                       ? 'border-[var(--border-default)] text-[var(--text-tertiary)]'
                       : 'border-[rgba(59,130,246,0.42)] text-[#93c5fd]'
                 }`}
                 data-testid="active-state-chip"
               >
-                {activeSweep.state === 'running' ? 'EM CURSO' : activeSweep.state.toUpperCase()}
+                {progressSweep.state === 'running' ? 'EM CURSO' : progressSweep.state.toUpperCase()}
               </span>
             </div>
 
@@ -1870,7 +2023,7 @@ export function DiscoveryPage() {
                   <div className="flex items-center gap-2.5 font-semibold">
                     <span
                       className={`status-dot ${
-                        activeSweep.state === 'paused' ? 'paused' : TERMINAL.has(activeSweep.state) ? 'cancelled' : ''
+                        progressSweep.state === 'paused' ? 'paused' : TERMINAL.has(progressSweep.state) ? 'cancelled' : ''
                       }`}
                     />
                     <span id="progress-heading" ref={progressHeadingRef} tabIndex={-1}>
@@ -1883,11 +2036,11 @@ export function DiscoveryPage() {
                         failed: 'Varredura falhou',
                         partial_failure: 'Varredura concluída com falhas',
                         completed: 'Varredura concluída',
-                      }[activeSweep.state]}
+                      }[progressSweep.state]}
                     </span>
                   </div>
                   <strong className="font-mono" data-testid="progress-count">
-                    {activeSweep.processed} de {activeSweep.total}
+                    {progressSweep.processed} de {progressSweep.total}
                   </strong>
                 </div>
                 <div
@@ -1895,20 +2048,20 @@ export function DiscoveryPage() {
                   role="progressbar"
                   aria-label="Progresso da varredura ativa"
                   aria-valuemin={0}
-                  aria-valuemax={activeSweep.total}
-                  aria-valuenow={activeSweep.processed}
+                  aria-valuemax={progressSweep.total}
+                  aria-valuenow={progressSweep.processed}
                 >
                   <div
                     className="progress-fill"
-                    style={{ width: `${activeSweep.total ? Math.round((activeSweep.processed / activeSweep.total) * 100) : 0}%` }}
+                    style={{ width: `${progressSweep.total ? Math.round((progressSweep.processed / progressSweep.total) * 100) : 0}%` }}
                   />
                 </div>
                 <div className="mt-2.5 flex flex-wrap gap-x-4 gap-y-1 text-xs text-[var(--text-tertiary)]">
                   <span data-testid="counter-invariant">
-                    {activeSweep.processed} processadas = {activeSweep.succeeded} sucesso + {activeSweep.failed} falha + {activeSweep.skipped} ignoradas + {activeSweep.insufficient_sample ?? 0} amostra insuficiente
+                    {progressSweep.processed} processadas = {progressSweep.succeeded} sucesso + {progressSweep.failed} falha + {progressSweep.skipped} ignoradas + {progressSweep.insufficient_sample ?? 0} amostra insuficiente
                   </span>
                   <span>Limites: 8 global · 1 por sweep · fila justa</span>
-                  {activeSweep.terminal_reason ? <span>terminal: {activeSweep.terminal_reason}</span> : null}
+                  {progressSweep.terminal_reason ? <span>terminal: {progressSweep.terminal_reason}</span> : null}
                 </div>
 
                 {cancelConfirmOpen ? (
@@ -1931,7 +2084,11 @@ export function DiscoveryPage() {
                       </button>
                       <button
                         type="button"
-                        onClick={() => void command('cancel')}
+                        onClick={() => {
+                          // A confirmação some com o clique: o foco vai ao título do progresso (decisão 7).
+                          window.setTimeout(() => progressHeadingRef.current?.focus(), 0)
+                          void command('cancel').then(() => progressHeadingRef.current?.focus())
+                        }}
                         data-testid="confirm-cancel"
                         className="inline-flex min-h-[44px] items-center rounded-md border border-[var(--border-default)] bg-[var(--bg-secondary)] px-3 text-xs font-semibold text-[var(--text-secondary)]"
                       >
@@ -1943,27 +2100,27 @@ export function DiscoveryPage() {
               </div>
 
               <div className="flex flex-wrap gap-2">
-                {running ? (
+                {progressRunning ? (
                   <button
                     type="button"
-                    onClick={() => void command(activeSweep.state === 'paused' ? 'resume' : 'pause')}
-                    disabled={activeSweep.state === 'cancelling'}
+                    onClick={() => void command(progressSweep.state === 'paused' ? 'resume' : 'pause')}
+                    disabled={progressSweep.state === 'cancelling'}
                     data-testid="pause-sweep"
                     className={`inline-flex min-h-[44px] items-center gap-2 rounded-md border px-3.5 py-2 text-sm font-semibold ${
-                      activeSweep.state === 'paused'
+                      progressSweep.state === 'paused'
                         ? 'border-[rgba(252,213,53,0.45)] bg-[rgba(252,213,53,0.08)] text-[var(--accent-primary)]'
                         : 'border-[rgba(245,158,11,0.42)] bg-[rgba(245,158,11,0.08)] text-[#fbbf24]'
                     } disabled:cursor-not-allowed disabled:opacity-50`}
                   >
-                    {activeSweep.state === 'paused' ? <Play className="h-4 w-4" /> : <Pause className="h-4 w-4" />}
-                    {activeSweep.state === 'paused' ? 'Retomar' : 'Pausar'}
+                    {progressSweep.state === 'paused' ? <Play className="h-4 w-4" /> : <Pause className="h-4 w-4" />}
+                    {progressSweep.state === 'paused' ? 'Retomar' : 'Pausar'}
                   </button>
                 ) : null}
-                {running ? (
+                {progressRunning ? (
                   <button
                     type="button"
                     onClick={() => setCancelConfirmOpen(true)}
-                    disabled={activeSweep.state === 'cancelling'}
+                    disabled={progressSweep.state === 'cancelling'}
                     aria-expanded={cancelConfirmOpen}
                     data-testid="cancel-sweep"
                     className="inline-flex min-h-[44px] items-center gap-2 rounded-md border border-[var(--border-default)] bg-[var(--bg-secondary)] px-3.5 py-2 text-sm font-semibold text-[var(--text-secondary)] disabled:cursor-not-allowed disabled:opacity-50"
@@ -1985,6 +2142,18 @@ export function DiscoveryPage() {
             </div>
           </section>
 
+          {/* Card #1121 (decisão 7): estado de cada ativo; varredura antiga sem `assets` fica no painel de antes. */}
+          {progressAssets && progressAssets.length > 0 ? (
+            <AssetsBoard
+              ref={assetsTitleRef}
+              assets={progressAssets}
+              sweepState={progressSweep.state}
+              limit={assetLimit}
+              onMore={() => setAssetLimit((n) => n + ASSET_PAGE)}
+              live={liveAnnouncement(progressAssets, progressSweep.state)}
+            />
+          ) : null}
+
           {/* Rascunho colapsado + parciais travadas (fora do switch: sem paginação, sem re-perguntar) */}
           <div
             className="mb-4 rounded-lg border border-[var(--border-default)] bg-[var(--bg-secondary)] p-3.5 text-xs text-[var(--text-tertiary)]"
@@ -1992,7 +2161,7 @@ export function DiscoveryPage() {
           >
             Rascunho congelado:{' '}
             {(() => {
-              const axes = activeSweep.snapshot?.axes
+              const axes = progressSweep.snapshot?.axes
               const t = axes ? axes.templates.length : selectedTemplates.length
               const s = axes ? axes.symbols.length : selectedSymbols.length
               const tf = axes && axes.timeframes.length ? axes.timeframes.join(' + ') : timeframes.join(' + ')
@@ -2015,7 +2184,7 @@ export function DiscoveryPage() {
             <div className="border-b border-[var(--border-default)] p-5">
               <h2 className="text-lg font-semibold">Parciais · top-5 travadas</h2>
               <p className="mt-1 text-xs text-[var(--text-tertiary)]">
-                Ranking travado na varredura <span className="font-mono">#{activeSweep.sweep_id}</span> — parciais abaixo, sem re-perguntar o rascunho. Todo GO acima de todo NO-GO.
+                Ranking travado na varredura <span className="font-mono">#{progressSweep.sweep_id}</span> — parciais abaixo, sem re-perguntar o rascunho. Todo GO acima de todo NO-GO.
               </p>
             </div>
             {partials.length > 0 ? (
@@ -2079,6 +2248,7 @@ export function DiscoveryPage() {
                         <td className="candidate-cell" data-label="Candidato">
                           <strong className="candidate-name">{row.display_name || row.template_id}</strong>
                           <span className="candidate-meta">{row.symbol} · {row.timeframe} · {row.direction === 'long' ? 'Long' : 'Short'}</span>
+                          <CandidateBlock row={row} withLead={false} />
                           <WalkForwardSeal status={verdict} />
                           <DiscoverySealReason row={row} />
                           {lowSample ? <span className="sample-badge">Baixa amostra</span> : null}
@@ -2157,8 +2327,8 @@ export function DiscoveryPage() {
             </div>
 
             <div className="grid grid-cols-1 gap-x-6 gap-y-5 p-5 md:grid-cols-2">
-              {/* Templates — summary card */}
-              <section className="min-w-0 rounded-lg border border-[var(--border-default)] bg-[#181a20] p-4">
+              {/* Templates — summary card (linha própria; o eixo Ativos ocupa a linha inteira abaixo) */}
+              <section className="min-w-0 rounded-lg border border-[var(--border-default)] bg-[#181a20] p-4 md:col-span-2">
                 <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0">
                     <h3 className="text-sm font-semibold text-[var(--text-secondary)]">Templates</h3>
@@ -2167,7 +2337,7 @@ export function DiscoveryPage() {
                   </div>
                   <button
                     type="button"
-                    onClick={(e) => { workbenchTriggerRef.current = e.currentTarget; setWorkbenchTrigger('templates'); setWorkbenchOpen(true) }}
+                    onClick={(e) => { workbenchTriggerRef.current = e.currentTarget; setWorkbenchOpen(true) }}
                     disabled={draftFrozen}
                     className="inline-flex min-h-[44px] items-center gap-1.5 rounded-md border border-[var(--border-default)] bg-[var(--bg-secondary)] px-3 text-xs font-semibold text-[var(--text-secondary)] hover:bg-[var(--bg-input)] disabled:opacity-40"
                     data-testid="edit-templates"
@@ -2187,35 +2357,18 @@ export function DiscoveryPage() {
                 {renderInlineAxis('templates')}
               </section>
 
-              {/* Symbols — summary card */}
-              <section className="min-w-0 rounded-lg border border-[var(--border-default)] bg-[#181a20] p-4">
-                <div className="flex items-start justify-between gap-3">
-                  <div className="min-w-0">
-                    <h3 className="text-sm font-semibold text-[var(--text-secondary)]">Símbolos</h3>
-                    <p className="mt-0.5 text-xs text-[var(--text-muted)]" data-testid="symbol-count">{selectionSummary('symbols').count}</p>
-                    <p className="mt-0.5 text-[11px] text-[#bfdbfe]" data-testid="symbol-axis-status">{selectionSummary('symbols').detail}</p>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={(e) => { workbenchTriggerRef.current = e.currentTarget; setWorkbenchTrigger('symbols'); setWorkbenchOpen(true) }}
-                    disabled={draftFrozen}
-                    className="inline-flex min-h-[44px] items-center gap-1.5 rounded-md border border-[var(--border-default)] bg-[var(--bg-secondary)] px-3 text-xs font-semibold text-[var(--text-secondary)] hover:bg-[var(--bg-input)] disabled:opacity-40"
-                    data-testid="edit-symbols"
-                    aria-haspopup="dialog"
-                    aria-controls="selection-workbench"
-                  >
-                    <Edit3 className="h-3.5 w-3.5" />
-                    Edição avançada
-                  </button>
-                </div>
-                <div className="mt-2.5 flex min-h-[32px] gap-1.5 overflow-hidden">
-                  {selectionSummary('symbols').chips.map((label, idx) => (
-                    <span key={`sym-${label}-${idx}`} className="inline-flex min-h-[28px] max-w-[160px] items-center rounded border border-[var(--border-default)] bg-[var(--bg-primary)] px-2 py-1 text-[11px] text-[var(--text-secondary)] overflow-hidden text-ellipsis whitespace-nowrap">{label}</span>
-                  ))}
-                  {selectionSummary('symbols').extra ? <span className="inline-flex min-h-[28px] items-center rounded border border-dashed border-[var(--border-default)] px-2 py-1 text-[11px] text-[var(--text-tertiary)]">{selectionSummary('symbols').extra}</span> : null}
-                </div>
-                {renderInlineAxis('symbols')}
-              </section>
+              {/* Ativos — seletor do catálogo Binance (cripto, ações e ETFs) */}
+              <div className="min-w-0 md:col-span-2">
+                <AssetPicker
+                  title="Ativos"
+                  ariaLabel="Seletor de ativos da varredura"
+                  value={selectedSymbols}
+                  onChange={setSelectedSymbols}
+                  disabled={draftFrozen}
+                  classNote={DISCOVERY_CLASS_NOTE}
+                  onDemandTexts={ON_DEMAND_TEXT_DISCOVERY}
+                />
+              </div>
 
               {/* Timeframes */}
               <fieldset disabled={draftFrozen} className="min-w-0 border-0 p-0">
@@ -2351,10 +2504,12 @@ export function DiscoveryPage() {
                       ? 'Rascunho congelado'
                       : snapshotStale
                         ? 'Snapshot expirado'
-                        : impediments.length > 0
+                        : blocked
                           ? 'Bloqueado — veja o que falta'
                           : preflight
-                            ? 'Pronto para iniciar'
+                            ? selCounts.out === 0
+                              ? 'Pronto para iniciar'
+                              : `Pronto para iniciar · ${fmtInt(selCounts.out)} ${selCounts.out === 1 ? 'ativo fora' : 'ativos fora'}`
                             : 'Aguardando escopo'}
                 </p>
               </div>
@@ -2365,13 +2520,18 @@ export function DiscoveryPage() {
                   className="block font-mono text-[34px] font-bold leading-tight text-[var(--accent-primary)]"
                   data-testid="planned-total"
                 >
-                  {overLimit ? (preflight?.errors?.total ?? '').match(/\d+/)?.[0] ?? '—' : preflight?.valid_total ?? '—'}
+                  {preflight ? fmtInt(preflight.valid_total) : '—'}
                 </strong>
                 <span className="text-sm text-[var(--text-tertiary)]">combinações válidas</span>
                 <p className="mt-2 text-[13px] text-[var(--text-secondary)]" aria-live="polite" data-testid="preflight-3line">
-                  {preflight ? (
+                  {preflight && overLimit ? (
                     <>
-                      <b>{preflight.valid_total} combinações</b> · {fmtEstimate(preflight.valid_total)} estimado · {periodLabel}
+                      <b>{fmtInt(preflight.valid_total)} combinações</b> · acima do limite de {fmtInt(preflight.limits.max_total)} · {periodLabel}
+                      {preflightWindow}
+                    </>
+                  ) : preflight ? (
+                    <>
+                      <b>{fmtInt(preflight.valid_total)} combinações</b> · {fmtEstimate(preflight.valid_total)} estimado · {periodLabel}
                       {preflightWindow}
                     </>
                   ) : preflightLoading ? (
@@ -2382,6 +2542,78 @@ export function DiscoveryPage() {
                     </>
                   )}
                 </p>
+                {outAssetsList.length > 0 ? (
+                  <div
+                    className="pf-out mt-3 rounded-md border border-[rgba(245,158,11,0.35)] bg-[rgba(245,158,11,0.06)] p-2.5 text-[12px] text-[#fbbf24]"
+                    role="status"
+                    data-testid="preflight-class-out"
+                  >
+                    <strong>{outOfSweepTitle(outAssetsList)}</strong>
+                    <ul className="mt-1.5 list-disc pl-5 text-[var(--text-secondary)]">
+                      {outAssetsList.slice(0, 3).map((asset) => (
+                        <li key={asset.symbol} data-asset={asset.symbol}>
+                          {preflightExcludedLabel(asset)} — {asset.reason}.
+                        </li>
+                      ))}
+                      {preflightRestLine(outAssetsList, 3) ? <li>{preflightRestLine(outAssetsList, 3)}</li> : null}
+                      <li className="text-[var(--text-tertiary)]">Eles continuam na seleção do rascunho; nada é perdido.</li>
+                    </ul>
+                  </div>
+                ) : null}
+                {preflight ? (
+                  (() => {
+                    // Card #1121 (decisões 2, 6, 8, 9 e 12): por classe e moeda, coleta, precisão prevista,
+                    // recusa do teto e viés de sobrevivência.
+                    const run = runLine(preflight.by_class, preflight.axes?.timeframes ?? timeframes, overLimit)
+                    const collect = overLimit ? null : collectionLine(preflight.collection)
+                    const precision = overLimit ? null : precisionLine(preflight.precision_forecast)
+                    return (
+                      <div className="mc-pf" data-testid="preflight-classes">
+                        {run ? (
+                          <p className="mc-pf-line" data-testid="preflight-run">
+                            <b>{run.lead}</b> {run.rest}
+                          </p>
+                        ) : null}
+                        {collect ? (
+                          <p className="mc-pf-line mc-info" data-testid="preflight-collect">
+                            <b>{collect.lead}</b> {collect.rest}
+                          </p>
+                        ) : null}
+                        {precision ? (
+                          <p className="mc-pf-line mc-warn" data-testid="preflight-precision">
+                            <TriangleAlert aria-hidden="true" />
+                            <span>
+                              <b>{precision.lead}</b> {precision.rest}
+                            </span>
+                          </p>
+                        ) : null}
+                        {overLimit ? (
+                          <div className="mc-limit" role="alert" data-testid="preflight-limit">
+                            <strong>{LIMIT_TITLE(preflight.limits.max_total)}</strong>
+                            <span>
+                              {limitText(
+                                preflight.valid_total,
+                                preflight.limits.max_total,
+                                preflight.by_class,
+                                preflight.axes?.templates?.length ?? selectedTemplates.length,
+                                preflight.axes?.timeframes?.length ?? timeframes.length,
+                                preflight.axes?.directions ?? directions,
+                              )}
+                            </span>
+                            <span>{LIMIT_ADVICE}</span>
+                          </div>
+                        ) : null}
+                        <p className="mc-pf-line mc-surv" data-testid="survivorship-note">
+                          <History aria-hidden="true" />
+                          <span>
+                            <b>Viés de sobrevivência:</b> {SURVIVORSHIP_PREFLIGHT}
+                            {survivorshipWindowSuffix(preflight.survivorship?.window)}.
+                          </span>
+                        </p>
+                      </div>
+                    )
+                  })()
+                ) : null}
                 <p
                   className="mt-3 rounded-md border border-[var(--border-default)] bg-[var(--bg-secondary)] p-2.5 text-[12px] text-[var(--text-tertiary)]"
                   data-testid="cost-note"
@@ -2404,16 +2636,14 @@ export function DiscoveryPage() {
                 <details className="mt-3 text-[11px] text-[var(--text-muted)]">
                   <summary className="cursor-pointer rounded py-2">Detalhe técnico (fora do caminho feliz)</summary>
                   <div className="mt-1 font-mono" data-testid="planned-formula">
-                    {overLimit
-                      ? `${axisCount} combinações brutas`
-                      : preflight
-                        ? `${selectedTemplates.length} × ${selectedSymbols.length} × ${timeframes.length} × ${directions.length}${preflight.excluded_count ? ` − ${preflight.excluded_count} incompatíveis` : ''}`
-                        : '—'}
+                    {preflight
+                      ? `${selectedTemplates.length} × ${fmtInt(selectedSymbols.length)} × ${timeframes.length} × ${directions.length}${preflight.excluded_count ? ` − ${fmtInt(preflight.excluded_count)} incompatíveis` : ''}`
+                      : '—'}
                   </div>
-                  {preflight && !overLimit ? (
+                  {preflight ? (
                     <div className="mt-1" data-testid="preflight-breakdown">
-                      <b className="text-[var(--text-secondary)]">{preflight.raw_total} brutas</b> · {preflight.excluded_count} excluídas ·{' '}
-                      {preflight.valid_total} válidas · limite {preflight.limits.max_total}
+                      <b className="text-[var(--text-secondary)]">{fmtInt(preflight.raw_total)} brutas</b> · {fmtInt(preflight.excluded_count)} excluídas ·{' '}
+                      {fmtInt(preflight.valid_total)} válidas · limite {preflight.limits.max_total}
                       <br />
                       snapshot{' '}
                       <span className="font-mono">
@@ -2489,7 +2719,7 @@ export function DiscoveryPage() {
                 }`}
               >
                 <Play className="h-4 w-4" />
-                Iniciar varredura — {ctaTotal}, {fmtEstimate(ctaTotal)}
+                Iniciar varredura — {fmtInt(ctaTotal)}, {fmtEstimate(ctaTotal)}
               </button>
 
               {blockedOtherSelection ? (
@@ -2537,16 +2767,11 @@ export function DiscoveryPage() {
                 </p>
               ) : null}
 
-              {overLimit ? (
-                <p className="mt-3 text-xs text-[var(--text-muted)]" data-testid="over-limit-note">
-                  {preflight?.errors?.total} Reduza templates, símbolos, timeframes ou direções; o preflight e a ação de início usam o mesmo total.
-                </p>
-              ) : (
-                <p className="mt-3 flex gap-2 text-xs text-[var(--text-muted)]">
-                  <Shield className="h-4 w-4 shrink-0 text-[var(--accent-cyan)]" />
-                  <span>O rascunho congela após o início; nada é criado sem o preflight válido.</span>
-                </p>
-              )}
+              {/* Card #1121 (P3): acima do teto, a recusa é o bloco do Preflight; o escudo fica. */}
+              <p className="mt-3 flex gap-2 text-xs text-[var(--text-muted)]">
+                <Shield className="h-4 w-4 shrink-0 text-[var(--accent-cyan)]" />
+                <span>O rascunho congela após o início; nada é criado sem o preflight válido.</span>
+              </p>
             </div>
           </aside>
         </section>
@@ -2557,7 +2782,7 @@ export function DiscoveryPage() {
           open={workbenchOpen}
           initialAxis={workbenchTrigger}
           templates={templatesCatalog}
-          symbols={symbolsCatalog}
+          symbols={[]}
           committed={committedSelection}
           multiplier={timeframes.length * directions.length}
           onApply={applySelectionFromWorkbench}
@@ -2584,20 +2809,89 @@ export function DiscoveryPage() {
                     Leaderboard · {metric === 'calmar_ratio' ? 'Calmar' : 'CAGR vs Buy &amp; Hold'}
                   </h2>
                   <p className="mt-1 text-xs text-[var(--text-tertiary)]" data-testid="leaderboard-meta">
-                    Varredura <span className="font-mono">#{viewSweep.sweep_id}</span> · {STATE_LABEL[viewSweep.state]}
-                    {evidence ? (
+                    Varredura <span className="font-mono">#{viewSweep.sweep_id}</span> ·{' '}
+                    <span data-testid="leaderboard-state">{STATE_LABEL[viewState ?? viewSweep.state]}</span>
+                    {multiClasses > 1 ? (
+                      <>
+                        {' · '}
+                        <span data-testid="leaderboard-classes">{multiclassMeta(multiClasses)}</span>
+                      </>
+                    ) : evidence ? (
                       <>
                         {' · '}janela UTC [{evidence.start}, {evidence.end}) · {evidence.candles}
+                        {evidence.sample ? (
+                          <>
+                            {' · '}
+                            <span className="sample-state" data-testid="sample-evidence">
+                              <span className={evidence.sample.tone === 'expired' ? 'sample-state expired' : undefined}>
+                                {evidence.sample.text}
+                              </span>
+                              {evidence.sample.suffix}
+                            </span>
+                          </>
+                        ) : null}
                         {evidence.fees ? ` · ${evidence.fees}` : ''}
                         {evidence.slippage ? ` · ${evidence.slippage}` : ''}
                       </>
                     ) : null}
                   </p>
                 </div>
-                <span className="text-xs text-[var(--text-tertiary)]" aria-live="polite" data-testid="result-count">
-                  {lbLoading ? 'Carregando…' : `${totalMatched} de ${totalAvailable} candidatos · página ${page} de ${totalPages}`}
-                </span>
+                <div className="b23-lb-actions">
+                  <span className="text-xs text-[var(--text-tertiary)]" aria-live="polite" data-testid="result-count">
+                    {lbLoading ? 'Carregando…' : `${totalMatched} de ${totalAvailable} candidatos · página ${page} de ${totalPages}`}
+                  </span>
+                  <RankingExportButton
+                    sweepId={viewSweep.sweep_id}
+                    params={{
+                      metric,
+                      ...(fSymbol !== 'all' ? { symbol: fSymbol } : {}),
+                      ...(fTimeframe !== 'all' ? { timeframe: fTimeframe } : {}),
+                      ...(fDirection !== 'all' ? { direction: fDirection } : {}),
+                      ...(fClass !== 'all' ? { asset_class: fClass } : {}),
+                    }}
+                    disabled={lbLoading || totalMatched === 0}
+                    column={refColumn?.column ?? null}
+                  />
+                </div>
               </div>
+
+              {viewNote ? (
+                <p className="mc-note mc-noresult" data-testid="no-result-decidir" data-kind={viewNote.kind}>
+                  <span className="mc-noresult-icon">
+                    {viewNote.kind === 'failed' ? (
+                      <CircleX aria-hidden="true" />
+                    ) : viewNote.kind === 'cancelled' ? (
+                      <Clock aria-hidden="true" />
+                    ) : (
+                      <TriangleAlert aria-hidden="true" />
+                    )}
+                  </span>
+                  <span>
+                    {viewNote.parts.map((part, idx) => (
+                      <React.Fragment key={idx}>
+                        {idx > 0 ? ' ' : ''}
+                        <b>{part.lead}</b> {part.text}
+                      </React.Fragment>
+                    ))}{' '}
+                    <button type="button" className="mc-linkbtn" onClick={openAssetsBoard} data-testid="see-assets">
+                      ver Por ativo
+                    </button>
+                  </span>
+                </p>
+              ) : null}
+              <p className="mc-note" data-testid="survivorship-decidir">
+                <History aria-hidden="true" />
+                <span>
+                  <b>Viés de sobrevivência:</b> {survivorshipDecidir(viewWindow)}
+                </span>
+              </p>
+              <p className="mc-note" data-testid="ranking-reference">
+                <Target aria-hidden="true" />
+                <span>
+                  <b>Referência do ranking:</b> o próprio ativo (buy-and-hold, long-only). A ordem, o rank global e a elegibilidade não mudam com a coluna extra nem com a referência escolhida num resultado ou favorito.
+                </span>
+              </p>
+              <ReferenceColumnStrip sweepId={viewSweep.sweep_id} state={refColumn} onReload={reloadLeaderboardSilently} />
 
               {lbError ? (
                 <div className="mt-4 rounded-lg border border-[rgba(246,70,93,0.4)] bg-[rgba(246,70,93,0.06)] p-3.5">
@@ -2607,7 +2901,7 @@ export function DiscoveryPage() {
                   </p>
                   <button
                     type="button"
-                    onClick={() => applyFilters(metric, fSymbol, fTimeframe, fDirection, page)}
+                    onClick={() => applyFilters(metric, fSymbol, fTimeframe, fDirection, page, fClass)}
                     className="mt-2.5 inline-flex min-h-[44px] items-center gap-1.5 rounded-md border border-[var(--border-default)] bg-[var(--bg-secondary)] px-3.5 text-xs font-semibold text-[var(--text-secondary)]"
                   >
                     <RefreshCw className="h-3.5 w-3.5" />
@@ -2616,7 +2910,7 @@ export function DiscoveryPage() {
                 </div>
               ) : null}
 
-              <div className="mt-4 grid grid-cols-2 items-end gap-2.5 md:grid-cols-[repeat(3,minmax(140px,1fr))_auto]">
+              <div className="mt-4 grid grid-cols-2 items-end gap-2.5 md:grid-cols-[repeat(4,minmax(130px,1fr))_auto]">
                 <label className="block">
                   <span className="mb-1.5 block text-[11px] font-semibold uppercase tracking-wide text-[var(--text-muted)]">Ordenar por</span>
                   <select
@@ -2627,6 +2921,21 @@ export function DiscoveryPage() {
                   >
                     <option value="calmar_ratio">Calmar</option>
                     <option value="delta_cagr_vs_bh">CAGR vs B&amp;H</option>
+                  </select>
+                </label>
+                <label className="block">
+                  <span className="mb-1.5 block text-[11px] font-semibold uppercase tracking-wide text-[var(--text-muted)]">Classe</span>
+                  <select
+                    value={fClass}
+                    onChange={(e) => handleClassChange(e.target.value as ClassFilter)}
+                    data-testid="class-filter"
+                    className="w-full rounded-md border border-[var(--border-default)] bg-[var(--bg-input)] px-3 py-2 text-sm text-[var(--text-primary)]"
+                  >
+                    {classOpts.map((opt) => (
+                      <option key={opt.value} value={opt.value} disabled={opt.disabled}>
+                        {opt.label}
+                      </option>
+                    ))}
                   </select>
                 </label>
                 <label className="block">
@@ -2670,7 +2979,7 @@ export function DiscoveryPage() {
             </div>
 
             <div className="overflow-x-auto" tabIndex={0} role="region" aria-label="Tabela rolável de candidatos">
-              {rows.length === 0 && !lbLoading && !lbError ? (
+              {rows.length === 0 && !lbLoading && !lbError && !classEmpty ? (
                 <div className="p-8 text-center" data-testid="empty-state">
                   <strong className="block text-[var(--text-secondary)]">Nenhum candidato neste recorte.</strong>
                   <p className="mt-1 text-sm text-[var(--text-tertiary)]">Limpe os filtros para voltar ao leaderboard completo.</p>
@@ -2714,10 +3023,21 @@ export function DiscoveryPage() {
                     <th scope="col" aria-label="CAGR anualizado da varredura">
                       <span>CAGR anualizado</span>
                     </th>
+                    {extraColumn ? <ReferenceColumnHeader symbol={extraColumn.reference.symbol} /> : null}
                     <th scope="col" className="action">Ação</th>
                   </tr>
                 </thead>
                 <tbody>
+                  {classEmpty ? (
+                    <tr className="mc-empty" data-testid="class-empty">
+                      <td colSpan={extraColumn ? 11 : 10}>
+                        {classEmptyText(fClass)}{' '}
+                        <button type="button" className="mc-linkbtn" onClick={clearFilters}>
+                          Limpar filtros
+                        </button>
+                      </td>
+                    </tr>
+                  ) : null}
                   {rows.map((row) => {
                     const insufficient = row.eligibility === 'insufficient_sample'
                     const lowSample = row.eligibility === 'low_sample'
@@ -2751,7 +3071,42 @@ export function DiscoveryPage() {
                               {row.result_id} · cobertura {insufficient ? 'N/A' : fmtPct(row.coverage)}
                               {fmtParams(row.parameters) ? ` · ${fmtParams(row.parameters)}` : ''}
                               {row.direction === 'short' ? ' · benchmark B&H long-only' : ''}
+                              {(() => {
+                                // Card #1118: estado da amostra da própria varredura; favorito lembra que
+                                // Favoritos guarda a amostra do último refresh (o número que se refaz igual).
+                                // Só a amostra que existe fica guardada pela coluna extra; o candidato sem
+                                // amostra (cripto do caminho antigo) segue "sem amostra guardada".
+                                const state = rowSampleWithColumn(row, Boolean(extraColumn))
+                                return (
+                                  <>
+                                    {state.sample ? (
+                                      <>
+                                        {' · '}
+                                        <span
+                                          className={`sample-state${state.sampleTone === 'expired' ? ' expired' : ''}`}
+                                          data-testid={`sample-${row.result_id}`}
+                                        >
+                                          {state.sample}
+                                        </span>
+                                      </>
+                                    ) : null}
+                                    {state.favorite ? (
+                                      <>
+                                        {' · '}
+                                        <span className="sample-state favorite" data-testid={`sample-favorite-${row.result_id}`}>
+                                          {state.favorite}
+                                        </span>
+                                      </>
+                                    ) : null}
+                                  </>
+                                )
+                              })()}
                             </span>
+                            {insufficient ? (
+                              <InsufficientBlock row={row} reason={row.eligibility_reason} />
+                            ) : (
+                              <CandidateBlock row={row} withLead />
+                            )}
                             <WalkForwardSeal status={verdict} />
                             <DiscoverySealReason row={row} />
                             {insufficient ? (
@@ -2851,6 +3206,14 @@ export function DiscoveryPage() {
                         >
                           {easy.cagr}
                         </td>
+                        {extraColumn ? (
+                          <ReferenceColumnCell
+                            cell={row.reference_comparison}
+                            symbol={extraColumn.reference.symbol}
+                            computing={extraColumn.status === 'computing' || extraColumn.status === 'collecting'}
+                            resultId={row.result_id}
+                          />
+                        ) : null}
                         {renderLeaderboardActionCell(row)}
                       </tr>
                     )
@@ -2890,6 +3253,9 @@ export function DiscoveryPage() {
               Conteúdo educacional. Rank global usa resultados elegíveis (≥30 trades, ≥90% cobertura); filtros não renumeram posições.
               Dados históricos não garantem retornos futuros.
             </p>
+            <p className="mc-lb-note" data-testid="class-copy">
+              <span>{CALENDAR_COVERAGE_NOTE}</span>
+            </p>
             <p className="border-t border-[var(--border-default)] px-5 py-3 text-[11px] text-[var(--text-muted)]" data-testid="column-copy">
               Ordem igual a Favoritos: Sharpe, Trades, Win%, Return, Max DD; depois Calmar (CAGR ÷ Max DD) e CAGR anualizado.
               Return é o composto da janela da varredura — não o CAGR e não o número de Favoritos.
@@ -2918,7 +3284,7 @@ export function DiscoveryPage() {
           >
             <div className="flex items-start justify-between gap-4 border-b border-[var(--border-default)] p-5">
               <div>
-                <h2 id="modal-title" className="text-xl font-semibold">Promover a favorito tier 3</h2>
+                <h2 id="modal-title" className="text-xl font-semibold">{promotionTitle(rowClass(promoteTarget))}</h2>
                 <p id="modal-description" className="mt-1 text-xs text-[var(--text-tertiary)]">
                   Destino fixo deste fluxo. Revise a origem antes de confirmar.
                 </p>
@@ -2949,6 +3315,7 @@ export function DiscoveryPage() {
                 <span className="text-xs text-[var(--text-tertiary)]" data-testid="modal-market">
                   {promoteTarget.symbol} · {promoteTarget.timeframe} · {promoteTarget.direction === 'long' ? 'Long' : 'Short'}
                 </span>
+                <ModalIdentity row={promoteTarget} />
               </div>
               <div className="my-4 grid grid-cols-2 gap-2.5" data-testid="modal-risk-grid">
                 <div className="rounded-md border border-[var(--border-default)] bg-[var(--bg-secondary)] p-2.5">
@@ -2978,10 +3345,16 @@ export function DiscoveryPage() {
                   <b className="font-mono text-xs" data-testid="modal-result">{promoteTarget.result_id}</b>
                 </div>
               </div>
-              <div className="rounded-md border border-[var(--border-default)] bg-[var(--bg-secondary)] p-2.5">
+              {/* Card #1122 (d2): o destino é Favoritos sem estrela, em qualquer classe. */}
+              <div className="rounded-md border border-[var(--border-default)] bg-[var(--bg-secondary)] p-2.5" data-testid="destination-tier3">
                 <small className="block text-[var(--text-muted)]">Destino obrigatório</small>
-                <strong className="text-[var(--accent-primary)]">Tier 3 · observação</strong>
-                <span className="mt-1 block text-[11px] text-[var(--text-tertiary)]">Onde ver depois: Favoritos → Tier 3. Reversível: retire o favorito; o histórico da varredura fica.</span>
+                <strong className="text-[var(--accent-primary)]">{PROMOTION_DESTINATION}</strong>
+                <span className="mt-1 block text-[11px] text-[var(--text-tertiary)] max-w-[75ch]">{promotionDestinationNote(rowClass(promoteTarget))}</span>
+                {extraColumn && showPromotionReferenceNote(extraColumn.status, promoteTarget.reference_comparison) ? (
+                  <span className="mt-1 block text-[12px] text-[var(--text-secondary)] max-w-[75ch]" data-testid="promotion-reference">
+                    {promotionReferenceNote(promoteTarget.reference_comparison, extraColumn.reference.symbol)}
+                  </span>
+                ) : null}
               </div>
               {promoteConflict ? (
                 <div className="mt-3.5 rounded-lg border border-[rgba(246,70,93,0.4)] bg-[rgba(246,70,93,0.06)] p-3 text-xs text-[var(--text-secondary)]" data-testid="promote-conflict">
@@ -2994,7 +3367,7 @@ export function DiscoveryPage() {
                     type="button"
                     onClick={() => {
                       closePromotion(true)
-                      if (viewSweep) applyFilters(metric, fSymbol, fTimeframe, fDirection, page)
+                      if (viewSweep) applyFilters(metric, fSymbol, fTimeframe, fDirection, page, fClass)
                     }}
                     className="mt-2.5 inline-flex min-h-[44px] items-center rounded-md border border-[var(--border-default)] bg-[var(--bg-secondary)] px-3.5 text-xs font-semibold text-[var(--text-secondary)]"
                   >
@@ -3025,7 +3398,7 @@ export function DiscoveryPage() {
                 className="inline-flex min-h-[44px] items-center gap-2 rounded-md border border-[var(--accent-primary)] bg-[var(--accent-primary)] px-4 py-2 text-sm font-bold text-[#181a20] hover:bg-[var(--accent-primary-hover)] disabled:cursor-not-allowed disabled:opacity-50"
               >
                 <Star className="h-4 w-4" />
-                Promover como tier 3
+                {promotionTitle(rowClass(promoteTarget))}
               </button>
             </div>
           </div>

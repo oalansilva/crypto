@@ -19,8 +19,20 @@ CHECK_INTERVAL_SECONDS = 60.0
 _MAX_CONCURRENT_PRICEFETCH = 15
 
 
+def is_monitored_asset(asset: str | None) -> bool:
+    """Card #1122 (decisão 10): o monitor de sinais só consulta pares cripto em USDT.
+
+    Ação e ETF nunca entram aqui (o feed de sinais é da Binance Spot); a guarda é explícita.
+    """
+
+    normalized = str(asset or "").strip().upper().replace("/", "")
+    return normalized.endswith("USDT") and len(normalized) > len("USDT")
+
+
 async def _fetch_price(asset: str) -> float | None:
     """Fetch current price for an asset from Binance."""
+    if not is_monitored_asset(asset):
+        return None
     params = {"symbol": asset}
     timeout = httpx.Timeout(REQUEST_TIMEOUT)
     try:
@@ -48,6 +60,7 @@ def _check_and_update_signals() -> None:
             )
             .all()
         )
+        signals = [s for s in signals if is_monitored_asset(s.asset)]
         if not signals:
             db.close()
             return

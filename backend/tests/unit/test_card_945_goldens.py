@@ -48,6 +48,18 @@ from oracles.card_945_legacy import (
 pytestmark = pytest.mark.timeout(300)
 
 
+@pytest.fixture(autouse=True)
+def _frozen_oracle_has_no_stop_gap_rule(monkeypatch):
+    """Os goldens do #945 comparam com o oráculo congelado, que sai do stop no preço exato.
+
+    A regra do gap (card #1119) é nova e tem testes próprios (``test_card_1119_stop_gap.py``, inclusive a
+    equivalência entre as rotinas legada, rápida e compilada). Aqui o interruptor ``STOP_GAP_EXIT=0`` fixa
+    a comparação byte a byte com a rotina de antes do card.
+    """
+
+    monkeypatch.setenv("STOP_GAP_EXIT", "0")
+
+
 def _load_json(name: str):
     return json.loads((OUT_DIR / name).read_text())
 

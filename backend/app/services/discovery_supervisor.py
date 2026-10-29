@@ -135,28 +135,56 @@ def _supervisor_entry(events, acknowledgements, directory, inputs):
             ComboService.get_template_metadata = lambda self, name: (
                 frozen_metadata if name == inputs["template_name"] else original(self, name)
             )
-        from app.services.discovery_inputs import prepare, read
-
-        manifest = prepare(inputs)
-        os.environ["DISCOVERY_FROZEN_INPUT_DIR"] = manifest["directory"]
-        progress(
-            {
-                "phase_complete": "input_snapshot",
-                "candle_manifest": manifest,
-                "telemetry": telemetry(),
-            }
+        from app.services.discovery_inputs import (
+            InsufficientHistory,
+            activate,
+            manifest_source,
+            prepare,
+            read,
         )
+        from app.services.discovery_multiclass import no_candles_reason
+
+        # Card #1121 (decisões 3 e 9): a coleta de ação/ETF roda aqui, sob o mesmo lease e as
+        # mesmas 3 tentativas; cada página coletada vira evento de progresso.
+        asset_class = inputs.pop("asset_class", None)
+        try:
+            manifest = prepare(
+                {**inputs, "asset_class": asset_class},
+                on_progress=lambda event: progress({**event, "telemetry": telemetry()}),
+            )
+        except InsufficientHistory as exc:
+            manifest = None
+            insufficient_reason = exc.reason
+        else:
+            insufficient_reason = None
+            activate(manifest)
+            progress(
+                {
+                    "phase_complete": "input_snapshot",
+                    "candle_manifest": manifest,
+                    "telemetry": telemetry(),
+                }
+            )
         inputs.pop("candle_manifest", None)
-        listing_len = len(read("candles"))
+        listing_len = len(read("candles")) if manifest is not None else 0
         train_len = int(listing_len * DISCOVERY_SPLIT_TRAIN_RATIO)
         insufficient = listing_len < 2 or train_len < MIN_ELIGIBLE_TRADES
+        if insufficient_reason is None and listing_len == 0:
+            insufficient_reason = no_candles_reason(
+                inputs["symbol"], inputs["timeframe"], asset_class=asset_class
+            )
         progress({"phase_complete": "listing", "telemetry": telemetry()})
         if insufficient:
-            result = {"insufficient": True, "listing_len": listing_len, "train_len": train_len}
+            result = {
+                "insufficient": True,
+                "listing_len": listing_len,
+                "train_len": train_len,
+                "reason": insufficient_reason,
+            }
         else:
             result = ComboOptimizer().run_optimization(
                 **inputs,
-                data_source="ccxt",
+                data_source=manifest_source(manifest),
                 deep_backtest=True,
                 split_train_ratio=DISCOVERY_SPLIT_TRAIN_RATIO,
             )

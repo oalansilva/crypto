@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { keepPreviousData, useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { useNavigate } from 'react-router-dom';
-import { Trash2, Search, List, Activity, BarChart3, Bell, Star, RefreshCw, X } from 'lucide-react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
+import { Trash2, Search, List, Activity, BarChart3, Star, RefreshCw, X } from 'lucide-react';
 import { useInfiniteScroll } from '@/hooks/useInfiniteScroll';
 import { API_BASE_URL } from '../lib/apiBase';
 import { authFetch } from '@/lib/authFetch';
@@ -23,8 +23,27 @@ import {
     isDiscoveryOrigin,
 } from '@/lib/discoveryFavoriteMetrics';
 import { formatCompoundReturn } from '@/lib/compoundReturn';
+import {
+    MONITOR_STAR_HELP,
+    atrWithCurrency,
+    chipLabel,
+    classCounts,
+    classFilterOptions,
+    favoriteClass,
+    favoriteLoteId,
+    favoriteRowData,
+    formatFavoriteRefreshStatus,
+    loteBannerText,
+    FILTER_EMPTY_LOTE,
+    type FavoriteConfiguration,
+    type ClassFilterValue,
+    type RowData,
+} from '@/lib/favoriteClass';
+import '../styles/lote.css';
+import '../styles/favoriteAlerts.css';
 
-import * as XLSX from 'xlsx';
+import { favoriteRefTag, type BenchmarkComparison as BenchmarkComparisonPayload, type ComparisonSummary } from '@/lib/benchmarkComparison';
+import '../components/results/BenchmarkComparison.css';
 
 type MonitorSignalSyncResult = {
     trades: any[] | null;
@@ -56,6 +75,15 @@ interface FavoriteStrategy {
     auto_refresh_started_at?: string | null;
     auto_refresh_completed_at?: string | null;
     auto_refresh_run_id?: string | null;
+    /** Identidade do ativo (card #1120): classe, moeda e nome; cripto, ação e ETF na mesma lista. */
+    asset?: { symbol: string; asset_id?: string | null; asset_class?: 'crypto' | 'stock' | 'etf' | null; name?: string | null; currency?: string | null } | null;
+    /** Card #1122: fonte, sessão e ajuste (e rótulos). */
+    configuration?: FavoriteConfiguration | null;
+    /** Card #1122: linha do catálogo do Cripto Farol (vitrine), sem controle de alerta. */
+    is_curated_fallback?: boolean;
+    /** Card #1123: comparação com referência gravada (resumo; a análise lê a inteira). */
+    benchmark_comparison_id?: string | null;
+    benchmark_comparison?: ComparisonSummary | null;
 }
 
 interface MonitorSignalHistoryItem {
@@ -91,8 +119,6 @@ interface RevalidationReport {
         oos_verdict?: Record<string, any> | null;
     };
 }
-
-const isCryptoPair = (symbol: string): boolean => String(symbol || '').includes('/');
 
 const CURRENT_CHART_CANDLE_LIMIT = 300;
 const FAVORITE_ANALYSIS_OPTIONAL_SYNC_TIMEOUT_MS = 2500;
@@ -288,6 +314,7 @@ const mergeFavoriteAndMonitorTrades = (
 
 const FavoritesDashboard: React.FC = () => {
     const navigate = useNavigate();
+    const [searchParams, setSearchParams] = useSearchParams();
     const queryClient = useQueryClient();
     const { user } = useAuth();
     const isAdmin = user?.isAdmin === true;
@@ -299,6 +326,10 @@ const FavoritesDashboard: React.FC = () => {
     const revalidationCloseRef = useRef<HTMLButtonElement | null>(null);
     const revalidationTriggerRef = useRef<HTMLElement | null>(null);
     const [tierFilter, setTierFilter] = useState<'all' | '1' | '2' | '3' | 'none'>('all');
+    const [classFilter, setClassFilter] = useState<ClassFilterValue>('all');
+    // Faixa do lote (card #1120): `/favorites?lote=<id8>` mostra só o que o lote gravou, de todas as classes.
+    const loteFilter = (searchParams.get('lote') || '').trim().toLowerCase() || null;
+    const classSelectRef = useRef<HTMLSelectElement | null>(null);
 
     const [loadingAnalysisId, setLoadingAnalysisId] = useState<number | null>(null);
 
@@ -339,10 +370,38 @@ const FavoritesDashboard: React.FC = () => {
         }
     });
 
+    /**
+     * Card #1122 (d2, decisão 19): a estrela é a porta do Monitor. A primeira estrela põe a estratégia
+     * no Monitor com o alerta ligado; tirar a última a tira do Monitor e do Telegram. O anúncio e a
+     * marca "alerta ligado" só vêm depois de o PATCH gravar; se falhar, o status diz que não salvou.
+     */
+    const [starStatus, setStarStatus] = useState('');
+    const [justStarred, setJustStarred] = useState<Record<number, boolean>>({});
+
+    const announceTierSaved = (fav: FavoriteStrategy, tier: number | null) => {
+        if (fav.is_curated_fallback) return;
+        const name = `${fav.symbol} ${fav.timeframe}`.trim();
+        const hadStar = getStarCount(fav.tier) > 0;
+        const nextStars = getStarCount(tier);
+        if (!hadStar && nextStars > 0) {
+            setStarStatus(`${name} entrou no Monitor com o alerta ligado.`);
+            setJustStarred((current) => ({ ...current, [fav.id]: true }));
+        } else if (hadStar && nextStars === 0) {
+            setStarStatus(`${name} saiu do Monitor e não manda mais alerta.`);
+            setJustStarred((current) => {
+                const next = { ...current };
+                delete next[fav.id];
+                return next;
+            });
+        } else {
+            setStarStatus(`${name}: ${nextStars} ${nextStars === 1 ? 'estrela' : 'estrelas'}; o alerta no Monitor fica como estava.`);
+        }
+    };
+
     // Update tier mutation
     const updateTierMutation = useMutation({
-        mutationFn: async ({ id, tier }: { id: number; tier: number | null }) => {
-            const res = await authFetch(`${API_BASE_URL}/favorites/${id}`, {
+        mutationFn: async ({ fav, tier }: { fav: FavoriteStrategy; tier: number | null }) => {
+            const res = await authFetch(`${API_BASE_URL}/favorites/${fav.id}`, {
                 method: 'PATCH',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ tier })
@@ -350,32 +409,18 @@ const FavoritesDashboard: React.FC = () => {
             if (!res.ok) throw new Error('Failed to update tier');
             return res.json();
         },
-        onSuccess: () => {
+        onSuccess: (_, { fav, tier }) => {
+            announceTierSaved(fav, tier);
             queryClient.invalidateQueries({ queryKey: ['favorites', user?.id ?? 'anonymous'] });
+        },
+        onError: (_, { fav }) => {
+            const name = `${fav.symbol} ${fav.timeframe}`.trim();
+            setStarStatus(`Não foi possível salvar as estrelas de ${name}. Tente de novo.`);
         }
     });
 
     const handleUpdateTier = (fav: FavoriteStrategy, tier: number | null) => {
-        updateTierMutation.mutate({ id: fav.id, tier });
-    };
-
-    const updateTelegramMutation = useMutation({
-        mutationFn: async ({ id, notify_telegram }: { id: number; notify_telegram: boolean }) => {
-            const res = await authFetch(`${API_BASE_URL}/favorites/${id}`, {
-                method: 'PATCH',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ notify_telegram })
-            });
-            if (!res.ok) throw new Error('Failed to update Telegram notification');
-            return res.json();
-        },
-        onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: ['favorites', user?.id ?? 'anonymous'] });
-        }
-    });
-
-    const handleToggleTelegram = (fav: FavoriteStrategy) => {
-        updateTelegramMutation.mutate({ id: fav.id, notify_telegram: !fav.notify_telegram });
+        updateTierMutation.mutate({ fav, tier });
     };
 
     const revalidateMutation = useMutation({
@@ -439,10 +484,48 @@ const FavoritesDashboard: React.FC = () => {
         return null;
     };
 
+    /** Precisão, convenções e período efetivo à vista; "Limitações e origem" atrás de um `<details>` fechado. */
+    const renderRowData = (row: RowData, fav?: FavoriteStrategy) => (
+        <div className="lote-rowdata">
+            <span className="lote-prec" data-tone={row.precision.tone} data-testid="fav-precision">
+                <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    {row.precision.tone === 'warn' ? (
+                        <>
+                            <path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3" />
+                            <path d="M12 9v4" />
+                            <path d="M12 17h.01" />
+                        </>
+                    ) : (
+                        <>
+                            <circle cx="12" cy="12" r="10" />
+                            <path d="M12 16v-4" />
+                            <path d="M12 8h.01" />
+                        </>
+                    )}
+                </svg>
+                <span>{row.precision.text}</span>
+            </span>
+            <span className="lote-conv" data-testid="fav-conventions">{row.conventions}</span>
+            <span className="lote-conv" data-testid="fav-effective">{row.effective}</span>
+            {/* Card #1123: só fora do padrão (próprio ativo), para não pesar a coluna Estratégia. */}
+            {fav && favoriteRefTag(fav.benchmark_comparison) ? (
+                <span className="lote-conv b23-favref" data-testid="fav-reference">{favoriteRefTag(fav.benchmark_comparison)}</span>
+            ) : null}
+            {row.details ? (
+                <details className="lote-more-info" data-testid="fav-more-info">
+                    <summary>{row.details.summary}</summary>
+                    {row.details.conventionsFull ? <span className="lote-conv" data-testid="fav-conventions-full">{row.details.conventionsFull}</span> : null}
+                    {row.details.limitations ? <span className="lote-lim">{row.details.limitations}</span> : null}
+                    {row.details.lote ? <span className="lote-lote-tag">{row.details.lote}</span> : null}
+                </details>
+            ) : null}
+        </div>
+    );
+
     const renderStarTierControl = (fav: FavoriteStrategy, compact = false) => {
         const selectedStars = getStarCount(fav.tier);
         const isSaving = updateTierMutation.isPending;
-
+        // Card #1122: estrelas de ação e ETF funcionam como na cripto.
         return (
             <div className="flex items-center justify-center gap-1" aria-label="Prioridade por estrelas">
                 {[1, 2, 3].map((stars) => {
@@ -453,6 +536,7 @@ const FavoritesDashboard: React.FC = () => {
                             type="button"
                             disabled={isSaving}
                             aria-pressed={active}
+                            aria-label={`${stars} ${stars === 1 ? 'estrela' : 'estrelas'}`}
                             title={`${stars} ${stars === 1 ? 'estrela' : 'estrelas'}`}
                             onClick={(event) => {
                                 event.stopPropagation();
@@ -475,32 +559,21 @@ const FavoritesDashboard: React.FC = () => {
         );
     };
 
-    const renderTelegramControl = (fav: FavoriteStrategy, compact = false) => {
-        const active = fav.notify_telegram !== false;
-        const isSaving = updateTelegramMutation.isPending;
-
+    /** Legenda da célula das estrelas: "No Monitor" / "Fora do Monitor" (a vitrine não tem). */
+    const renderMonitorLegend = (fav: FavoriteStrategy, placement: 'row' | 'card') => {
+        if (fav.is_curated_fallback) return null;
+        const inMonitor = getStarCount(fav.tier) > 0;
+        const label = inMonitor
+            ? (justStarred[fav.id] ? 'No Monitor · alerta ligado' : 'No Monitor')
+            : 'Fora do Monitor';
         return (
-            <button
-                type="button"
-                disabled={isSaving}
-                aria-pressed={active}
-                title={active ? 'Notificar Telegram ativo' : 'Notificar Telegram desligado'}
-                onClick={(event) => {
-                    event.stopPropagation();
-                    handleToggleTelegram(fav);
-                }}
-                className={[
-                    'telegram-toggle inline-flex items-center justify-center gap-1 rounded-md border transition-colors',
-                    compact ? 'h-9 min-w-[3.5rem] px-2 text-xs' : 'h-8 min-w-[4.5rem] px-2 text-xs',
-                    active
-                        ? 'border-emerald-400 bg-emerald-400/15 text-emerald-600'
-                        : 'border-zinc-200 bg-zinc-50 text-zinc-400 hover:text-emerald-600',
-                    isSaving ? 'opacity-60 cursor-wait' : '',
-                ].join(' ')}
+            <span
+                className="fav-monitor-legend"
+                data-on={inMonitor ? 'true' : 'false'}
+                data-testid={`fav-monitor-legend-${placement}-${fav.id}`}
             >
-                <Bell className={compact ? 'h-4 w-4' : 'h-3.5 w-3.5'} fill={active ? 'currentColor' : 'none'} />
-                {compact ? 'TG' : active ? 'On' : 'Off'}
-            </button>
+                {label}
+            </span>
         );
     };
 
@@ -867,7 +940,25 @@ const FavoritesDashboard: React.FC = () => {
             is_strategy_protected: isFavoriteProtected(fav) && !isAdmin,
             strategy_transparency: recovered.strategyTransparency ?? fav.strategy_transparency ?? null,
             strategy_description: getFavoriteStrategyDescription(fav),
+            // Card #1123: a troca grava no favorito; identidade e janela para o seletor.
+            favorite_id: fav.is_curated_fallback ? null : fav.id,
+            favorite_name: fav.name,
+            asset: fav.asset ?? null,
+            execution: (fav.metrics?.analysis_execution as any) ?? null,
+            benchmark_comparison: null as BenchmarkComparisonPayload | null,
         };
+    };
+
+    const loadFavoriteComparison = async (fav: FavoriteStrategy): Promise<BenchmarkComparisonPayload | null> => {
+        const id = fav.benchmark_comparison?.id || fav.benchmark_comparison_id;
+        if (!id) return null;
+        try {
+            const response = await authFetch(`${API_BASE_URL}/benchmark-comparisons/${encodeURIComponent(id)}`);
+            if (!response.ok) return null;
+            return (await response.json()) as BenchmarkComparisonPayload;
+        } catch {
+            return null;
+        }
     };
 
     const handleViewAnalysis = async (fav: FavoriteStrategy) => {
@@ -881,7 +972,7 @@ const FavoritesDashboard: React.FC = () => {
                 status: 'timeout',
                 strategy_transparency: null,
             };
-            const [currentCandles, monitorSync] = await Promise.all([
+            const [currentCandles, monitorSync, savedComparison] = await Promise.all([
                 resolveWithTimeout(
                     loadCurrentChartCandles(fav),
                     recovered.candles || [],
@@ -894,8 +985,10 @@ const FavoritesDashboard: React.FC = () => {
                     FAVORITE_MONITOR_SIGNAL_SYNC_TIMEOUT_MS,
                     () => console.warn(`Opening favorite analysis without monitor trade sync for ${fav.symbol} ${fav.timeframe}; monitor sync timed out.`),
                 ),
+                loadFavoriteComparison(fav),
             ]);
             const analysisResult = buildFavoriteAnalysisResult(fav, recovered);
+            analysisResult.benchmark_comparison = savedComparison;
             // Extend cached MA series with live Monitor points so overlays reach the newest candles.
             analysisResult.strategy_transparency = mergeStrategyTransparencySeries(
                 analysisResult.strategy_transparency,
@@ -1005,22 +1098,24 @@ const FavoritesDashboard: React.FC = () => {
         }
     };
 
-    // Get unique symbols for filter
+    // Get unique symbols for filter (lista única: cripto, ação e ETF)
     const uniqueSymbols = React.useMemo(() => {
         if (!favorites) return [];
-        return Array.from(new Set(favorites.filter(f => isCryptoPair(f.symbol)).map(f => f.symbol))).sort();
+        return Array.from(new Set(favorites.map(f => f.symbol))).sort();
     }, [favorites]);
 
     // Get unique strategy labels for filter
     const uniqueIndicators = React.useMemo(() => {
         if (!favorites) return [];
-        return Array.from(new Set(favorites.filter(f => isCryptoPair(f.symbol)).map(getFavoriteStrategyLabel))).sort();
+        return Array.from(new Set(favorites.map(getFavoriteStrategyLabel))).sort();
     }, [favorites]);
 
     const uniqueTimeframes = React.useMemo(() => {
         if (!favorites) return [];
-        return Array.from(new Set(favorites.filter(f => isCryptoPair(f.symbol)).map(f => f.timeframe))).sort();
+        return Array.from(new Set(favorites.map(f => f.timeframe))).sort();
     }, [favorites]);
+
+    const classTotals = React.useMemo(() => classCounts(favorites || []), [favorites]);
 
     const filteredFavorites = (favorites?.filter(fav => {
         const matchesSearch = favoriteMatchesSearch(fav, searchTerm);
@@ -1028,15 +1123,18 @@ const FavoritesDashboard: React.FC = () => {
         const matchesSymbol = selectedSymbol === 'ALL' || fav.symbol === selectedSymbol;
         const matchesIndicator = selectedIndicator === 'ALL' || getFavoriteStrategyLabel(fav) === selectedIndicator;
         const matchesTimeframe = selectedTimeframe === 'ALL' || fav.timeframe === selectedTimeframe;
+        const favClass = favoriteClass(fav);
+        // Card #1122: o filtro por estrelas vale para todas as classes.
         const matchesTier = tierFilter === 'all' ||
             (tierFilter === 'none' && fav.tier === null) ||
             (tierFilter !== 'none' && fav.tier === parseInt(tierFilter));
-        const matchesCryptoOnly = isCryptoPair(fav.symbol);
+        const matchesClass = classFilter === 'all' || favClass === classFilter;
+        const matchesLote = !loteFilter || favoriteLoteId(fav) === loteFilter;
 
         const favDirection = getFavoriteDirection(fav);
         const matchesDirection = directionFilter === 'all' || favDirection === directionFilter;
 
-        return matchesCryptoOnly && matchesSearch && matchesSymbol && matchesIndicator && matchesTimeframe && matchesTier && matchesDirection;
+        return matchesClass && matchesLote && matchesSearch && matchesSymbol && matchesIndicator && matchesTimeframe && matchesTier && matchesDirection;
     }) || []).sort((a, b) => {
         const sortValueA = getFavoriteSortValue(a, sortBy);
         const sortValueB = getFavoriteSortValue(b, sortBy);
@@ -1060,71 +1158,40 @@ const FavoritesDashboard: React.FC = () => {
 
     const selectedStrategies = favorites?.filter(f => selectedIds.includes(f.id)) || [];
 
-    const handleExportExcel = () => {
-        if (!favorites || favorites.length === 0) {
-            alert("No data to export.");
+    // Card #1123: a planilha sai do servidor com as colunas de hoje e as 22 de contexto (sem SheetJS).
+    const [exportStatus, setExportStatus] = useState('');
+    const handleExportExcel = async () => {
+        if (!favorites || favorites.length === 0 || filteredFavorites.length === 0) {
+            setExportStatus('Nenhum favorito na lista filtrada para exportar.');
             return;
         }
-
-        // Prepare data for export
-        const dataToExport = filteredFavorites.map(fav => {
-            const m = favoriteGridMetrics(fav.metrics);
-            const totalReturnPct = formatCompoundReturn(m, { empty: '-' }).points;
-            const tradesN = Math.max(1, getTradesCount(fav));
-            const returnPerTradePct = totalReturnPct != null ? totalReturnPct / tradesN : null;
-            const expectancy = m.expectancy ?? (m.total_pnl && tradesN ? m.total_pnl / tradesN : null);
-            const stopLoss = fav.parameters.stop_loss || null;
-
-            const direction = getFavoriteDirection(fav);
-            return {
-                Name: fav.name,
-                Symbol: fav.symbol,
-                Strategy: getFavoriteStrategyLabel(fav),
-                Direção: direction === 'short' ? 'Short' : 'Long',
-                Timeframe: fav.timeframe,
-                Período: formatPeriod(fav),
-                Parameters: formatParams(fav.parameters, isFavoriteProtected(fav)),
-                "Stop Loss": formatPct(stopLoss),
-                Sharpe: formatNum(m.sharpe_ratio),
-                Trades: getTradesCount(fav),
-                "Win Rate": formatPct(m.win_rate),
-                "Total Return": formatCompoundReturn(m, { empty: '-' }).text,
-                "Ret/T %": returnPerTradePct != null ? formatPct(returnPerTradePct) : '-',
-                "Exp/Trade": formatCurrency(expectancy),
-                "Max DD": formatPct(m.max_drawdown),
-                "Profit Factor": formatNum(m.profit_factor),
-                Sortino: formatNum(m.sortino),
-                "Max Loss": m.max_consecutive_losses ?? m.stop_loss_count ?? 0,
-                "Avg ATR": formatNum(m.avg_atr),
-                "WR Bull": formatPct(m.win_rate_bull),
-                "WR Bear": formatPct(m.win_rate_bear),
-                "Avg ADX": formatNum(m.avg_adx),
-                Notes: fav.notes || '',
-                "Created At": new Date(fav.created_at).toLocaleString()
-            };
-        });
-
-        // Create workbook
-        const ws = XLSX.utils.json_to_sheet(dataToExport);
-        const wb = XLSX.utils.book_new();
-        XLSX.utils.book_append_sheet(wb, ws, "Favorites");
-
-        // Generate filename
-        const filename = `Crypto_Backtest_Favorites_${new Date().toISOString().slice(0, 10)}.xlsx`;
-
-        // Download
-        XLSX.writeFile(wb, filename);
+        setExportStatus('Gerando a planilha…');
+        try {
+            const ids = filteredFavorites.map((fav) => fav.id).join(',');
+            const response = await authFetch(`${API_BASE_URL}/favorites/export?ids=${encodeURIComponent(ids)}`);
+            if (!response.ok) throw new Error(`HTTP ${response.status}`);
+            const blob = await response.blob();
+            const disposition = response.headers.get('Content-Disposition') || '';
+            const match = disposition.match(/filename="?([^";]+)"?/);
+            const filename = match ? match[1] : `Crypto_Backtest_Favorites_${new Date().toISOString().slice(0, 10)}.xlsx`;
+            const url = window.URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = filename;
+            document.body.appendChild(link);
+            link.click();
+            window.URL.revokeObjectURL(url);
+            document.body.removeChild(link);
+            setExportStatus(
+                `Planilha baixada: ${filename} · ${filteredFavorites.length} ${filteredFavorites.length === 1 ? 'favorito' : 'favoritos'} da lista filtrada · colunas de hoje + contexto · abas Favoritos e Legenda.`,
+            );
+        } catch (error) {
+            console.error('Erro ao exportar favoritos:', error);
+            setExportStatus('Não foi possível exportar a planilha. Tente de novo.');
+        }
     };
 
     // Formatters
-    const formatParams = (params: Record<string, any>, protectedStrategy = false) => {
-        if (protectedStrategy) return 'Detalhes indisponíveis';
-        if (!params || Object.keys(params).length === 0) return 'Sem parametros';
-        return Object.entries(params)
-            .map(([k, v]) => `${k}=${v}`)
-            .join('&');
-    };
-
     const formatPct = (val?: number) => {
         if (val === undefined || val === null) return '-';
         return val > 1 || val < -1 ? `${val.toFixed(2)}%` : `${(val * 100).toFixed(2)}%`;
@@ -1133,11 +1200,6 @@ const FavoritesDashboard: React.FC = () => {
     const formatNum = (val?: number, decimals = 2) => {
         if (val === undefined || val === null) return '-';
         return val.toFixed(decimals);
-    };
-
-    const formatCurrency = (val?: number) => {
-        if (val === undefined || val === null) return '-';
-        return `$${val.toFixed(2)}`;
     };
 
     const formatPeriod = (fav: FavoriteStrategy): string => {
@@ -1152,35 +1214,8 @@ const FavoritesDashboard: React.FC = () => {
         return 'Todo';
     };
 
-    const formatRefreshStatus = (fav: FavoriteStrategy): { label: string; className: string; title?: string } => {
-        const status = (fav.auto_refresh_status || '').toUpperCase();
-        const completedAt = fav.auto_refresh_completed_at || fav.auto_refresh_started_at;
-        const formattedDate = completedAt
-            ? new Date(completedAt).toLocaleString('pt-BR', {
-                day: '2-digit',
-                month: '2-digit',
-                hour: '2-digit',
-                minute: '2-digit',
-            })
-            : null;
-        if (status === 'RUNNING') {
-            return { label: 'Atualizando backtest', className: 'running' };
-        }
-        if (status === 'FAILED') {
-            return {
-                label: formattedDate ? `Falha na atualização: ${formattedDate}` : 'Falha na atualização',
-                className: 'failed',
-                title: fav.auto_refresh_error || undefined,
-            };
-        }
-        if (status === 'SUCCESS') {
-            return {
-                label: formattedDate ? `Backtest atualizado: ${formattedDate}` : 'Backtest atualizado',
-                className: 'success',
-            };
-        }
-        return { label: 'Backtest aguardando atualização', className: 'pending' };
-    };
+    // Card #1122: ação/ETF mostra o último pregão; série curta, "Aguardando dados: N de M candles".
+    const formatRefreshStatus = (fav: FavoriteStrategy) => formatFavoriteRefreshStatus(fav);
 
     const formatRevalidationStatus = (fav: FavoriteStrategy): { label: string; className: string; title?: string } | null => {
         const metrics = fav.metrics || {};
@@ -1208,13 +1243,15 @@ const FavoritesDashboard: React.FC = () => {
         };
     };
 
-    const cryptoFavorites = React.useMemo(
-        () => (favorites || []).filter((fav) => isCryptoPair(fav.symbol)),
-        [favorites]
-    );
+    // Card #1122: estrelas, resumo por nível e filtro por estrelas contam todas as classes.
+    const ratedFavorites = React.useMemo(() => favorites || [], [favorites]);
+    const showsCatalogFallback = ratedFavorites.some((fav) => fav.is_curated_fallback);
+    const rowDataOf = (fav: FavoriteStrategy): RowData => favoriteRowData(fav);
 
     const favoritesUsingDefaultFilters = searchTerm.trim() === ''
         && tierFilter === 'all'
+        && classFilter === 'all'
+        && !loteFilter
         && selectedSymbol === 'ALL'
         && selectedIndicator === 'ALL'
         && selectedTimeframe === 'ALL'
@@ -1235,7 +1272,7 @@ const FavoritesDashboard: React.FC = () => {
     const favoritesCatalogEmpty = !favoritesListLoading
         && !favoritesListFailed
         && favorites !== undefined
-        && cryptoFavorites.length === 0
+        && favorites.length === 0
         && favoritesUsingDefaultFilters;
     const favoritesFilterEmpty = !favoritesListLoading
         && !favoritesListFailed
@@ -1263,7 +1300,7 @@ const FavoritesDashboard: React.FC = () => {
 
     const renderFavoritesFilterEmpty = () => (
         <div className="fav-empty" role="status" data-testid="favorites-filter-empty">
-            Não há resultado com estes filtros.
+            {classFilter !== 'all' || loteFilter ? FILTER_EMPTY_LOTE : 'Não há resultado com estes filtros.'}
         </div>
     );
 
@@ -1272,7 +1309,7 @@ const FavoritesDashboard: React.FC = () => {
     );
 
     const tierCounts = React.useMemo(() => {
-        return cryptoFavorites.reduce(
+        return ratedFavorites.reduce(
             (acc, fav) => {
                 if (fav.tier === 1) acc.top += 1;
                 else if (fav.tier === 2) acc.high += 1;
@@ -1282,7 +1319,7 @@ const FavoritesDashboard: React.FC = () => {
             },
             { top: 0, high: 0, watch: 0, none: 0 }
         );
-    }, [cryptoFavorites]);
+    }, [ratedFavorites]);
 
     const getTierDisplay = (tier: number | null) => {
         if (tier === 1) return { label: 'Top picks', stars: 3, className: 'tier-top' };
@@ -1298,7 +1335,14 @@ const FavoritesDashboard: React.FC = () => {
 
     const formatSignedPct = (metrics?: Record<string, any>) => formatCompoundReturn(metrics, { empty: '-' });
 
-    const tableColumnCount = isAdmin ? 19 : 17;
+    const tableColumnCount = isAdmin ? 18 : 17;
+
+    const clearLoteFilter = () => {
+        const next = new URLSearchParams(searchParams);
+        next.delete('lote');
+        setSearchParams(next, { replace: true });
+        classSelectRef.current?.focus();
+    };
 
     return (
         <div className="app-page favorites-page favorites-workbench">
@@ -1315,20 +1359,24 @@ const FavoritesDashboard: React.FC = () => {
                             <div>
                                 <h1>Estratégias favoritas</h1>
                                 <p>Catálogo operacional para escolher quais setups entram no Monitor por estrelas.</p>
+                                {showsCatalogFallback ? null : (
+                                    <p className="fav-monitor-help" data-testid="fav-monitor-help">{MONITOR_STAR_HELP}</p>
+                                )}
+                                <p className="fav-star-status" role="status" aria-live="polite" data-testid="fav-star-status">{starStatus}</p>
                             </div>
                         </div>
                         <div className="fav-meta">
                             <span className="fav-live-dot" />
                             <span>System Operational</span>
                             <span className="fav-meta-separator" />
-                            <span>{filteredFavorites.length} filtradas</span>
+                            <span data-testid="fav-count">{filteredFavorites.length} filtradas</span>
                             {isAdmin ? <span>{selectedIds.length} comparadas</span> : null}
                         </div>
                     </div>
 
                     <div className="tier-cards" aria-label="Resumo por estrelas">
                         {[
-                            { key: 'watch', label: 'Acompanhar', value: tierCounts.watch, stars: 1, helper: 'Monitorar quando fizer sentido', tone: 'watch' },
+                            { key: 'watch', label: 'Acompanhar', value: tierCounts.watch, stars: 1, helper: 'No Monitor, com alerta ligado', tone: 'watch' },
                             { key: 'high', label: 'Interesse alto', value: tierCounts.high, stars: 2, helper: 'Prioridade intermediária', tone: 'high' },
                             { key: 'top', label: 'Top picks', value: tierCounts.top, stars: 3, helper: 'Fila principal do Monitor', tone: 'top' },
                         ].map((card) => (
@@ -1350,9 +1398,16 @@ const FavoritesDashboard: React.FC = () => {
                         ))}
                     </div>
 
+                    {showsCatalogFallback ? (
+                        <div className="alert-catalog-banner" role="status" data-testid="favorites-catalog-banner">
+                            <strong>Estas estratégias são o catálogo do Cripto Farol e não mandam alerta.</strong>{' '}
+                            Os alertas do Telegram vêm das estratégias que você acompanha no Monitor: salve um resultado do Combo nos Favoritos e dê pelo menos 1 estrela aqui.
+                        </div>
+                    ) : null}
+
                     <div className="tier-filter" aria-label="Filtro por tier">
                         {[
-                            { value: 'all', label: `Todas ${cryptoFavorites.length}` },
+                            { value: 'all', label: `Todas ${(favorites || []).length}` },
                             { value: '1', label: `Top picks ${tierCounts.top}` },
                             { value: '2', label: `Alto ${tierCounts.high}` },
                             { value: '3', label: `Acompanhar ${tierCounts.watch}` },
@@ -1373,6 +1428,19 @@ const FavoritesDashboard: React.FC = () => {
 
                 <section className="fav-controls" aria-label="Filtros de favoritos">
                     <div className="fav-filters">
+                        <label>
+                            <span>Classe</span>
+                            <select
+                                ref={classSelectRef}
+                                value={classFilter}
+                                data-testid="fav-class-filter"
+                                onChange={(e) => setClassFilter(e.target.value as ClassFilterValue)}
+                            >
+                                {classFilterOptions(classTotals).map((option) => (
+                                    <option key={option.value} value={option.value}>{option.label}</option>
+                                ))}
+                            </select>
+                        </label>
                         <label>
                             <span>Symbol</span>
                             <select value={selectedSymbol} onChange={(e) => setSelectedSymbol(e.target.value)}>
@@ -1431,7 +1499,7 @@ const FavoritesDashboard: React.FC = () => {
                         </label>
                         {isAdmin ? (
                             <div className="fav-actions">
-                                <button type="button" onClick={handleExportExcel} className="fav-secondary-action">
+                                <button type="button" onClick={() => void handleExportExcel()} className="fav-secondary-action" data-testid="export-favorites">
                                     <List className="h-4 w-4" />
                                     Exportar
                                 </button>
@@ -1440,12 +1508,24 @@ const FavoritesDashboard: React.FC = () => {
                                 </button>
                             </div>
                         ) : null}
+                        {isAdmin ? (
+                            <p className="b23-export-status b23-fav-status" role="status" aria-live="polite" data-testid="favorites-export-status">
+                                {exportStatus}
+                            </p>
+                        ) : null}
                     </div>
                 </section>
 
+                {loteFilter ? (
+                    <div className="lote-lote" role="status" data-testid="fav-lote-filter">
+                        <span>{loteBannerText(loteFilter, favorites || [])}</span>
+                        <button type="button" onClick={clearLoteFilter}>Mostrar todos os favoritos</button>
+                    </div>
+                ) : null}
+
                 <main
                     className="fav-main"
-                    data-testid={cryptoFavorites.length > 0 ? 'favorites-renewal-ok' : undefined}
+                    data-testid={(favorites || []).length > 0 ? 'favorites-renewal-ok' : undefined}
                 >
                     <div className="fav-mobile-list">
                         {favoritesListLoading ? (
@@ -1467,6 +1547,7 @@ const FavoritesDashboard: React.FC = () => {
                                 const refreshStatus = formatRefreshStatus(fav);
                                 const revalidationStatus = formatRevalidationStatus(fav);
                                 const origin = isDiscoveryOrigin(fav.metrics) ? 'discovery' : 'combo';
+                                const row = rowDataOf(fav);
                                 return (
                                     <article
                                         key={fav.id}
@@ -1474,14 +1555,19 @@ const FavoritesDashboard: React.FC = () => {
                                         data-testid={`favorite-${fav.id}-mobile`}
                                         data-origin={origin}
                                         data-favorite-id={fav.id}
+                                        data-class={row.cls}
+                                        data-lote={row.lote ?? ''}
                                     >
                                         <div className="fav-mobile-card-head">
                                             <div>
                                                 <strong>{fav.symbol}</strong>
+                                                <span className="lote-cardline">
+                                                    <span className="lote-cls" data-class={row.cls}>{chipLabel(row.cls)}</span> · <span className="lote-cur">{row.currency}</span>
+                                                </span>
                                                 <span className="fav-strategy-name">{getFavoriteCatalogTitle(fav)}</span>
                                                 {strategyDetail ? <span className="fav-strategy-meta">{strategyDetail}</span> : null}
                                                 {strategyDescription ? <span className="fav-strategy-description">{strategyDescription}</span> : null}
-                                                <span className={`fav-refresh-status ${refreshStatus.className}`} title={refreshStatus.title}>
+                                                <span className={`fav-refresh-status ${refreshStatus.className}`} title={refreshStatus.title} data-testid="fav-refresh-status">
                                                     {refreshStatus.label}
                                                 </span>
                                                 {revalidationStatus ? (
@@ -1489,6 +1575,7 @@ const FavoritesDashboard: React.FC = () => {
                                                         {revalidationStatus.label}
                                                     </span>
                                                 ) : null}
+                                                {renderRowData(row, fav)}
                                             </div>
                                             <span className={`fav-direction ${direction === 'short' ? 'short' : 'long'}`}>
                                                 {direction === 'short' ? 'Short' : 'Long'}
@@ -1496,7 +1583,7 @@ const FavoritesDashboard: React.FC = () => {
                                         </div>
                                         <div className="fav-mobile-stars">
                                             {renderStarTierControl(fav, true)}
-                                            {isAdmin ? renderTelegramControl(fav, true) : null}
+                                            {renderMonitorLegend(fav, 'card')}
                                         </div>
                                         <div className="fav-mobile-metrics">
                                             <span><b>TF</b>{fav.timeframe}</span>
@@ -1530,7 +1617,6 @@ const FavoritesDashboard: React.FC = () => {
                                 <tr>
                                     {isAdmin ? <th className="select-col">Sel</th> : null}
                                     <th className="stars-cell">Tier</th>
-                                    {isAdmin ? <th className="telegram-col">Telegram</th> : null}
                                     <th className="symbol-col">Symbol</th>
                                     <th className="strategy-col">Estratégia</th>
                                     <th className="direction-col">Direção</th>
@@ -1580,6 +1666,7 @@ const FavoritesDashboard: React.FC = () => {
                                         const refreshStatus = formatRefreshStatus(fav);
                                         const revalidationStatus = formatRevalidationStatus(fav);
                                         const origin = isDiscoveryOrigin(fav.metrics) ? 'discovery' : 'combo';
+                                        const row = rowDataOf(fav);
 
                                         return (
                                             <tr
@@ -1588,6 +1675,8 @@ const FavoritesDashboard: React.FC = () => {
                                                 data-testid={`favorite-${fav.id}`}
                                                 data-origin={origin}
                                                 data-favorite-id={fav.id}
+                                                data-class={row.cls}
+                                                data-lote={row.lote ?? ''}
                                             >
                                                 {isAdmin ? (
                                                     <td className="select-col">
@@ -1599,30 +1688,38 @@ const FavoritesDashboard: React.FC = () => {
                                                         />
                                                     </td>
                                                 ) : null}
-                                                <td className="stars-cell">{renderStarTierControl(fav)}</td>
-                                                {isAdmin ? <td className="telegram-col">{renderTelegramControl(fav)}</td> : null}
-                                                <td className="symbol-col" aria-label={fav.symbol}>
+                                                <td className="stars-cell">
+                                                    {renderStarTierControl(fav)}
+                                                    {renderMonitorLegend(fav, 'row')}
+                                                </td>
+                                                <td className="symbol-col">
                                                     <div className="sym-cell">
                                                         <span className="sym-tile">{symbol.base.slice(0, 3)}</span>
                                                         <span>
                                                             <strong>{fav.symbol}</strong>
-                                                            {symbol.quote ? <small>{symbol.quote}</small> : null}
+                                                            <small className="lote-symline">
+                                                                {/* o par classe · moeda nunca se parte em duas linhas (P3 de Apply) */}
+                                                                <span className="lote-pair">
+                                                                    <span className="lote-cls" data-class={row.cls}>{chipLabel(row.cls)}</span> · <span className="lote-cur">{row.currency}</span>
+                                                                </span>
+                                                            </small>
                                                         </span>
                                                     </div>
                                                 </td>
-                                                <td className="strategy-cell" aria-label={`${getFavoriteCatalogTitle(fav)} ${strategyDetail || ''} ${strategyDescription || ''}`}>
+                                                <td className="strategy-cell">
                                                     <div className="strategy-stack" data-testid="favorites-strategy-identity">
                                                         <strong data-testid="favorites-strategy-title">{getFavoriteCatalogTitle(fav)}</strong>
                                                         {strategyDescription ? <span className="strategy-description" data-testid="favorites-strategy-description">{strategyDescription}</span> : null}
                                                         {strategyDetail ? <span className="fav-strategy-meta">{strategyDetail}</span> : null}
-                                                        <span className={`fav-refresh-status ${refreshStatus.className}`} title={refreshStatus.title}>
+                                                        <span className={`fav-refresh-status ${refreshStatus.className}`} title={refreshStatus.title} data-testid="fav-refresh-status">
                                                             {refreshStatus.label}
                                                         </span>
-                                                        {revalidationStatus ? (
+                                                                {revalidationStatus ? (
                                                             <span className={`fav-refresh-status ${revalidationStatus.className}`} title={revalidationStatus.title}>
                                                                 {revalidationStatus.label}
                                                             </span>
                                                         ) : null}
+                                                        {renderRowData(row, fav)}
                                                     </div>
                                                 </td>
                                                 <td className="direction-col">
@@ -1631,7 +1728,10 @@ const FavoritesDashboard: React.FC = () => {
                                                     </span>
                                                 </td>
                                                 <td><span className="tf-pill">{fav.timeframe}</span></td>
-                                                <td className="muted-cell period-col">{formatPeriod(fav)}</td>
+                                                <td className="muted-cell period-col">
+                                                    {formatPeriod(fav)}
+                                                    {row.effectiveRange ? <span className="lote-eff">efetivo {row.effectiveRange}</span> : null}
+                                                </td>
                                                 <td className="metric-cell risk-col">{formatPct(stopLoss)}</td>
                                                 <td className="metric-cell accent" data-metric="sharpe">{formatNum(m.sharpe_ratio)}</td>
                                                 <td className="metric-cell" data-metric="trades">{getTradesCount(fav)}</td>
@@ -1641,7 +1741,7 @@ const FavoritesDashboard: React.FC = () => {
                                                 <td className="metric-cell advanced-col">{formatNum(m.profit_factor)}</td>
                                                 <td className="metric-cell advanced-col">{formatNum(m.sqn ?? m.sortino_ratio ?? m.sortino)}</td>
                                                 <td className="metric-cell negative advanced-col">{formatPct(m.max_loss)}</td>
-                                                <td className="metric-cell advanced-col">{formatNum(m.avg_atr)}</td>
+                                                <td className="metric-cell advanced-col">{atrWithCurrency(m.avg_atr, row.currency)}</td>
                                                 <td>
                                                     <div className="fav-row-actions">
                                                         <button type="button" onClick={() => handleViewAnalysis(fav)} disabled={loadingAnalysisId === fav.id} title="Ver análise completa" aria-label="Ver análise completa" data-testid={`open-chart-${fav.id}`}>

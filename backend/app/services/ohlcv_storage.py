@@ -27,6 +27,8 @@ from app.services.binance_symbol_universe import (
     slice_symbol_universe_for_ingestion_run,
 )
 from app.services.runtime_status import candle_writer_state_path
+from app.services.market_history import compat as history_compat
+from app.services.market_history import unified_enabled
 
 logger = logging.getLogger(__name__)
 
@@ -292,6 +294,11 @@ class MarketOhlcvRepository:
         if not self.enabled:
             return None
 
+        if unified_enabled():
+            return history_compat.latest_candle_time(
+                engine, _normalize_symbol(symbol), _normalize_timeframe(timeframe)
+            )
+
         normalized_symbol = _normalize_symbol(symbol)
         normalized_timeframe = _normalize_timeframe(timeframe)
         with engine.begin() as conn:
@@ -319,6 +326,11 @@ class MarketOhlcvRepository:
     def get_earliest_candle_time(self, symbol: str, timeframe: str) -> datetime | None:
         if not self.enabled:
             return None
+
+        if unified_enabled():
+            return history_compat.earliest_candle_time(
+                engine, _normalize_symbol(symbol), _normalize_timeframe(timeframe)
+            )
 
         normalized_symbol = _normalize_symbol(symbol)
         normalized_timeframe = _normalize_timeframe(timeframe)
@@ -414,6 +426,14 @@ class MarketOhlcvRepository:
         if not self.enabled:
             return []
 
+        if unified_enabled():
+            start = time.perf_counter()
+            rows = history_compat.read_candles(
+                engine, _normalize_symbol(symbol), _normalize_timeframe(timeframe), int(limit)
+            )
+            _METRICS.record_query_latency(time.perf_counter() - start)
+            return rows
+
         normalized_symbol = _normalize_symbol(symbol)
         normalized_timeframe = _normalize_timeframe(timeframe)
         start = time.perf_counter()
@@ -503,6 +523,14 @@ class MarketOhlcvRepository:
         if not self.enabled:
             return []
 
+        if unified_enabled():
+            start = time.perf_counter()
+            rows = history_compat.read_candles(
+                engine, _normalize_symbol(symbol), _normalize_timeframe(timeframe), None
+            )
+            _METRICS.record_query_latency(time.perf_counter() - start)
+            return rows
+
         normalized_symbol = _normalize_symbol(symbol)
         normalized_timeframe = _normalize_timeframe(timeframe)
         start = time.perf_counter()
@@ -567,6 +595,21 @@ class MarketOhlcvRepository:
         normalized_symbol = _normalize_symbol(symbol)
         normalized_timeframe = _normalize_timeframe(timeframe)
         normalized_source = str(source or "").strip().lower() or CCXT_SOURCE
+
+        if unified_enabled():
+            written, duplicates = history_compat.write_frame(
+                engine, normalized_symbol, normalized_timeframe, normalized_source, df
+            )
+            _METRICS.record_write(
+                normalized_symbol,
+                normalized_timeframe,
+                rows_received=written + duplicates,
+                rows_duplicate=duplicates,
+                lag_seconds=None,
+            )
+            if return_metrics:
+                return written, duplicates
+            return written + duplicates
 
         rows_to_write: list[dict[str, Any]] = []
         frame = df
@@ -917,6 +960,9 @@ class OhlcvIngestionService:
             return 0
 
         universe = resolve_binance_ohlcv_symbol_universe()
+        if not universe:
+            logger.error("[ohlcv] universo de símbolos indisponível; rodada não executada")
+            return 0
         offset = _read_ingestion_symbol_offset()
         priority_raw = os.getenv("MARKET_OHLCV_PRIORITY_SYMBOL", "").strip().upper()
         priority_symbols = [priority_raw] if priority_raw else None

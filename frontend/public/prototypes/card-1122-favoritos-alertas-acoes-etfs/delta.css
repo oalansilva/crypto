@@ -1,0 +1,187 @@
+/* Card #1122, rodada d2 + rework r2 (regra nova de alertas): só o delta sobre o CSS vivo (live.css). Prefixo m22-.
+   Cores, tamanhos, raios e espaços vêm dos tokens vivos (DESIGN.md / :root / monitor-theme). */
+
+/* ---------- cola do clone: AppNav desktop x móvel (o React troca em 1024 px) ---------- */
+:root { --app-sidebar-width: 224px; }
+.cf-mob { display: none; }
+@media (max-width: 1023.98px) {
+  :root { --app-sidebar-width: 0px; }
+  .cf-desk { display: none; }
+  .cf-mob { display: contents; }
+}
+
+/* ---------- vista própria x vitrine (Demonstração) ---------- */
+.m22-view, .m22-list { display: contents; }
+.m22-view[hidden] { display: none; }
+
+/* ---------- ícones ---------- */
+.m22-ic { width: 14px; height: 14px; flex: none; }
+
+/* ---------- Monitor: interruptor "Alerta" por estratégia ---------- */
+.monitor-theme .row-action.m22-alert,
+.monitor-theme .btn.m22-alert {
+  gap: var(--space-xs);
+  color: var(--hold);
+  border-color: var(--hold-line);
+  background: var(--hold-soft);
+}
+.monitor-theme .m22-alert .m22-alert-state { font-weight: var(--font-normal); color: var(--t-2); }
+.monitor-theme .m22-alert .m22-ic-off { display: none; }
+.monitor-theme .m22-alert[aria-checked="false"] {
+  color: var(--t-3);
+  background: transparent;
+  border-color: var(--line);
+  border-style: dashed;
+}
+.monitor-theme .m22-alert[aria-checked="false"] .m22-ic-on { display: none; }
+.monitor-theme .m22-alert[aria-checked="false"] .m22-ic-off { display: inline-block; }
+.monitor-theme .m22-alert[aria-checked="false"] .m22-alert-state { color: var(--t-3); }
+.monitor-theme .m22-alert:focus-visible,
+.m22-demo button:focus-visible,
+.m22-demo a:focus-visible,
+.m22-demo input:focus-visible {
+  outline: 2px solid var(--accent-cyan);
+  outline-offset: 2px;
+}
+/* cartão (390) e detalhe: alvo de 44 px no celular */
+.monitor-theme .btn.m22-alert-card { display: inline-flex; align-items: center; }
+@media (max-width: 1023.98px) {
+  .monitor-theme .btn.m22-alert-card { min-height: 44px; }
+}
+.monitor-theme .m22-alert-none {
+  display: inline-flex;
+  align-items: center;
+  min-height: 30px;
+  padding: 0 var(--space-sm);
+  font-size: var(--text-sm);
+  color: var(--t-3);
+  border: 1px dashed var(--line);
+  border-radius: var(--radius-md);
+}
+.monitor-theme .m22-alert-help { max-width: 75ch; margin-top: var(--space-sm); font-size: var(--text-sm); line-height: 1.5; color: var(--t-3); }
+
+/* destaque da linha do cenário */
+.monitor-theme tr[data-m22-focus] > td { background: var(--hold-soft); }
+.monitor-theme .mobile-card[data-m22-focus] { outline: 1px solid var(--hold-line); outline-offset: 2px; border-radius: var(--radius-lg); }
+
+/* status do interruptor e das estrelas (anúncio) */
+.m22-status:empty { display: none; }
+.m22-status {
+  margin: 0 0 var(--space-md);
+  padding: var(--space-sm) var(--space-md);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-lg);
+  background: var(--bg-elevated);
+  color: var(--text-secondary);
+  font-size: var(--text-base);
+  max-width: 75ch;
+}
+
+/* ---------- Favoritos: ajuda das estrelas e legenda ---------- */
+.m22-fav-help {
+  margin: var(--space-sm) 0 0;
+  max-width: 75ch;
+  font-size: var(--text-sm);
+  line-height: 1.5;
+  color: var(--fav-muted-strong);
+}
+.m22-fav-help + .m22-status { margin-top: var(--space-sm); }
+.m22-legend {
+  display: block;
+  margin-top: var(--space-xs);
+  font-size: var(--text-xs);
+  line-height: 1.3;
+  text-align: center;
+  color: var(--fav-muted-strong);
+}
+.m22-legend[data-on="true"] { color: var(--accent-success); }
+.fav-mobile-stars .m22-legend { align-self: center; margin: 0 0 0 var(--space-sm); text-align: left; }
+
+/* ---------- Demonstração (no fluxo, fim da página) ---------- */
+.m22-demo {
+  margin: var(--space-xl) 0 var(--space-sm);
+  padding: var(--space-md);
+  border: 1px dashed var(--border-default);
+  border-radius: var(--radius-xl);
+  background: var(--bg-secondary);
+  color: var(--text-secondary);
+}
+.m22-demo h2 { font-size: var(--text-lg); font-weight: var(--font-semibold); margin: 0 0 var(--space-sm); color: var(--text-primary); }
+.m22-demo-lead, .m22-demo-note, .m22-demo-now {
+  font-size: var(--text-base);
+  line-height: 1.55;
+  color: var(--text-tertiary);
+  max-width: 65ch;
+  margin: 0 0 var(--space-md);
+}
+.m22-demo-now { color: var(--text-secondary); }
+.m22-demo-now strong { color: var(--text-primary); }
+.m22-demo-h3 { font-size: var(--text-base); font-weight: var(--font-semibold); margin: var(--space-md) 0 var(--space-sm); color: var(--text-primary); }
+.m22-demo-btns { display: flex; flex-wrap: wrap; gap: var(--space-sm); margin: 0 0 var(--space-md); }
+.m22-demo-btns button {
+  min-height: 44px;
+  padding: 0 var(--space-md);
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--border-default);
+  background: var(--bg-elevated);
+  color: var(--text-secondary);
+  font-size: var(--text-sm);
+  cursor: pointer;
+}
+.m22-demo-btns button[aria-pressed="true"] { border-color: var(--accent-primary); color: var(--accent-primary); }
+.m22-demo-check {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  min-height: 44px;
+  font-size: var(--text-base);
+  color: var(--text-secondary);
+}
+.m22-demo-check input { width: 18px; height: 18px; accent-color: var(--accent-primary); }
+.m22-scn[hidden] { display: none; }
+.m22-tg {
+  margin: 0;
+  max-width: 62ch;
+  padding: var(--space-md);
+  border-radius: var(--radius-xl);
+  border: 1px solid var(--border-default);
+  background: var(--bg-elevated);
+  color: var(--text-secondary);
+  font-family: var(--font-family);
+  font-size: var(--text-sm);
+  line-height: 1.55;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.m22-tg-none { margin: 0; max-width: 65ch; font-size: var(--text-base); color: var(--text-tertiary); }
+.m22-demo a { color: var(--accent-primary); }
+
+/* 1024–1279 px: a célula de ações da tabela viva fica fora da área visível (incumbente);
+   o interruptor da linha vai para a célula Status, abaixo da pílula e do estado do mercado */
+.monitor-theme .row-action.m22-alert-compact { display: none; }
+@media (max-width: 1279.98px) {
+  .monitor-theme .actions-cell .row-action.m22-alert { display: none; }
+  .monitor-theme .row-action.m22-alert-compact { display: inline-flex; min-width: 0; margin-top: var(--space-sm); }
+}
+/* ações da linha com o interruptor (ajuste do Alan na Aprovação de Design): botões da mesma largura,
+   alinhados em coluna; com folga na tela (>= 1600 px), grade 2 x 2 sem alargar a tabela */
+.monitor-theme .actions-cell .row-actions:has(.m22-alert) {
+  display: grid;
+  grid-template-columns: max-content;
+  justify-content: end;
+}
+.monitor-theme .actions-cell .row-actions:has(.m22-alert) > * { white-space: nowrap; }
+@media (min-width: 1600px) {
+  .monitor-theme .actions-cell .row-actions:has(.m22-alert) { grid-template-columns: repeat(2, max-content); }
+}
+.m22-tg + .m22-demo-note, .m22-tg-none + .m22-demo-note { margin-top: var(--space-md); }
+.m22-scn + .m22-demo-note { margin-top: var(--space-md); }
+
+/* Favoritos no celular: a estrela agora põe a estratégia no Monitor com alerta; alvo de 44 px (r2, A P2-8) */
+@media (max-width: 1023.98px) {
+  .favorites-workbench .fav-mobile-stars [aria-label="Prioridade por estrelas"] button {
+    width: 44px;
+    height: 44px;
+    min-height: 44px;
+  }
+}

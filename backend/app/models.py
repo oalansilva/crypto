@@ -4,6 +4,7 @@ from sqlalchemy import (
     Column,
     DateTime,
     Float,
+    ForeignKey,
     Index,
     Integer,
     Numeric,
@@ -158,7 +159,14 @@ class FavoriteStrategy(Base):
 
     # Tier system - para categorizar estratégias (1=Core obrigatório, 2=Bons complementares, 3=Outros)
     tier = Column(Integer, nullable=True)
-    notify_telegram = Column(Boolean, nullable=False, default=True)
+    # Card #1122 (d2, decisão 3): "alerta ligado" (opt-out no Monitor); nasce ligado e só vale com
+    # estrela (``tier`` 1, 2 ou 3).
+    notify_telegram = Column(Boolean, nullable=False, default=True, server_default=text("true"))
+
+    # Card #1122 (decisão 11): configuração de dados do favorito, parte da chave de duplicata.
+    data_source = Column(String, nullable=True)  # ccxt | binance_equity | stooq
+    session = Column(String, nullable=True)  # 24x7 | regular_ny | eod
+    adjustment = Column(String, nullable=True)  # none | split | legacy
 
     # Período do backtest (6m / 2y / todo). Chave de unicidade junto com strategy_name, symbol, timeframe.
     start_date = Column(String, nullable=True)
@@ -166,6 +174,20 @@ class FavoriteStrategy(Base):
     period_type = Column(
         String, nullable=True
     )  # '6m' | '2y' | 'all'; usado no skip (evita drift de datas)
+
+    # Card #1118: amostra de execução do último refresh bem-sucedido (reprodução exata).
+    snapshot_id = Column(String(40), nullable=True)
+
+    # Card #1123 (decisão 5): comparação com referência gravada que o favorito mostra e exporta.
+    benchmark_comparison_id = Column(
+        String(36),
+        ForeignKey(
+            "benchmark_comparisons.id",
+            ondelete="SET NULL",
+            name="fk_favorite_strategies_benchmark_comparison",
+        ),
+        nullable=True,
+    )
 
 
 class AutoBacktestRun(Base):
@@ -186,6 +208,8 @@ class AutoBacktestRun(Base):
 
     favorite_id = Column(Integer, nullable=True)
     error_message = Column(String, nullable=True)
+    # Card #1118: manifesto da amostra usada por este run (refresh diário do favorito).
+    snapshot_id = Column(String(40), nullable=True)
 
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, onupdate=datetime.utcnow)
@@ -344,8 +368,20 @@ class MonitorTelegramAlert(Base):
     payload_hash = Column(String, nullable=False, index=True)
     source = Column(String, nullable=False, default="monitor")
     payload_json = Column(JSONType, nullable=True)
+    # Card #1122 (decisão 5): evento com identidade; reserva ``sending`` antes do envio.
+    favorite_id = Column(Integer, nullable=True, index=True)
+    event_key = Column(String(64), nullable=True)
 
     __table_args__ = (
+        Index(
+            "ix_monitor_telegram_alerts_event_key_reserved",
+            "user_id",
+            "event_key",
+            unique=True,
+            postgresql_where=text(
+                "event_key IS NOT NULL AND result_status IN ('sending','sent','dry_run','unknown')"
+            ),
+        ),
         Index(
             "ix_monitor_telegram_alerts_dedupe",
             "symbol",
@@ -373,6 +409,36 @@ class MonitorObservedStatus(Base):
         Index("ix_monitor_observed_statuses_pair", "symbol", "timeframe"),
         Index("ix_monitor_observed_statuses_observed_at", "observed_at"),
     )
+
+
+class MonitorFavoriteAlertState(Base):
+    """Estado observado por favorito (card #1122, decisão 4): a base da transição do alerta."""
+
+    __tablename__ = "monitor_favorite_alert_states"
+
+    favorite_id = Column(
+        Integer,
+        ForeignKey("favorite_strategies.id", ondelete="CASCADE"),
+        primary_key=True,
+    )
+    status = Column(String, nullable=False)
+    candle_time = Column(String, nullable=True)
+    observed_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+    payload_json = Column(JSONType, nullable=True)
+
+
+class MonitorDataHealth(Base):
+    """Episódio de atraso real de dado por (fonte, ativo) (card #1122, decisão 8)."""
+
+    __tablename__ = "monitor_data_health"
+
+    data_source = Column(String, primary_key=True)
+    symbol = Column(String, primary_key=True)
+    state = Column(String, nullable=False, default="ok")  # ok | stale
+    stale_since = Column(DateTime, nullable=True)
+    episode_id = Column(String(64), nullable=True)
+    detail_json = Column(JSONType, nullable=True)
+    updated_at = Column(DateTime, default=datetime.utcnow, nullable=False)
 
 
 class UserExchangeCredential(Base):
@@ -482,3 +548,6 @@ class OptimizationResult(Base):
 
 # Import onchain models so Base.metadata.create_all() picks them up
 from app.models_onchain import OnchainSignal, OnchainSignalHistory  # noqa: F401, E402
+from app.models_asset_catalog import AssetCatalog, AssetCatalogRefresh  # noqa: F401, E402
+from app.models_batch_backtest import BatchBacktestItem, BatchBacktestJob  # noqa: F401, E402
+from app.models_benchmark import BenchmarkComparison, DiscoveryReferenceColumn  # noqa: F401, E402

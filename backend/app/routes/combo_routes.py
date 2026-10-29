@@ -21,6 +21,7 @@ from app.schemas.combo_params import (
     ComboOptimizationResponse,
     ComboBatchBacktestRequest,
     ComboBatchBacktestResponse,
+    ComboBatchPreviewResponse,
     ComboBatchProgressResponse,
     TemplateListResponse,
     ComboTemplateMetadata,
@@ -31,42 +32,76 @@ from app.schemas.combo_params import (
 from app.services.combo_service import ComboService
 from app.services.combo_optimizer import ComboOptimizer
 from app.services.market_data_providers import (
+    BINANCE_EQUITY_SOURCE,
     CCXT_SOURCE,
+    BinanceEquityMarketDataProvider,
     get_market_data_provider,
     validate_data_source_timeframe,
 )
 from app.services.batch_backtest_service import (
+    create_batch_job,
+    get_active_batch,
     get_batch_progress,
-    init_batch_job,
+    get_paused_batch,
     request_pause_batch,
     request_cancel_batch,
+    request_resume_batch,
 )
+from app.services.batch_backtest_plan import build_plan, dedupe, nothing_runs_detail
+from app.services.batch_backtest_store import get_batch_backtest_store
 from app.services.batch_backtest_queue import enqueue_batch_backtest
+from app.services.asset_analysis_guard import refusal_for_symbols
+from app.services.equity_backtest import (
+    EquityRunError,
+    asset_identity,
+    finalize_execution,
+    inclusive_end,
+    prepare_equity_history,
+    timeframe_refusal,
+)
+from app.metrics.backtest_execution_costs import fee_for_symbol, slippage_for_timeframe
 from app.services.strategy_transparency import build_strategy_transparency
 from app.middleware.authMiddleware import get_current_admin
+from app.database import get_db
+from sqlalchemy.orm import Session
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/combos", tags=["combos"])
 
 
-def _ensure_crypto_symbol(symbol: str) -> None:
-    if "/" not in str(symbol or "").strip():
-        raise HTTPException(
-            status_code=400,
-            detail="The MVP supports only crypto pairs such as BTC/USDT.",
-        )
+def _refuse_assets(
+    symbols: List[str],
+    *,
+    new_analysis: bool,
+    single_scope: bool = False,
+    batch_scope: bool = False,
+) -> None:
+    """Recusa estruturada (422) de ação, ETF e, em análise nova, ativo marcado (#1117).
+
+    ``single_scope`` (#1119): backtest de 1 ativo; ação e ETF passam.
+    ``batch_scope`` (#1120): lote multiclasse; ação e ETF passam com qualquer número de ativos.
+    """
+    detail = refusal_for_symbols(
+        symbols, new_analysis=new_analysis, single_scope=single_scope, batch_scope=batch_scope
+    )
+    if detail is not None:
+        raise HTTPException(status_code=422, detail=detail)
 
 
-def _ensure_crypto_symbols(symbols: List[str]) -> None:
-    blocked = [symbol for symbol in symbols if "/" not in str(symbol or "").strip()]
-    if blocked:
-        raise HTTPException(
-            status_code=400,
-            detail=(
-                "The MVP supports only crypto pairs such as BTC/USDT. "
-                f"Unsupported symbols: {', '.join(blocked[:5])}"
-            ),
-        )
+def _ensure_crypto_symbol(
+    symbol: str, *, new_analysis: bool = False, single_scope: bool = False
+) -> None:
+    """Backtest (inclui reabrir resultados salvos): ação e ETF só no escopo de 1 ativo."""
+    _refuse_assets([symbol], new_analysis=new_analysis, single_scope=single_scope)
+
+
+def _is_equity_symbol(symbol: str) -> bool:
+    """Depois da guarda, ticker sem ``/`` é ação ou ETF do catálogo (cripto sempre tem ``/``)."""
+    return "/" not in str(symbol or "")
+
+
+def _raise_equity(exc: EquityRunError) -> None:
+    raise HTTPException(status_code=422, detail=exc.detail())
 
 
 def _ensure_crypto_data_source(data_source: str) -> None:
@@ -77,119 +112,149 @@ def _ensure_crypto_data_source(data_source: str) -> None:
         )
 
 
-@router.post("/export-trades")
-async def export_trades_to_excel(
-    request: Dict[str, Any],
-    _admin_user_id: str = Depends(get_current_admin),
-):
-    """
-    Export trades to Excel file.
-
-    Args:
-        request: Dict with 'trades', 'symbol', 'template_name', 'timeframe'
-
-    Returns:
-        Excel file as streaming response
-    """
-    try:
-        trades = request.get("trades", [])
-        symbol = request.get("symbol", "UNKNOWN")
-        template_name = request.get("template_name", "strategy")
-        timeframe = request.get("timeframe", "1d")
-
-        # Prepare data for Excel
-        excel_data = []
-        for trade in trades:
-            # Calculate P&L in USD
-            pnl_usd = trade.get("pnl", None)
-            if pnl_usd is None:
-                # If P&L not provided, calculate from profit percentage and initial capital
-                profit_pct = trade.get("profit", 0) if trade.get("profit") is not None else 0
-                initial_capital = (
+def _trade_rows(trades: List[Dict[str, Any]], currency: str) -> List[Dict[str, Any]]:
+    rows = []
+    for trade in trades:
+        pnl_usd = trade.get("pnl", None)
+        if pnl_usd is None:
+            profit_pct = trade.get("profit", 0) if trade.get("profit") is not None else 0
+            initial_capital = (
+                trade.get("initial_capital", 100)
+                if trade.get("initial_capital") is not None
+                else 100
+            )
+            pnl_usd = initial_capital * profit_pct
+        return_pct = (trade.get("profit", 0) * 100) if trade.get("profit") is not None else 0
+        signal_type = trade.get("signal_type", "")
+        if not signal_type:
+            exit_reason = trade.get("exit_reason", "")
+            if "stop" in str(exit_reason).lower():
+                signal_type = "Stop"
+            elif exit_reason:
+                signal_type = "Close entry(s) order..."
+            else:
+                signal_type = trade.get("entry_signal_type", "Comprar")
+        rows.append(
+            {
+                "Entry Time": trade.get("entry_time", ""),
+                "Entry Price": trade.get("entry_price", 0),
+                "Exit Time": trade.get("exit_time", "") if trade.get("exit_time") else "",
+                "Exit Price": trade.get("exit_price", 0) if trade.get("exit_price") else "",
+                "Trade Type": (trade.get("type", "Long").upper() if trade.get("type") else "LONG"),
+                "Signal": signal_type,
+                "P&L (USD)": round(pnl_usd, 2),
+                "Return %": round(return_pct, 2),
+                "Initial Capital": (
                     trade.get("initial_capital", 100)
                     if trade.get("initial_capital") is not None
                     else 100
-                )
-                pnl_usd = initial_capital * profit_pct
+                ),
+                "Final Capital": (
+                    trade.get("final_capital", 0)
+                    if trade.get("final_capital") is not None
+                    else (100 + pnl_usd)
+                ),
+                "Moeda": currency,
+            }
+        )
+    return rows
 
-            # Calculate Return %
-            return_pct = (trade.get("profit", 0) * 100) if trade.get("profit") is not None else 0
 
-            # Determinar Signal Type (prioridade: signal_type > exit_reason > entry_signal_type)
-            signal_type = trade.get("signal_type", "")
-            if not signal_type:
-                # Se não tiver signal_type, tentar inferir do exit_reason
-                exit_reason = trade.get("exit_reason", "")
-                if "stop" in str(exit_reason).lower():
-                    signal_type = "Stop"
-                elif exit_reason:
-                    signal_type = "Close entry(s) order..."
-                else:
-                    # Se for entrada, usar entry_signal_type
-                    signal_type = trade.get("entry_signal_type", "Comprar")
+@router.post("/export-trades")
+def export_trades_to_excel(
+    request: Dict[str, Any],
+    _admin_user_id: str = Depends(get_current_admin),
+    db: Session = Depends(get_db),
+):
+    """Planilha de trades com contexto (card #1123, decisão 7): abas Trades, Contexto e Legenda.
 
-            excel_data.append(
-                {
-                    "Entry Time": trade.get("entry_time", ""),
-                    "Entry Price": trade.get("entry_price", 0),
-                    "Exit Time": trade.get("exit_time", "") if trade.get("exit_time") else "",
-                    "Exit Price": trade.get("exit_price", 0) if trade.get("exit_price") else "",
-                    "Trade Type": (
-                        trade.get("type", "Long").upper() if trade.get("type") else "LONG"
-                    ),
-                    "Signal": signal_type,  # Tipo de sinal (Stop/Comprar/Close entry(s) order...)
-                    "P&L (USD)": round(pnl_usd, 2),
-                    "Return %": round(return_pct, 2),
-                    "Initial Capital": (
-                        trade.get("initial_capital", 100)
-                        if trade.get("initial_capital") is not None
-                        else 100
-                    ),
-                    "Final Capital": (
-                        trade.get("final_capital", 0)
-                        if trade.get("final_capital") is not None
-                        else (100 + pnl_usd)
-                    ),
-                }
+    Corpo: ``trades``, ``symbol``, ``template_name``, ``timeframe``, ``context`` (asset,
+    data_provenance, execution, conventions, período e modo do resultado), ``benchmark_comparison_id``
+    e, aberta de Favoritos, ``favorite_id`` (o servidor lê o contexto do favorito e ignora o do corpo).
+    Nada é recalculado: a referência sai da comparação gravada.
+    """
+    from app.models import FavoriteStrategy
+    from app.services import benchmark_comparison as bench
+    from app.services import export_context as xc
+
+    try:
+        trades = request.get("trades", []) or []
+        symbol = request.get("symbol", "UNKNOWN")
+        template_name = request.get("template_name", "strategy")
+        timeframe = request.get("timeframe", "1d")
+        context = request.get("context") if isinstance(request.get("context"), dict) else {}
+        context = {
+            **context,
+            "symbol": context.get("symbol") or symbol,
+            "timeframe": context.get("timeframe") or timeframe,
+        }
+        favorite_id = request.get("favorite_id") or context.get("favorite_id")
+        comparison_id = request.get("benchmark_comparison_id")
+
+        favorite = None
+        if favorite_id:
+            favorite = (
+                db.query(FavoriteStrategy).filter(FavoriteStrategy.id == int(favorite_id)).first()
+            )
+            if favorite is None or str(favorite.user_id) != str(_admin_user_id):
+                raise HTTPException(status_code=404, detail="Favorite not found")
+        if favorite is not None:
+            from app.routes.favorites import (
+                _assets_for_rows,
+                _favorite_asset,
+                _normalize_favorite_json_fields,
             )
 
-        # Create DataFrame
-        df = pd.DataFrame(excel_data)
+            _normalize_favorite_json_fields(favorite)
+            comparison = bench.get_comparison(db, favorite.benchmark_comparison_id)
+            asset = _favorite_asset(favorite, _assets_for_rows(db, [favorite]))
+            cells = xc.favorite_context(favorite, asset, comparison)
+        else:
+            comparison = bench.get_comparison(db, comparison_id)
+            if comparison is not None and str(comparison.get("user_id") or "") not in (
+                "",
+                str(_admin_user_id),
+            ):
+                comparison = None
+            cells = xc.result_context(context, comparison)
+            asset = context.get("asset") if isinstance(context.get("asset"), dict) else None
 
-        # Create Excel file in memory
-        output = io.BytesIO()
-        with pd.ExcelWriter(output, engine="openpyxl") as writer:
-            df.to_excel(writer, index=False, sheet_name="Trades")
-
-            # Get the workbook and worksheet
-            workbook = writer.book
-            worksheet = writer.sheets["Trades"]
-
-            # Auto-adjust column widths
-            for column in worksheet.columns:
-                max_length = 0
-                column_letter = column[0].column_letter
-                for cell in column:
-                    try:
-                        if len(str(cell.value)) > max_length:
-                            max_length = len(str(cell.value))
-                    except:
-                        pass
-                adjusted_width = min(max_length + 2, 50)
-                worksheet.column_dimensions[column_letter].width = adjusted_width
-
-        output.seek(0)
-
-        # Generate filename
-        safe_symbol = symbol.replace("/", "_")
-        safe_template = template_name.replace(" ", "_")
-        filename = f"{safe_template}_{safe_symbol}_{timeframe}_trades.xlsx"
-
-        return StreamingResponse(
-            io.BytesIO(output.read()),
-            media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-            headers={"Content-Disposition": f"attachment; filename={filename}"},
+        currency = (asset or {}).get("currency") or ("USDT" if "/" in str(symbol) else "USD")
+        excel_rows = _trade_rows(trades, currency)
+        header = (
+            list(excel_rows[0].keys())
+            if excel_rows
+            else [
+                "Entry Time",
+                "Entry Price",
+                "Exit Time",
+                "Exit Price",
+                "Trade Type",
+                "Signal",
+                "P&L (USD)",
+                "Return %",
+                "Initial Capital",
+                "Final Capital",
+                "Moeda",
+            ]
         )
+        content = xc.write_workbook(
+            [
+                ("Trades", header, [[row[h] for h in header] for row in excel_rows]),
+                xc.context_sheet(cells),
+                xc.legend_sheet(favorite=favorite is not None),
+            ]
+        )
+        safe_symbol = str(symbol).replace("/", "_")
+        safe_template = str(template_name).replace(" ", "_")
+        filename = f"{safe_template}_{safe_symbol}_{timeframe}_trades.xlsx"
+        return StreamingResponse(
+            io.BytesIO(content),
+            media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+        )
+    except HTTPException:
+        raise
     except Exception as e:
         logger.error(f"Error exporting trades to Excel: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Error exporting trades: {str(e)}")
@@ -394,7 +459,50 @@ async def delete_template(
         raise HTTPException(status_code=500, detail=str(e))
 
 
-async def execute_combo_backtest(request: ComboBacktestRequest):
+def _freeze_equity_run(request: ComboBacktestRequest, df, *, deep: bool):
+    """Congela candles e 15m do backtest de 1 ação/ETF: ``(candles, 15m, amostra)``.
+
+    Sinais e saída leem da amostra, a mesma que fica na proveniência do resultado.
+    """
+    from app.services.market_history.facade import (
+        get_history_service,
+        spec_for_request,
+        to_loader_frame,
+    )
+    from app.services.market_history.sample import ExecutionSample
+
+    sample = ExecutionSample("backtest", owner_ref=f"backtest:{request.symbol}:{request.timeframe}")
+    candles = sample.freeze_symbol(
+        "candles", request.symbol, request.timeframe, request.start_date, request.end_date, df
+    )
+    intraday = pd.DataFrame()
+    if deep:
+        service = get_history_service()
+        series = service.resolve(spec_for_request(symbol=request.symbol, timeframe="15m"))
+        result = service.read(series, request.start_date, inclusive_end(request.end_date))
+        intraday = sample.freeze_symbol(
+            "intraday",
+            request.symbol,
+            "15m",
+            request.start_date,
+            request.end_date,
+            to_loader_frame(result.candles),
+        )
+    return candles, intraday, sample
+
+
+async def _attach_default_comparison(result: Dict[str, Any], user_id: str) -> None:
+    """Card #1123 (decisão 5): grava a comparação padrão (próprio ativo) e a devolve no resultado."""
+    import asyncio
+
+    from app.services.benchmark_comparison import record_run_default
+
+    payload, error = await asyncio.to_thread(record_run_default, result, user_id)
+    result["benchmark_comparison"] = payload
+    result["benchmark_comparison_error"] = error
+
+
+async def execute_combo_backtest(request: ComboBacktestRequest, user_id: Optional[str] = None):
     """
     Execute a combo strategy backtest.
 
@@ -408,7 +516,9 @@ async def execute_combo_backtest(request: ComboBacktestRequest):
         logger.info(
             f"Starting combo backtest for template: {request.template_name} on {request.symbol} {request.timeframe}"
         )
-        _ensure_crypto_symbol(request.symbol)
+        # /backtest é sempre de 1 ativo: ação e ETF passam (card #1119, decisão 2).
+        _ensure_crypto_symbol(request.symbol, single_scope=True)
+        is_equity = _is_equity_symbol(request.symbol)
 
         # data_source may be omitted by the UI (e.g. Favorites -> View Results).
         # Resolve in this order:
@@ -417,17 +527,37 @@ async def execute_combo_backtest(request: ComboBacktestRequest):
         # 3) infer from symbol (no "/" => US ticker => stooq; with "/" => crypto => ccxt)
         from app.services.market_data_providers import resolve_data_source_for_symbol
 
-        requested_source = request.data_source
-        if (requested_source is None or str(requested_source).strip() == "") and isinstance(
-            request.parameters, dict
-        ):
-            requested_source = request.parameters.get("data_source")
+        equity_prep = None
+        if is_equity:
+            refusal = timeframe_refusal(request.timeframe)
+            if refusal is not None:
+                _raise_equity(refusal)
+            data_source = BINANCE_EQUITY_SOURCE
+            import asyncio
 
-        if requested_source is None or str(requested_source).strip() == "":
-            requested_source = resolve_data_source_for_symbol(request.symbol, None)
+            try:
+                equity_prep = await asyncio.to_thread(
+                    prepare_equity_history,
+                    request.symbol,
+                    request.timeframe,
+                    request.start_date,
+                    request.end_date,
+                    intrabar=bool(request.deep_backtest),
+                )
+            except EquityRunError as exc:
+                _raise_equity(exc)
+        else:
+            requested_source = request.data_source
+            if (requested_source is None or str(requested_source).strip() == "") and isinstance(
+                request.parameters, dict
+            ):
+                requested_source = request.parameters.get("data_source")
 
-        data_source = validate_data_source_timeframe(requested_source, request.timeframe)
-        _ensure_crypto_data_source(data_source)
+            if requested_source is None or str(requested_source).strip() == "":
+                requested_source = resolve_data_source_for_symbol(request.symbol, None)
+
+            data_source = validate_data_source_timeframe(requested_source, request.timeframe)
+            _ensure_crypto_data_source(data_source)
 
         # Create strategy instance
         service = ComboService()
@@ -440,8 +570,13 @@ async def execute_combo_backtest(request: ComboBacktestRequest):
         template_metadata = service.get_template_metadata(request.template_name)
         logger.info(f"Strategy instance created for {request.template_name}")
 
-        # Load market data via provider selection (default: ccxt)
-        provider = get_market_data_provider(data_source)
+        # Load market data via provider selection (default: ccxt). Ação/ETF leem só o que a
+        # coleta sob demanda já guardou (sem uma segunda ida à Binance).
+        provider = (
+            BinanceEquityMarketDataProvider(ensure=False)
+            if is_equity
+            else get_market_data_provider(data_source)
+        )
         df = provider.fetch_ohlcv(
             symbol=request.symbol,
             timeframe=request.timeframe,
@@ -455,6 +590,14 @@ async def execute_combo_backtest(request: ComboBacktestRequest):
                 status_code=400, detail="No data available for the specified period"
             )
 
+        sample = None
+        intraday_frame = None
+        if is_equity:
+            # Amostra desta execução (30 dias, regra do #1118): candles e 15m congelados.
+            df, intraday_frame, sample = _freeze_equity_run(
+                request, df, deep=bool(request.deep_backtest)
+            )
+
         # Generate signals
         df_with_signals = strategy.generate_signals(df)
         logger.info(f"Generated signals for {len(df_with_signals)} candles")
@@ -466,7 +609,7 @@ async def execute_combo_backtest(request: ComboBacktestRequest):
         direction = getattr(strategy, "direction", "long") or "long"
         if direction not in ("long", "short"):
             direction = "long"
-        trades, execution_mode = extract_trades_with_mode(
+        trades, execution_mode, execution = extract_trades_with_mode(
             df_with_signals,
             stop_loss_pct,
             deep_backtest=request.deep_backtest,
@@ -475,6 +618,12 @@ async def execute_combo_backtest(request: ComboBacktestRequest):
             until_str=request.end_date,
             direction=direction,
             return_mode=True,
+            # Card #1119 (decisão 9): o custo de /backtest passa a ser o mesmo do otimizador.
+            slippage=slippage_for_timeframe(request.timeframe),
+            fee=fee_for_symbol(request.symbol),
+            timeframe=request.timeframe,
+            return_execution=True,
+            **({"df_15m_cache": intraday_frame} if is_equity else {}),
         )
 
         logger.info(f"Backtest complete: {len(trades)} trades extracted")
@@ -586,6 +735,19 @@ async def execute_combo_backtest(request: ComboBacktestRequest):
                     }
                 )
 
+        result_asset = asset_identity(request.symbol)
+        result_execution, result_conventions = finalize_execution(
+            execution,
+            asset=result_asset,
+            timeframe=request.timeframe,
+            direction=direction,
+            requested={"start": request.start_date, "end": request.end_date},
+            frame=df,
+            collection=equity_prep.collection if equity_prep is not None else None,
+        )
+        if sample is not None:
+            sample.finish()
+
         response = ComboBacktestResponse(
             template_name=request.template_name,
             symbol=request.symbol,
@@ -601,6 +763,13 @@ async def execute_combo_backtest(request: ComboBacktestRequest):
             },
             execution_mode=execution_mode,
             direction=direction,
+            asset=result_asset,
+            data_provenance=(
+                sample.provenance("candles", with_retention=True) if sample is not None else None
+            ),
+            snapshot_id=sample.snapshot_id if sample is not None else None,
+            execution=result_execution,
+            conventions=result_conventions,
             display_name=template_metadata.get("display_name") if template_metadata else None,
             strategy_description=(
                 template_metadata.get("description") if template_metadata else None
@@ -622,7 +791,10 @@ async def execute_combo_backtest(request: ComboBacktestRequest):
         logger.info("Response object created successfully")
         from fastapi.encoders import jsonable_encoder
 
-        return jsonable_encoder(response)
+        encoded = jsonable_encoder(response)
+        if user_id is not None:
+            await _attach_default_comparison(encoded, user_id)
+        return encoded
 
     except HTTPException:
         raise
@@ -642,7 +814,7 @@ async def run_combo_backtest(
     _admin_user_id: str = Depends(get_current_admin),
 ):
     """Execute a combo strategy backtest for admin users."""
-    return await execute_combo_backtest(request)
+    return await execute_combo_backtest(request, _admin_user_id)
 
 
 @router.post("/optimize", response_model=ComboOptimizationResponse)
@@ -663,12 +835,40 @@ async def optimize_combo_strategy(
         logger.info(
             f"Starting optimization for template: {request.template_name} on {request.symbol} {request.timeframe}"
         )
-        _ensure_crypto_symbol(request.symbol)
-        data_source = validate_data_source_timeframe(request.data_source, request.timeframe)
-        _ensure_crypto_data_source(data_source)
+        # Card #1119 (decisão 2): ação/ETF só rodam como backtest de 1 ativo (run_scope == "single").
+        _ensure_crypto_symbol(
+            request.symbol, new_analysis=True, single_scope=request.run_scope == "single"
+        )
+        equity = _is_equity_symbol(request.symbol)
+        equity_prep = None
+        if equity:
+            refusal = timeframe_refusal(request.timeframe)
+            if refusal is not None:
+                _raise_equity(refusal)
+            data_source = BINANCE_EQUITY_SOURCE
+        else:
+            data_source = validate_data_source_timeframe(request.data_source, request.timeframe)
+            _ensure_crypto_data_source(data_source)
 
         # Create optimizer
         optimizer = ComboOptimizer()
+        if equity:
+            import asyncio
+
+            try:
+                equity_prep = await asyncio.to_thread(
+                    prepare_equity_history,
+                    request.symbol,
+                    request.timeframe,
+                    request.start_date,
+                    request.end_date,
+                    intrabar=bool(request.deep_backtest),
+                )
+            except EquityRunError as exc:
+                _raise_equity(exc)
+            # Coleta feita: a otimização lê só o guardado, sem nova ida à Binance.
+            optimizer._provider = BinanceEquityMarketDataProvider(ensure=False)
+            optimizer.collection_note = equity_prep.collection
 
         # Honor an explicit request; otherwise execute the template's configured side.
         if "direction" in request.model_fields_set:
@@ -697,7 +897,16 @@ async def optimize_combo_strategy(
             deep_backtest=request.deep_backtest,
             direction=direction,
             split_train_ratio=request.split_train_ratio,
+            # Card #1120: combinação com erro é pulada e contada na resposta.
+            tolerate_combination_errors=True,
         )
+        if result.get("combination_errors"):
+            logger.warning(
+                "Optimization of %s on %s: %s",
+                request.template_name,
+                request.symbol,
+                result["combination_errors"].get("message"),
+            )
 
         logger.info(f"Optimization complete. Best score: {result.get('best_score', 'N/A')}")
 
@@ -733,6 +942,11 @@ async def optimize_combo_strategy(
                 "trades": result.get("trades") if isinstance(result.get("trades"), list) else [],
             }
 
+        result["start_date"] = request.start_date
+        result["end_date"] = request.end_date
+        await _attach_default_comparison(result, _admin_user_id)
+        result.pop("start_date", None)
+        result.pop("end_date", None)
         return ComboOptimizationResponse(**result)
 
     except HTTPException:
@@ -745,38 +959,97 @@ async def optimize_combo_strategy(
         raise HTTPException(status_code=500, detail=str(e))
 
 
+def _batch_paused_conflict(user_id: str) -> None:
+    """Lote pausado bloqueia um lote novo (decisão 16): 409 com o id do pausado."""
+
+    paused = get_paused_batch(user_id)
+    if paused is None:
+        return
+    job_id = paused["job_id"]
+    raise HTTPException(
+        status_code=409,
+        detail={
+            "code": "batch_paused",
+            "job_id": job_id,
+            "message": f"Retome ou encerre o lote {job_id[:8]} antes de começar outro.",
+        },
+    )
+
+
+def _validate_batch_request(request: ComboBatchBacktestRequest) -> dict[str, Any]:
+    """Corpo do lote, com a fonte de cripto validada (ação/ETF usam a própria fonte por ativo)."""
+
+    payload = request.model_dump()
+    payload["symbols"] = dedupe(request.symbols)
+    if any("/" in symbol for symbol in payload["symbols"]):
+        data_source = validate_data_source_timeframe(request.data_source, request.timeframe)
+        _ensure_crypto_data_source(data_source)
+    return payload
+
+
+@router.post("/backtest/batch/preview", response_model=ComboBatchPreviewResponse)
+async def preview_batch_backtest(
+    request: ComboBatchBacktestRequest,
+    current_user_id: str = Depends(get_current_admin),
+):
+    """Plano do lote antes de começar (card #1120, decisão 4): por ativo roda/fora e por quê,
+    o que precisa de coleta de histórico e os totais por classe e moeda. Não coleta nada."""
+    import asyncio
+
+    _batch_paused_conflict(current_user_id)
+    payload = _validate_batch_request(request)
+    return await asyncio.to_thread(build_plan, payload, page=request.page)
+
+
 @router.post("/backtest/batch", response_model=ComboBatchBacktestResponse)
 async def start_batch_backtest(
     request: ComboBatchBacktestRequest,
     current_user_id: str = Depends(get_current_admin),
 ):
     """
-    Start a batch backtest job for multiple symbols.
+    Start a batch backtest job for multiple symbols (cripto, ação e ETF).
     Uses current config (template, ranges, timeframe, deep_backtest).
     For each symbol, runs optimization and saves best result as new favorite
-    with notes \"gerado em lote\" and tier=3. Never overwrites existing favorites.
+    with notes \"gerado em lote\". Never overwrites existing favorites.
     Poll GET /api/combos/backtest/batch/{job_id} for progress.
     """
+    import asyncio
+
     try:
-        _ensure_crypto_symbols(request.symbols)
-        data_source = validate_data_source_timeframe(request.data_source, request.timeframe)
-        _ensure_crypto_data_source(data_source)
+        _batch_paused_conflict(current_user_id)
+        payload = _validate_batch_request(request)
+        plan = await asyncio.to_thread(build_plan, payload, page=request.page)
+        if plan["totals"]["run"] == 0:
+            # 422 só quando nada roda, com o motivo de cada ativo (decisão 3).
+            refusal = refusal_for_symbols(payload["symbols"], new_analysis=True, batch_scope=True)
+            raise HTTPException(
+                status_code=422,
+                detail=refusal if refusal is not None else nothing_runs_detail(plan),
+            )
         job_id = str(uuid.uuid4())
-        payload = request.model_dump()
         payload["user_id"] = current_user_id
-        init_batch_job(job_id, len(request.symbols))
+        create_batch_job(job_id, user_id=current_user_id, payload=payload, plan=plan)
         try:
             enqueue_batch_backtest(job_id, payload)
         except Exception as e:
             logger.exception("Batch backtest enqueue failed: %s", e)
             raise HTTPException(status_code=503, detail="Batch queue is unavailable") from e
-        logger.info("Batch backtest started job_id=%s symbols=%s", job_id, request.symbols)
+        logger.info("Batch backtest started job_id=%s symbols=%s", job_id, payload["symbols"])
         return ComboBatchBacktestResponse(job_id=job_id)
     except HTTPException:
         raise
     except Exception as e:
         logger.exception("Batch backtest start failed: %s", e)
         raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/backtest/batch/active", response_model=Optional[ComboBatchProgressResponse])
+async def get_active_batch_backtest(
+    current_user_id: str = Depends(get_current_admin),
+):
+    """O lote não final mais recente do usuário (rodando, na fila, pausado), ou ``null``."""
+    job = get_active_batch(current_user_id)
+    return ComboBatchProgressResponse(**job) if job else None
 
 
 @router.get("/backtest/batch/{job_id}", response_model=ComboBatchProgressResponse)
@@ -796,10 +1069,31 @@ async def pause_batch_backtest(
     job_id: str,
     _admin_user_id: str = Depends(get_current_admin),
 ):
-    """Request batch job to pause after the current symbol."""
+    """Request batch job to pause when the current step ends."""
     if not request_pause_batch(job_id):
         raise HTTPException(status_code=404, detail="Batch job not found or not running")
-    return {"status": "pause_requested", "message": "Batch will pause after current symbol"}
+    return {"status": "pause_requested", "message": "Batch will pause when the current step ends"}
+
+
+@router.post("/backtest/batch/{job_id}/resume")
+async def resume_batch_backtest(
+    job_id: str,
+    _admin_user_id: str = Depends(get_current_admin),
+):
+    """Continue the same paused batch from the next step (finished items and stored history stay)."""
+    store = get_batch_backtest_store()
+    job = store.get_job(job_id)
+    if not job:
+        raise HTTPException(status_code=404, detail="Batch job not found")
+    if not request_resume_batch(job_id):
+        raise HTTPException(status_code=409, detail="Batch job is not paused")
+    try:
+        enqueue_batch_backtest(job_id, dict(job.get("payload") or {}))
+    except Exception as e:
+        logger.exception("Batch backtest resume enqueue failed: %s", e)
+        store.update_job(job_id, status="paused")
+        raise HTTPException(status_code=503, detail="Batch queue is unavailable") from e
+    return {"status": "resumed", "message": "Batch resumed from the next step"}
 
 
 @router.post("/backtest/batch/{job_id}/cancel")
@@ -807,7 +1101,7 @@ async def cancel_batch_backtest(
     job_id: str,
     _admin_user_id: str = Depends(get_current_admin),
 ):
-    """Request batch job to cancel after the current symbol."""
+    """Request batch job to stop when the current step ends; finished items and favorites stay."""
     if not request_cancel_batch(job_id):
         raise HTTPException(status_code=404, detail="Batch job not found or not running")
-    return {"status": "cancel_requested", "message": "Batch will stop after current symbol"}
+    return {"status": "cancel_requested", "message": "Batch will stop when the current step ends"}

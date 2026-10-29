@@ -19,6 +19,8 @@ pandas==3.0.3
 numpy==2.4.6
 openpyxl
 pyarrow
+# Calendário da bolsa de Nova York (card #1118)
+exchange_calendars>=4.13,<5
 
 # Testing
 pytest-asyncio>=0.23.0

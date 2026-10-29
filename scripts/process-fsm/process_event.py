@@ -48,6 +48,7 @@ from t14 import (  # noqa: E402
     classify_qa_gate,
     measure_checks_green,
     run_t14,
+    t14_closeout_done,
 )
 from t16 import (  # noqa: E402
     LiveT16Closer,
@@ -85,19 +86,92 @@ EVENT_GUARDS = {
 
 
 class BoardMover(Protocol):
-    def set_status(self, issue_number: int, to: str) -> None: ...
+    """One Status move, described as the FSM edge it is: the executor checks event, source column and actor (D9)."""
+
+    via_executor: bool
+
+    def move(self, issue_number: int, evento: str, de: str | None, para: str, ator: str, extras: dict[str, Any] | None = None) -> None: ...
+
+
+class MoveRefused(RuntimeError):
+    """The executor answered and did not move: `code` becomes `reason=executor:<code>`, Status unchanged."""
+
+    def __init__(self, code: str, message: str | None = None) -> None:
+        super().__init__(message or code)
+        self.code = code
+        self.message = message or code
 
 
 class FakeMover:
+    via_executor = False
+
     def __init__(self) -> None:
         self.calls: list[tuple[int, str]] = []
+        self.requests: list[dict[str, Any]] = []
 
-    def set_status(self, issue_number: int, to: str) -> None:
-        self.calls.append((issue_number, to))
+    def move(self, issue_number: int, evento: str, de: str | None, para: str, ator: str, extras: dict[str, Any] | None = None) -> None:
+        self.requests.append({"issue": issue_number, "evento": evento, "de": de, "para": para, "ator": ator, "extras": dict(extras or {})})
+        self.calls.append((issue_number, para))
+
+
+class ExecutorMover:
+    """Moves only by asking the board executor (`portao_client.pedir`); never `gh project item-edit` (D9).
+
+    `pedir` is injectable: unit tests pass a fake executor and never reach GitHub.
+    """
+
+    via_executor = True
+
+    def __init__(self, config: Any, *, pedir: Callable[..., dict[str, Any]] | None = None, origem: dict[str, Any] | None = None) -> None:
+        self.config = config
+        self._pedir = pedir
+        self.origem: dict[str, Any] = dict(origem or {})
+
+    def set_client(self, client: str | None) -> None:
+        if client and not self.origem.get("cliente"):
+            self.origem["cliente"] = client
+
+    def move(self, issue_number: int, evento: str, de: str | None, para: str, ator: str, extras: dict[str, Any] | None = None) -> None:
+        if self._pedir is None:
+            import portao_client
+
+            self._pedir = portao_client.pedir
+        resposta = self._pedir(evento, issue_number, de=de, ator=ator, config=self.config, origem=self.origem, extras=extras or {})
+        resultado = str(resposta.get("resultado") or "indisponivel")
+        if resultado == "movido":
+            return
+        code = str(resposta.get("codigo") or resultado)
+        raise MoveRefused(code, str(resposta.get("mensagem") or code))
+
+
+def default_mover(root: Path | None = None) -> "BoardMover":
+    """`board.executor` in the overlay selects the executor; without the key, the previous `item-edit` mover (D9)."""
+
+    import portao_client
+
+    try:
+        overlay = load_overlay(root or REPO_ROOT)
+    except Exception:
+        return GhBoardMover()
+    config = portao_client.config_do_overlay(overlay)
+    return GhBoardMover() if config is None else ExecutorMover(config, origem=_session_origin())
+
+
+def _session_origin() -> dict[str, Any]:
+    return {
+        "superficie": os.environ.get("CLAUDE_CODE_ENTRYPOINT") or None,
+        "sessao": os.environ.get("CLAUDE_CODE_SESSION_ID") or os.environ.get("CODEX_THREAD_ID") or None,
+    }
 
 
 class GhBoardMover:
     """Live Project Status edit from overlay board ids. Tests MUST inject FakeMover instead."""
+
+    via_executor = False
+
+    def move(self, issue_number: int, evento: str, de: str | None, para: str, ator: str, extras: dict[str, Any] | None = None) -> None:
+        del evento, de, ator, extras
+        self.set_status(issue_number, para)
 
     def set_status(self, issue_number: int, to: str) -> None:
         import subprocess
@@ -209,9 +283,20 @@ def _quota_reject(exc: GraphQLQuotaError, state: str | None = None) -> dict[str,
     )
 
 
-def _safe_move(mover: BoardMover, issue_number: int, to: str) -> dict[str, Any] | None:
+def _safe_move(
+    mover: BoardMover,
+    issue_number: int,
+    to: str,
+    *,
+    evento: str,
+    de: str | None,
+    ator: str = "Agent",
+    extras: dict[str, Any] | None = None,
+) -> dict[str, Any] | None:
     try:
-        mover.set_status(issue_number, to)
+        mover.move(issue_number, evento, de, to, ator, extras)
+    except MoveRefused as exc:
+        return _payload(result="reject", state=de, to=None, reason=f"executor:{exc.code}", message=exc.message)
     except GraphQLQuotaError as exc:
         return _quota_reject(exc)
     except (RuntimeError, ValueError, OSError) as exc:
@@ -270,7 +355,6 @@ def write_sidecar(change_dir: Path, prototype_dir: Path | None) -> None:
 PREFLIGHT_EVENTS = frozenset({"iniciar_design", "recriticar", "submeter_design", "iniciar_apply", "pedir_review", "aceitar_sha", "integrar_develop"})
 AGENT_CLIENT_NAMES = {"codex": "codex", "claude": "claude"}
 
-
 HOST_CLIENT_NAMES = {**AGENT_CLIENT_NAMES, "opencode": "opencode", "cursor-agent": "cursor"}
 HOST_ENVIRONMENT = {
     "cursor": ("CURSOR_AGENT", "CURSOR_VERSION", "CURSOR_PROJECT_DIR"),
@@ -279,7 +363,7 @@ HOST_ENVIRONMENT = {
 
 
 def nearest_agent_client(pid: int | None = None, proc_root: Path = Path("/proc"), names: dict[str, str] | None = None) -> str | None:
-    """Innermost Codex/Claude Code ancestor of this process, from the process tree (`names` widens the set)."""
+    """Innermost Codex/Claude Code ancestor of this process, from the process tree."""
 
     client_names = AGENT_CLIENT_NAMES if names is None else names
     current = os.getpid() if pid is None else pid
@@ -315,12 +399,7 @@ def native_client() -> str | None:
 
 
 def host_client() -> str | None:
-    """Native identity of the clients that have no `--client` of their own to carry (R10): `cursor` or `opencode`.
-
-    Only when exactly one of them is demonstrable, from its environment or from the innermost agent ancestor. It is
-    consulted after Codex and Claude Code (which win) and never overrides an explicit `--client`/`COVENANT_CLIENT`.
-    """
-
+    """Recover Cursor/OpenCode identity when no explicit client is supplied."""
     present = {client for client, names in HOST_ENVIRONMENT.items() if any(os.environ.get(n) for n in names)}
     if len(present) == 1:
         return next(iter(present))
@@ -331,12 +410,7 @@ def host_client() -> str | None:
 
 
 def claude_closeout_parent_refusal(root: Path, capture: dict[str, Any] | None = None, checker: Callable[..., Any] | None = None) -> str | None:
-    """T16 in Claude Code: the observed parent must be on the captured `claude/execucao` pair; None when it is.
-
-    Reuses `observe-parent` and `load_execucao_pair` through `check_claude_parent`. Without a given capture the pair is
-    the one the local selection resolves now for the `fecho-lote` role, the same one its child is born with.
-    """
-
+    """Preserve T16's observed-parent check against captured claude/execucao."""
     from claude_evidence import EvidenceError, observe_parent
     from model_selection import SelectionError, resolve as resolve_selection
     from release_model_selection import check_claude_parent, load_execucao_pair
@@ -396,6 +470,19 @@ def _fechar_message(
     return text
 
 
+def _codex_stage_refusal(workdir: Path, event: str, state: str | None) -> dict[str, Any] | None:
+    from codex_evidence import EvidenceError, preflight
+
+    # T5 submits existing artifacts; it does not start a native stage child.
+    # Keep runtime/qualification/binding checks without requiring spawn capacity.
+    stage = None if event == "submeter_design" else event
+    try:
+        preflight(root=workdir, stage=stage)
+    except (EvidenceError, OSError, ValueError) as exc:
+        return _payload(result="reject", state=state, to=None, reason=f"codex_evidence:{getattr(exc, 'code', 'invalid_input')}", message=str(exc))
+    return None
+
+
 def process_event(
     event: str,
     *,
@@ -429,13 +516,24 @@ def process_event(
     parent_checker: Callable[..., Any] | None = None,
 ) -> dict[str, Any]:
     if event == "criar_card":
-        return _payload(
-            result="reject",
-            state=status,
-            to=None,
-            reason="not_implemented",
-            message="criar_card is out of scope for process_event; create the issue/card first.",
-        )
+        if mover is None or not getattr(mover, "via_executor", False):
+            return _payload(
+                result="reject",
+                state=status,
+                to=None,
+                reason="not_implemented",
+                message="criar_card needs board.executor in the overlay; create the issue/card first.",
+            )
+        try:
+            new_card = int(str(card).lstrip("#"))
+        except (TypeError, ValueError):
+            return _payload(result="reject", state=None, to=None, reason="unbound", message="criar_card needs --card N (the issue already exists)")
+        if dry_run:
+            return _payload(result="transition", state=None, to="Em Refinamento", reason="T0")
+        failed = _safe_move(mover, new_card, "Em Refinamento", evento="criar_card", de=None)
+        if failed is not None:
+            return failed
+        return _payload(result="transition", state=None, to="Em Refinamento", reason="T0")
     table = fsm if fsm is not None else load_fsm()
     workdir = Path(cwd) if cwd is not None else Path.cwd()
     if card is not None:
@@ -455,6 +553,8 @@ def process_event(
     active_client = client or os.environ.get("COVENANT_CLIENT") or native or host_client()
     if native and active_client != native:
         return _payload(result="reject", state=q, to=None, reason=f"{native}_evidence:ambiguous_client")
+    if mover is not None and hasattr(mover, "set_client"):
+        mover.set_client(active_client)
     if active_client in ("cursor", "opencode", "codex") and event in PREFLIGHT_EVENTS:
         # Account registration (pin with an adapter manifest): the hooks of these clients run from the
         # operator account through the shim. Without the shim, its heartbeat, the client's entry or its
@@ -465,12 +565,12 @@ def process_event(
         except account_registration.RegistrationRefusal as exc:
             prefix = "codex_evidence" if active_client == "codex" else f"{active_client}_registration"
             return _payload(result="reject", state=q, to=None, reason=f"{prefix}:{exc.code}", message=f"{active_client}: {exc}")
-    if active_client == "codex" and event in PREFLIGHT_EVENTS:
-        from codex_evidence import EvidenceError, preflight
-        try:
-            preflight(root=workdir)
-        except (EvidenceError, OSError, ValueError) as exc:
-            return _payload(result="reject", state=q, to=None, reason=f"codex_evidence:{getattr(exc, 'code', 'invalid_input')}", message=str(exc))
+    # I4 events must first let the existing engine invalidate stale approval.
+    # That route starts no stage child; identity and hook trust still gate it.
+    if active_client == "codex" and event in PREFLIGHT_EVENTS and event not in I4_EVENTS:
+        refusal = _codex_stage_refusal(workdir, event, q)
+        if refusal is not None:
+            return refusal
     if active_client == "claude" and event in PREFLIGHT_EVENTS:
         from claude_evidence import EvidenceError, preflight as claude_preflight
         try:
@@ -478,7 +578,6 @@ def process_event(
         except (EvidenceError, OSError, ValueError) as exc:
             return _payload(result="reject", state=q, to=None, reason=f"claude_evidence:{getattr(exc, 'code', 'invalid_input')}", message=str(exc))
     if active_client == "claude" and event == "fechar_release":
-        # The closeout rule of the Claude Code adapter applies where the event happens, not only in the runbook (R26).
         refusal = claude_closeout_parent_refusal(workdir, parent_capture, parent_checker)
         if refusal:
             return _payload(result="reject", state=q, to=None, reason="claude_evidence:parent_model", message=_fechar_message(refusal))
@@ -542,17 +641,11 @@ def process_event(
         resolved_proto = proto if proto.is_dir() else None
 
     if event == "submeter_design" and g_design is None and resolved_change_dir is not None:
-        # T5 anticipates the checklist the precommit runs anyway: the three gate tokens must parse (R28).
         design_file = resolved_change_dir / "design.md"
         gap = design_token_gap(design_file.read_text(encoding="utf-8")) if design_file.is_file() else None
         if gap:
-            return _payload(
-                result="reject",
-                state=q,
-                to=None,
-                reason="guard:design_tokens",
-                message=f"T5 refused: design.md has no parseable `{gap}` line (needs `UI impact`, `live_route` and `surface`); fix it and submit again",
-            )
+            return _payload(result="reject", state=q, to=None, reason="guard:design_tokens",
+                message=f"T5 refused: design.md has no parseable `{gap}` line (needs `UI impact`, `live_route` and `surface`); fix it and submit again")
     if g_design is None:
         g_design = (
             files_g_design(resolved_change_dir, resolved_proto)
@@ -614,6 +707,16 @@ def process_event(
                 rows = []
         if not rows:
             return _payload(result="reject", state=q, to=None, reason="no_pr")
+    # D9: T14 repeated after the closeout (squash, sync, restart, done comment) with Status still QA
+    # only asks for the move; it neither re-measures the merged PR nor redoes the squash.
+    t14_closed = bool(
+        event == "integrar_develop"
+        and not dry_run
+        and t14_runner is not None
+        and t14_closeout_done(t14_runner, q_git=str(git), bound_card=str(bound))
+    )
+    if t14_closed and checks_green is None:
+        checks_green = True
     if event == "integrar_develop" and checks_green is None:
         if checks_green_classifier is not None:
             try:
@@ -666,6 +769,10 @@ def process_event(
 
     result = evaluate(table, EvalContext(**ctx_kwargs))
     if event in I4_EVENTS and result.reason == "I4":
+        if match is None:
+            return _payload(result="reject", state=q, to=None, reason="guard:q_git_card")
+        if str(bound) != match.group(1):
+            return _payload(result="reject", state=q, to=None, reason="card_mismatch")
         compiled = evaluate(
             table,
             EvalContext(
@@ -679,7 +786,7 @@ def process_event(
         )
         if compiled.result == "transition":
             if not dry_run and mover is not None and issue_number is not None:
-                failed = _safe_move(mover, issue_number, compiled.to or "Design")
+                failed = _safe_move(mover, issue_number, compiled.to or "Design", evento="invalidar_aprovacao", de=q, ator="Guard")
                 if failed is not None:
                     failed["state"] = q
                     return failed
@@ -690,6 +797,13 @@ def process_event(
                 reason="I4",
             )
         return _payload(result="reject", state=q, to=None, reason=compiled.reason)
+
+    # Unchanged approval retains the capability refusal for the requested stage.
+    # No stage is started by the approval-invalidating route above.
+    if active_client == "codex" and event in I4_EVENTS:
+        refusal = _codex_stage_refusal(workdir, event, q)
+        if refusal is not None:
+            return refusal
 
     enabled = enabled_events(table, eval_state if event == "fechar_release" else q)
     message = None
@@ -727,7 +841,8 @@ def process_event(
         if t14_runner is None:
             return _payload(result="reject", state=q, to=None, reason="I8")
         try:
-            run_t14(t14_runner, q_git=str(git), bound_card=str(bound))
+            if not t14_closed:
+                run_t14(t14_runner, q_git=str(git), bound_card=str(bound))
         except T14Error as exc:
             text = str(exc)
             if "sync: dirty" in text:
@@ -737,7 +852,7 @@ def process_event(
             return _payload(result="reject", state=q, to=None, reason="I8", message=text)
         if mover is None or issue_number is None:
             return _payload(result="transition", state=q, to=result.to, reason=result.reason, message=message)
-        failed = _safe_move(mover, issue_number, result.to or "")
+        failed = _safe_move(mover, issue_number, result.to or "", evento=event, de=q)
         if failed is not None:
             failed["state"] = q
             return failed
@@ -753,7 +868,8 @@ def process_event(
                     t16_closer.comment_pronto(card=str(number), package=parsed_package or homologado_ids)
                     if mover is None:
                         return _payload(result="reject", state=q, to=None, reason="I9")
-                    failed = _safe_move(mover, number, result.to or "Pronto")
+                    failed = _safe_move(mover, number, result.to or "Pronto", evento=event, de="Homologado",
+                                        extras={"pacote": ",".join(str(n) for n in (parsed_package or homologado_ids))})
                     if failed is not None:
                         failed["state"] = q
                         failed["reason"] = "I9"
@@ -769,7 +885,11 @@ def process_event(
         )
     if dry_run or mover is None or issue_number is None:
         return _payload(result="transition", state=q, to=result.to, reason=result.reason, message=message)
-    failed = _safe_move(mover, issue_number, result.to or "")
+    extras: dict[str, Any] = {}
+    if event == "submeter_design" and resolved_change_dir is not None:
+        # T5 carries the design digest: the executor keeps it and compares it on `/aprovar-design` (D7).
+        extras["digest"] = compute_digest(resolved_change_dir, resolved_proto)
+    failed = _safe_move(mover, issue_number, result.to or "", evento=event, de=q, extras=extras)
     if failed is not None:
         failed["state"] = q
         return failed
@@ -790,13 +910,21 @@ def main(argv: list[str] | None = None) -> int:
     parent_capture = None
     if args.capture is not None:
         from model_selection import SelectionError, load_capture
-
         try:
             parent_capture = load_capture(args.capture)
         except (OSError, ValueError, SelectionError) as exc:
             json.dump(_payload(result="reject", state=None, to=None, reason="claude_evidence:parent_model", message=f"capture unreadable: {exc}"), sys.stdout, ensure_ascii=True)
             sys.stdout.write("\n")
             return 1
+    mover: BoardMover | None = None
+    try:
+        mover = default_mover()
+    except Exception as exc:  # a malformed board.executor fails visibly, never falls back to item-edit
+        json.dump(_payload(result="reject", state=None, to=None, reason="executor:config", message=str(exc)), sys.stdout, ensure_ascii=True)
+        sys.stdout.write("\n")
+        return 1
+    if args.dry_run and not getattr(mover, "via_executor", False):
+        mover = None
     payload = process_event(
         args.event,
         card=args.card,
@@ -804,7 +932,7 @@ def main(argv: list[str] | None = None) -> int:
         dry_run=args.dry_run,
         client=args.client,
         parent_capture=parent_capture,
-        mover=None if args.dry_run else GhBoardMover(),
+        mover=mover,
         checks_green_measurer=measure_checks_green,
         checks_green_classifier=classify_qa_gate,
         pr_lister=lambda q_git: _pr_list_json(str(q_git or ""), fields="number,headRefOid"),

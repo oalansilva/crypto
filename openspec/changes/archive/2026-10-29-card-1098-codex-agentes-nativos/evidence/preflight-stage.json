@@ -1,0 +1,26 @@
+{
+  "bound_card": "1098",
+  "child_thread": "unavailable",
+  "code": "stage_capability_missing",
+  "detail": "stage_capability_missing: qa-gate do #1098 impedido antes do trabalho: garantia(s) ausente(s)=context_isolation; etapa n\u00e3o executada. O host n\u00e3o oferece barreira diagn\u00f3stica efetiva comprovada; nenhum filho de etapa deve nascer.; recovery=preserve card/Status/artifacts; qualify an authoritative native capability source in the same chat; no external session",
+  "host": "codex-tui",
+  "host_version": "0.163.0",
+  "observed": {
+    "completed_payload": "verified",
+    "context_isolation": "unavailable",
+    "diagnostic_work_barrier": "unavailable",
+    "model_effort_observation": "verified",
+    "native_chat_linkage": "verified",
+    "parent_read_only": "unavailable",
+    "review_diff_read": "unavailable",
+    "review_write_denial_readback": "unavailable",
+    "worktree_binding": "verified"
+  },
+  "recovery": "preserve card/Status/artifacts; qualify an authoritative native capability source in the same chat; no external session",
+  "result": "blocked",
+  "root": "/srv/apps/dev/criptofarol/crypto-worktrees/card-1098-codex-agentes-nativos",
+  "schema": "codex-rollout-evidence-v1",
+  "scope": "Real read-only preflight probe for a prospective birth; no child or stage work started by this probe.",
+  "session": "01a14a28-2482-7580-9090-d1ebb2dd8890",
+  "stage": "qa-gate"
+}

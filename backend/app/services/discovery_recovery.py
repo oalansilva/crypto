@@ -123,12 +123,19 @@ def claim_attempt(db, sweep, row, stamp):
         start, end = resolve_optimizer_date_range(
             sweep.snapshot or {}, stamp.replace(tzinfo=timezone.utc)
         )
-        start = start or "2017-01-01"
+        # "Todo o histórico": a cripto começa em 2017 (como antes); ação e ETF onde a Binance
+        # começa (card #1121, como o backtest do #1119).
+        start = start or ("2017-01-01" if "/" in str(row.symbol) else "2000-01-01")
         end = end or stamp.date().isoformat()
         from app.services.combo_service import ComboService
 
+        sweep_snapshot = sweep.snapshot
+        if isinstance(sweep_snapshot, dict) and "samples" in sweep_snapshot:
+            # As amostras da varredura (card #1121) ficam só no sweep: copiar em cada combinação
+            # faria o input crescer com o número de ativos.
+            sweep_snapshot = {k: v for k, v in sweep_snapshot.items() if k != "samples"}
         row.input_snapshot = {
-            "snapshot": sweep.snapshot,
+            "snapshot": sweep_snapshot,
             "start_date": start,
             "end_date": end,
             "template_metadata": ComboService().get_template_metadata(row.template_id),
@@ -150,8 +157,60 @@ def claim_attempt(db, sweep, row, stamp):
     return True
 
 
+def sample_key(symbol, timeframe, start_date, end_date):
+    """Chave da amostra única da varredura: ativo, tempo e janela (card #1121, decisão 4)."""
+
+    return f"{symbol}|{timeframe}|{start_date or ''}|{end_date or ''}"
+
+
+def shared_sample(db, sweep, row):
+    """Manifesto já congelado por outra combinação do mesmo ativo, tempo e janela, ou ``None``.
+
+    O sweep guarda só a referência (``snapshot_id`` e a combinação dona); o manifesto inteiro fica no
+    ``input_snapshot`` da combinação que congelou.
+    """
+
+    snapshot = sweep.snapshot if isinstance(sweep.snapshot, dict) else {}
+    inputs = row.input_snapshot or {}
+    key = sample_key(row.symbol, row.timeframe, inputs.get("start_date"), inputs.get("end_date"))
+    ref = (snapshot.get("samples") or {}).get(key)
+    if not ref:
+        return None
+    owner = ref.get("combination_id")
+    if owner is None or owner == row.id:
+        return None
+    manifest = (
+        db.query(DiscoveryCombination.input_snapshot["candle_manifest"])
+        .filter(DiscoveryCombination.id == owner)
+        .scalar()
+    )
+    if not isinstance(manifest, dict) or manifest.get("snapshot_id") != ref.get("snapshot_id"):
+        return None
+    return manifest
+
+
+def _record_shared_sample(sweep, row, manifest):
+    """Grava a referência da amostra no sweep, sob o lock do sweep; a primeira vence (decisão 4).
+
+    Só amostra por segmentos (com ``snapshot_id``) é compartilhada: o spool antigo de cripto é por
+    combinação e some com ela.
+    """
+
+    if not manifest or "snapshot_id" not in manifest:
+        return
+    snapshot = dict(sweep.snapshot) if isinstance(sweep.snapshot, dict) else {}
+    samples = dict(snapshot.get("samples") or {})
+    inputs = row.input_snapshot or {}
+    key = sample_key(row.symbol, row.timeframe, inputs.get("start_date"), inputs.get("end_date"))
+    if key in samples:
+        return
+    samples[key] = {"snapshot_id": manifest["snapshot_id"], "combination_id": row.id}
+    snapshot["samples"] = samples
+    sweep.snapshot = snapshot
+
+
 def heartbeat(db, token, events=(), supervisor=None):
-    _, row, stamp = locked_possession(db, token)
+    sweep, row, stamp = locked_possession(db, token)
     attempt = db.get(DiscoveryAttempt, (row.id, row.attempts))
     counts = dict(attempt.counters or {})
     progressed = False
@@ -162,6 +221,17 @@ def heartbeat(db, token, events=(), supervisor=None):
                 raise OperationalFailure("frozen_input_identity_changed")
             current_snapshot["candle_manifest"] = event["candle_manifest"]
             row.input_snapshot = current_snapshot
+            _record_shared_sample(sweep, row, event["candle_manifest"])
+        if event.get("phase") == "collecting":
+            # Card #1121 (decisão 9): página coletada é progresso; a coleta longa não vira worker parado.
+            progressed = True
+            counts["collecting"] = {
+                "role": event.get("role"),
+                "series": event.get("series"),
+                "page": event.get("page"),
+                "pages": event.get("pages"),
+                "at": stamp.isoformat(),
+            }
         key = event.get("stage_id")
         if key and "counters" in event:
             current = event["counters"]
@@ -211,6 +281,14 @@ def settled(db, row, state):
     row.lease_expires_at = None
 
 
+def isolated_failure(code):
+    """Falha de coleta do histórico (card #1121, decisão 7): entra nas 3 tentativas da combinação,
+    mas não abre o disjuntor de recursos nem derruba a varredura; esgotada, só a combinação falha.
+    """
+
+    return str(code or "").startswith("history_")
+
+
 def failed_locked(db, sweep, row, code, operational=True, stamp=None):
     stamp = stamp or now(db)
     attempt = db.get(DiscoveryAttempt, (row.id, row.attempts))
@@ -224,7 +302,8 @@ def failed_locked(db, sweep, row, code, operational=True, stamp=None):
     row.lease_generation = (row.lease_generation or 0) + 1
     row.lease_owner = row.lease_expires_at = None
     row.updated_at = stamp
-    if operational:
+    isolated = isolated_failure(code)
+    if operational and not isolated:
         gate = circuit(db)
         cutoff = (stamp - timedelta(seconds=900)).isoformat()
         history = [item for item in (gate.failures or []) if item["at"] >= cutoff]
@@ -251,6 +330,7 @@ def failed_locked(db, sweep, row, code, operational=True, stamp=None):
         row.state = "failed"
         if (
             operational
+            and not isolated
             and row.attempts >= MAX_ATTEMPTS
             and sweep.state not in TERMINAL
             and sweep.state != "cancelling"
@@ -388,11 +468,14 @@ def reconcile_expired(db, sweep_id=None, commit=True):
                 snapshot = row.input_snapshot or {}
                 manifest = snapshot.get("candle_manifest")
                 if manifest and not snapshot.get("inputs_cleaned"):
-                    from app.services.discovery_inputs import discard
+                    from app.services.discovery_inputs import discard, is_snapshot_manifest
 
-                    directory = __import__("pathlib").Path(manifest["directory"])
-                    if directory.exists():
-                        discard(manifest)
+                    if is_snapshot_manifest(manifest):
+                        discard(manifest)  # solta a referência; os bytes seguem pelo prazo
+                    else:
+                        directory = __import__("pathlib").Path(manifest["directory"])
+                        if directory.exists():
+                            discard(manifest)
                     row.input_snapshot = {**snapshot, "inputs_cleaned": True}
         if sweep.state == "running":
             DiscoveryService().ensure_sweep_wakeup(db, sweep_id, sweep=sweep)

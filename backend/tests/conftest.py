@@ -5,9 +5,13 @@ import sys
 from pathlib import Path
 
 os.environ["ARBITRAGE_MONITOR_ENABLED"] = "0"
+os.environ["ASSET_CATALOG_REFRESH_ENABLED"] = "0"
 os.environ["WORKFLOW_DB_ENABLED"] = "1"
 os.environ["WORKFLOW_ALLOW_SHARED_PROJECT_DB"] = "1"
 os.environ["JWT_SECRET"] = "pytest-jwt-secret-do-not-use-elsewhere"
+# Card #1123: a comparação automática (rodada e refresh) coleta na Binance; os testes que a
+# exercitam ligam de novo e trocam a fonte da referência.
+os.environ.setdefault("BENCHMARK_AUTO_RECORD", "0")
 os.environ.setdefault(
     "DATABASE_URL",
     "postgresql+psycopg2://postgres:postgres@127.0.0.1:5432/crypto_app_test",
@@ -46,3 +50,42 @@ for _database_variable in (
 from app.config import get_settings
 
 get_settings.cache_clear()
+
+
+import pytest  # noqa: E402
+
+
+@pytest.fixture(scope="session", autouse=True)
+def _card_1118_provenance_columns():
+    """Bancos de teste persistentes podem ser anteriores ao card #1118: garante as colunas novas.
+
+    ``ALTER TABLE IF EXISTS ... ADD COLUMN IF NOT EXISTS`` é idempotente e não toca tabela ausente
+    (CI nasce com banco novo; o ``create_all`` já traz as colunas dos modelos).
+    """
+
+    try:
+        from sqlalchemy import create_engine
+
+        from app.services.market_history.schema import ADD_COLUMNS_SQL, execute_all
+
+        engine = create_engine(os.environ["DATABASE_URL"])
+        try:
+            with engine.begin() as connection:
+                execute_all(connection, ADD_COLUMNS_SQL)
+            # Card #1122: colunas novas de favoritos e alertas em bancos de teste persistentes.
+            from sqlalchemy import text
+
+            from app.database import BENCHMARK_SCHEMA_SQL, FAVORITE_ALERT_SCHEMA_SQL
+
+            with engine.begin() as connection:
+                for statement in FAVORITE_ALERT_SCHEMA_SQL:
+                    connection.execute(text(statement))
+            # Card #1123: ponteiro da comparação gravada em favoritos.
+            with engine.begin() as connection:
+                for statement in BENCHMARK_SCHEMA_SQL:
+                    connection.execute(text(statement))
+        finally:
+            engine.dispose()
+    except Exception:
+        pass
+    yield

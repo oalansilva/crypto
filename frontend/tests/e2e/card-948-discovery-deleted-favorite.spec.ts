@@ -219,7 +219,7 @@ for (const viewport of VIEWPORTS) {
 
     const orphanPromoted = decidir.locator('tbody tr').filter({ hasText: 'RS-EA2A508DBD' })
     await expect(orphanPromoted.getByRole('button', { name: 'Promover' })).toBeVisible()
-    await expect(orphanPromoted.getByText('Favorito tier 3')).toHaveCount(0)
+    await expect(orphanPromoted.getByText('Em Favoritos')).toHaveCount(0)
 
     const live = decidir.locator('tbody tr').filter({ hasText: 'RS-LIVE-948' })
     await expect(live.getByRole('button', { name: 'Já existe', disabled: true })).toBeVisible()

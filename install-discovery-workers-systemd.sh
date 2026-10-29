@@ -6,10 +6,16 @@ DEV_ROOT="/srv/apps/dev/criptofarol/source"
 PROD_ROOT="/srv/apps/prod/criptofarol/source"
 DRY_RUN=0
 DISCOVERY_ONLY=0
+BATCH_ONLY=0
 ROOT_DIR="$SCRIPT_DIR"
+# PROD Discovery ceiling (#1110): wait for an idle ledger before touching the unit.
+WAIT_IDLE_MIN=30
+WAIT_INTERVAL="${DISCOVERY_WAIT_INTERVAL:-60}"
 
 usage() {
-  echo "Usage: $0 [--dry-run] [--discovery-only] [--root $DEV_ROOT|$PROD_ROOT]" >&2
+  echo "Usage: $0 [--dry-run] [--discovery-only|--batch-only] [--wait-idle <minutes>] [--root $DEV_ROOT|$PROD_ROOT]" >&2
+  echo "  --batch-only           Install/restart only the batch_backtest worker (#1120); never touches Discovery or the runtime worker." >&2
+  echo "  --wait-idle <minutes>  PROD --discovery-only: how long to wait for no active search (default 30; 0 = do not wait)." >&2
 }
 
 while [[ $# -gt 0 ]]; do
@@ -21,6 +27,18 @@ while [[ $# -gt 0 ]]; do
     --discovery-only)
       DISCOVERY_ONLY=1
       shift
+      ;;
+    --batch-only)
+      BATCH_ONLY=1
+      shift
+      ;;
+    --wait-idle)
+      WAIT_IDLE_MIN="${2:-}"
+      if ! [[ "$WAIT_IDLE_MIN" =~ ^[0-9]+$ ]]; then
+        echo "--wait-idle needs a whole number of minutes." >&2
+        exit 2
+      fi
+      shift 2
       ;;
     --root)
       ROOT_DIR="${2:-}"
@@ -37,6 +55,11 @@ while [[ $# -gt 0 ]]; do
   esac
 done
 
+if [[ "$DISCOVERY_ONLY" -eq 1 && "$BATCH_ONLY" -eq 1 ]]; then
+  echo "--discovery-only and --batch-only are mutually exclusive." >&2
+  exit 2
+fi
+
 ROOT_DIR="$(cd "$ROOT_DIR" && pwd)"
 
 case "$ROOT_DIR" in
@@ -52,6 +75,7 @@ if [[ "$TARGET" == "dev" ]]; then
   UNITS=(
     "criptofarol-dev-runtime-worker.service"
     "criptofarol-dev-discovery-worker.service"
+    "criptofarol-dev-batch-worker.service"
   )
   BACKEND_DROPIN_DIR="/etc/systemd/system/criptofarol-dev-backend.service.d"
   BACKEND_DROPIN_FILE="$BACKEND_DROPIN_DIR/discovery-workers.conf"
@@ -59,14 +83,22 @@ else
   UNITS=(
     "criptofarol-prod-runtime-worker.service"
     "criptofarol-prod-discovery-worker.service"
+    "criptofarol-prod-batch-worker.service"
   )
   BACKEND_DROPIN_DIR=""
   BACKEND_DROPIN_FILE=""
 fi
 
+DISCOVERY_UNIT="criptofarol-$TARGET-discovery-worker.service"
+# #1120: the batch_backtest queue has its own worker, separate from Discovery.
+BATCH_UNIT="criptofarol-$TARGET-batch-worker.service"
 if [[ "$DISCOVERY_ONLY" -eq 1 ]]; then
-  [[ "$TARGET" == "dev" ]] || { echo 'Discovery-only cutover is DEV-only.' >&2; exit 2; }
-  UNITS=("criptofarol-dev-discovery-worker.service")
+  UNITS=("$DISCOVERY_UNIT")
+  BACKEND_DROPIN_DIR=""
+  BACKEND_DROPIN_FILE=""
+fi
+if [[ "$BATCH_ONLY" -eq 1 ]]; then
+  UNITS=("$BATCH_UNIT")
   BACKEND_DROPIN_DIR=""
   BACKEND_DROPIN_FILE=""
 fi
@@ -79,6 +111,33 @@ validate_templates() {
     if [[ ! -f "$template" ]]; then
       echo "Missing systemd template: $template" >&2
       exit 1
+    fi
+    if [[ "$unit" == *discovery-worker.service ]] && ! grep -qx "Environment=DISCOVERY_RESOURCE_PROFILE=$TARGET" "$template"; then
+      echo "Discovery template missing DISCOVERY_RESOURCE_PROFILE=$TARGET: $template" >&2
+      exit 1
+    fi
+    if [[ "$unit" == *discovery-worker.service ]] && ! grep -q -- " -Q discovery'\$" "$template"; then
+      echo "Discovery template must consume only the discovery queue (-Q discovery): $template" >&2
+      exit 1
+    fi
+    if [[ "$unit" == *batch-worker.service ]]; then
+      if ! grep -qx "Environment=DISCOVERY_RESOURCE_PROFILE=$TARGET" "$template"; then
+        echo "Batch template missing DISCOVERY_RESOURCE_PROFILE=$TARGET: $template" >&2
+        exit 1
+      fi
+      if ! grep -q -- " -Q batch_backtest'\$" "$template"; then
+        echo "Batch template must consume only the batch_backtest queue (-Q batch_backtest): $template" >&2
+        exit 1
+      fi
+      if ! grep -q -- '--pool=solo --concurrency=1 --prefetch-multiplier=1' "$template" \
+        || ! grep -q -- "--hostname=batch-$TARGET@%%h" "$template"; then
+        echo "Batch template needs --pool=solo --concurrency=1 --prefetch-multiplier=1 and --hostname=batch-$TARGET@%%h: $template" >&2
+        exit 1
+      fi
+      if ! grep -qx 'KillMode=mixed' "$template" || ! grep -q '^MemoryMax=' "$template"; then
+        echo "Batch template needs KillMode=mixed (running batch finishes on SIGTERM) and a MemoryMax: $template" >&2
+        exit 1
+      fi
     fi
     if [[ "$unit" == *runtime-worker.service ]] && ! grep -q 'RUN_DISCOVERY_OUTBOX_DISPATCHER=1' "$template"; then
       echo "Runtime worker template missing RUN_DISCOVERY_OUTBOX_DISPATCHER=1: $template" >&2
@@ -115,26 +174,30 @@ if [[ "${EUID}" -ne 0 ]]; then
     if [[ "$ROOT_DIR" != "$SCRIPT_DIR" ]]; then
       extra=(--root "$ROOT_DIR")
     fi
-    if [[ "$DISCOVERY_ONLY" -eq 1 ]]; then extra+=(--discovery-only); fi
+    if [[ "$DISCOVERY_ONLY" -eq 1 ]]; then extra+=(--discovery-only --wait-idle "$WAIT_IDLE_MIN"); fi
+    if [[ "$BATCH_ONLY" -eq 1 ]]; then extra+=(--batch-only); fi
     exec sudo -n "$0" "${extra[@]}"
   fi
-  echo "Root privileges are required to install $TARGET discovery workers." >&2
+  echo "Root privileges are required to install $TARGET workers." >&2
   exit 1
 fi
 
 # Applying a lower envelope to a running legacy tree may cause immediate OOM.
-# The caller (./restart, or the operator during the manual cutover) stops
+# DEV: the caller (./restart, or the operator during the manual cutover) stops
 # Discovery first; this guard fails closed if it is still active or if any old
 # descendant remains. It never kills anything.
-if [[ "$TARGET" == "dev" ]]; then
-  discovery_unit="criptofarol-dev-discovery-worker.service"
+# PROD (--discovery-only, #1110): this script waits for an idle ledger, stops
+# only the Discovery unit and then runs the same guard.
+guard_discovery_stopped() {
+  local discovery_unit="$1" label="$2" group procs pid cmd
   if systemctl is-active --quiet "$discovery_unit"; then
-    echo "DEV Discovery ($discovery_unit) is still active: memory limits were NOT applied (limites não aplicados). Stop/drain DEV Discovery and verify an empty cgroup before installing limits." >&2
+    echo "$label Discovery ($discovery_unit) is still active: memory limits were NOT applied (limites não aplicados). Stop/drain $label Discovery and verify an empty cgroup before installing limits." >&2
     exit 1
   fi
   group="$(systemctl show "$discovery_unit" -p ControlGroup --value)"
   procs="/sys/fs/cgroup$group/cgroup.procs"
-  if [[ -n "$group" && -r "$procs" ]] && [[ -s "$procs" ]]; then
+  # cgroup v2 (kernfs) reports size 0 even with PIDs listed: test the content, not -s.
+  if [[ -n "$group" && -r "$procs" ]] && grep -q . "$procs"; then
     echo "Legacy Discovery descendants remain in cgroup $group: memory limits were NOT applied (limites não aplicados); refusing coexistence. Nothing was killed. Remaining processes:" >&2
     while IFS= read -r pid; do
       [[ -n "$pid" ]] || continue
@@ -143,6 +206,78 @@ if [[ "$TARGET" == "dev" ]]; then
       echo "  PID $pid: ${cmd:-?}" >&2
     done <"$procs"
     echo "Stop or drain these processes (see docs/discovery-memory-operations.md), then run again." >&2
+    exit 1
+  fi
+}
+
+# Read-only ledger probe (active_search_probe.py). Exit 0 = idle; anything else,
+# including a failure to run it, counts as an active search (fail closed).
+# DISCOVERY_ACTIVE_PROBE_CMD replaces the command (test seam).
+PROBE_OUT=""
+run_probe() {
+  local rc=0
+  if [[ -n "${DISCOVERY_ACTIVE_PROBE_CMD:-}" ]]; then
+    PROBE_OUT="$(bash -c "$DISCOVERY_ACTIVE_PROBE_CMD" 2>&1)" || rc=$?
+  else
+    # errexit is ignored inside `|| rc=$?`, so the steps are chained with &&.
+    PROBE_OUT="$(
+      set -a
+      source "$ROOT_DIR/backend/.env" &&
+        set +a &&
+        cd "$ROOT_DIR/backend" &&
+        PYTHONPATH="$ROOT_DIR:$ROOT_DIR/backend" "$ROOT_DIR/backend/.venv/bin/python" scripts/discovery/active_search_probe.py 2>&1
+    )" || rc=$?
+  fi
+  return "$rc"
+}
+
+if [[ "$BATCH_ONLY" -eq 1 ]]; then
+  # #1120: the batch worker has its own cgroup and queue; Discovery, the runtime
+  # worker and the backend are neither inspected nor touched.
+  :
+elif [[ "$TARGET" == "prod" && "$DISCOVERY_ONLY" -eq 1 ]]; then
+  max_checks=$(( WAIT_IDLE_MIN * 60 / WAIT_INTERVAL + 1 ))
+  check=0
+  while true; do
+    check=$((check + 1))
+    probe_rc=0
+    run_probe || probe_rc=$?
+    [[ "$probe_rc" -ne 0 ]] || break
+    if [[ "$check" -ge "$max_checks" ]]; then
+      echo "adiado: busca ativa em PROD. O teto da Descoberta NÃO foi aplicado; nada foi parado, gravado nem reiniciado (a Descoberta PROD segue com a unit anterior). Repita depois." >&2
+      echo "Sweeps encontrados (JSON da sonda): $PROBE_OUT" >&2
+      exit 75
+    fi
+    echo "Busca ativa em PROD (consulta $check/$max_checks); nova consulta em ${WAIT_INTERVAL}s: $PROBE_OUT"
+    sleep "$WAIT_INTERVAL"
+  done
+  echo "Sem busca ativa em PROD: $PROBE_OUT"
+  echo "Stopping PROD Discovery only ($DISCOVERY_UNIT)..."
+  if ! systemctl stop "$DISCOVERY_UNIT"; then
+    echo "PROD Discovery did not stop ($DISCOVERY_UNIT): memory limits were NOT applied (limites não aplicados); nothing was installed." >&2
+    exit 1
+  fi
+  guard_discovery_stopped "$DISCOVERY_UNIT" "PROD"
+  probe_rc=0
+  run_probe || probe_rc=$?
+  if [[ "$probe_rc" -ne 0 ]]; then
+    echo "aviso: a sonda voltou a indicar atividade entre a primeira consulta e a parada (a combinação retoma pela recuperação do #1093): $PROBE_OUT" >&2
+  fi
+elif [[ "$TARGET" == "dev" ]]; then
+  guard_discovery_stopped "$DISCOVERY_UNIT" "DEV"
+elif systemctl is-active --quiet "$DISCOVERY_UNIT"; then
+  echo "PROD Discovery ($DISCOVERY_UNIT) is active: a full PROD install would rewrite its unit under a running tree. Use --discovery-only (waits for an idle ledger and stops only Discovery). Nothing was installed." >&2
+  exit 1
+fi
+
+# #1120: a batch worker that is already running keeps the old code and unit until it
+# is stopped; `enable --now` alone would leave it as is. Stop it here (SIGTERM, the
+# unit's TimeoutStopSec lets a running batch finish, then SIGKILL; an interrupted
+# batch is redelivered with the same task_id and resumes). Not active: nothing to do.
+if [[ " ${UNITS[*]} " == *" $BATCH_UNIT "* ]] && systemctl is-active --quiet "$BATCH_UNIT"; then
+  echo "Stopping $TARGET batch worker ($BATCH_UNIT) before installing it..."
+  if ! systemctl stop "$BATCH_UNIT"; then
+    echo "$TARGET batch worker did not stop ($BATCH_UNIT): nothing was installed." >&2
     exit 1
   fi
 fi
@@ -165,7 +300,7 @@ fi
 
 systemctl daemon-reload
 if ! systemctl enable --now "${UNITS[@]}"; then
-  if [[ "$TARGET" == "dev" ]]; then
+  if [[ "$TARGET" == "dev" || "$DISCOVERY_ONLY" -eq 1 || "$BATCH_ONLY" -eq 1 ]]; then
     echo "Failed to enable/start ${UNITS[*]}. The unit files were installed with the new limits, but the start was refused." >&2
     echo "If this is the 4th start within 15 minutes, systemd's start limit (StartLimitBurst=3/900s, #1093) refused it: wait and repeat. No automatic reset-failed is done." >&2
   else
@@ -187,4 +322,13 @@ if ! systemctl is-active "${UNITS[@]}"; then
   exit 1
 fi
 
-echo "Installed canonical $TARGET discovery dispatcher and Celery worker."
+if [[ "$BATCH_ONLY" -eq 1 ]]; then
+  echo "Installed canonical $TARGET batch_backtest Celery worker ($BATCH_UNIT)."
+  systemctl show "$BATCH_UNIT" -p MemoryHigh -p MemoryMax -p MemorySwapMax -p OOMPolicy -p KillMode -p Restart -p TimeoutStopUSec -p ActiveState
+else
+  echo "Installed canonical $TARGET discovery dispatcher and Celery workers (Discovery and batch_backtest)."
+fi
+if [[ "$TARGET" == "prod" && "$DISCOVERY_ONLY" -eq 1 ]]; then
+  echo "Verificação ($DISCOVERY_UNIT):"
+  systemctl show "$DISCOVERY_UNIT" -p MemoryHigh -p MemoryMax -p MemorySwapMax -p OOMPolicy -p KillMode -p Restart -p RestartUSec -p StartLimitBurst -p StartLimitIntervalUSec -p TimeoutStopUSec -p ActiveState -p NRestarts
+fi

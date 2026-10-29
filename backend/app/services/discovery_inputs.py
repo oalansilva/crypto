@@ -1,7 +1,9 @@
 """Durable private candle snapshots reused by every attempt and final evaluation."""
 
 import hashlib
+import json
 import os
+from contextlib import contextmanager
 from pathlib import Path
 import tempfile
 
@@ -14,16 +16,189 @@ from app.services.discovery_resources import (
     mark_spool_owner,
 )
 
+SNAPSHOT_ID_ENV = "DISCOVERY_FROZEN_SNAPSHOT_ID"
+SNAPSHOT_SEGMENTS_ENV = "DISCOVERY_FROZEN_SEGMENTS"
+_SNAPSHOT_ROLES = ("candles", "intraday")
 
-def prepare(inputs):
-    manifest = inputs.get("candle_manifest")
-    if manifest:
-        validate(manifest)
-        return manifest
+
+def is_snapshot_manifest(manifest):
+    """Manifesto de amostra por segmentos (card #1118) em vez do spool ``inputs-*``."""
+    return bool(manifest) and "snapshot_id" in manifest
+
+
+def frozen_active():
+    """True quando a execução lê só de entradas congeladas (spool antigo ou amostra)."""
+    return bool(os.getenv("DISCOVERY_FROZEN_INPUT_DIR") or os.getenv(SNAPSHOT_ID_ENV))
+
+
+def activate(manifest):
+    """Aponta o processo (e os workers que herdam o ambiente) para a amostra congelada."""
+    if is_snapshot_manifest(manifest):
+        os.environ[SNAPSHOT_ID_ENV] = manifest["snapshot_id"]
+        os.environ[SNAPSHOT_SEGMENTS_ENV] = json.dumps(
+            {role: info["segments"] for role, info in manifest["files"].items()}
+        )
+    else:
+        os.environ["DISCOVERY_FROZEN_INPUT_DIR"] = manifest["directory"]
+
+
+def _unified():
+    from app.services.market_history import unified_enabled
+
+    return unified_enabled()
+
+
+class InsufficientHistory(Exception):
+    """A Binance não tem candles do ativo nessa janela: amostra insuficiente, não falha (card #1121)."""
+
+    def __init__(self, reason):
+        super().__init__(reason)
+        self.reason = reason
+
+
+def history_failure_code(error_code):
+    """``history_unavailable:<código da Binance>``: falha de coleta que entra nas 3 tentativas."""
+
+    return f"history_unavailable:{error_code}" if error_code else "history_unavailable"
+
+
+def _asset_class(inputs):
+    """Classe pelo catálogo (``asset_identity``), não pela ``/``; sem catálogo, pelo formato."""
+
+    from app.services.discovery_multiclass import class_of
+
+    symbol = str(inputs.get("symbol", ""))
+    known = inputs.get("asset_class")
+    if known:
+        return class_of(symbol, known)
+    if "/" in symbol:
+        return "crypto"
+    try:
+        from app.services.equity_backtest import asset_identity
+
+        found = asset_identity(symbol).get("asset_class")
+    except Exception:  # catálogo fora: sem classe, o caminho de antes
+        return None
+    # Ticker que o catálogo não conhece segue o caminho de antes (sem inventar classe).
+    return found if found in ("stock", "etf") else None
+
+
+def _manifest(sample, data_source, **extra):
+    files = {
+        role: {
+            "sha256": sample.entry(role)["sha256"],
+            "rows": sample.entry(role)["rows"],
+            "segments": sample.entry(role)["segments"],
+        }
+        for role in _SNAPSHOT_ROLES
+    }
+    return {
+        "snapshot_id": sample.snapshot_id,
+        "files": files,
+        "provenance": sample.provenance("candles"),
+        "data_source": data_source,
+        **extra,
+    }
+
+
+def _prepare_equity(inputs, on_progress=None):
+    """Ação/ETF pelo caminho do #1118 (card #1121, decisão 3).
+
+    Coleta a série do tempo gráfico (1d nativo, ou o 5m de onde saem 15m/1h/4h) e o 5m do intrabar
+    com ``prepare_equity_history``, lê do ``HistoryService`` e congela nos papéis ``candles`` e
+    ``intraday`` (vazio sem 15m). A Binance sem candles na janela vira ``InsufficientHistory``;
+    falha de coleta vira ``OperationalFailure`` (``history_unavailable:<código>``) e entra nas
+    3 tentativas.
+    """
+    from app.services.discovery_multiclass import no_candles_reason
+    from app.services.equity_backtest import (
+        CODE_HISTORY_UNAVAILABLE,
+        EquityRunError,
+        inclusive_end,
+        prepare_equity_history,
+    )
+    from app.services.market_data_providers import (
+        BINANCE_EQUITY_SOURCE,
+        BinanceEquityMarketDataProvider,
+    )
+    from app.services.market_history.facade import (
+        get_history_service,
+        spec_for_request,
+        to_loader_frame,
+    )
+    from app.services.market_history.sample import ExecutionSample
+
+    symbol = inputs["symbol"]
+    timeframe = inputs["timeframe"]
+    start, end = inputs["start_date"], inputs["end_date"]
+    equity_class = (
+        inputs.get("asset_class") if inputs.get("asset_class") in ("stock", "etf") else "stock"
+    )
+
+    def progress(role, series_timeframe, page, total):
+        if on_progress is not None:
+            on_progress(
+                {
+                    "phase": "collecting",
+                    "role": role,
+                    "series": series_timeframe,
+                    "page": int(page),
+                    "pages": int(total) if total else None,
+                }
+            )
+
+    try:
+        prep = prepare_equity_history(
+            symbol, timeframe, start, end, intrabar=True, on_progress=progress
+        )
+    except EquityRunError as exc:
+        extra = exc.extra or {}
+        if exc.code == CODE_HISTORY_UNAVAILABLE and extra.get("error_code"):
+            raise OperationalFailure(history_failure_code(extra["error_code"])) from exc
+        if exc.code == CODE_HISTORY_UNAVAILABLE and "não tem candles" in str(
+            extra.get("reason") or ""
+        ):
+            raise InsufficientHistory(
+                no_candles_reason(symbol, timeframe, asset_class=equity_class)
+            ) from exc
+        if exc.code == CODE_HISTORY_UNAVAILABLE:
+            # Coleta em pausa ou outra coleta da série em andamento: tenta de novo depois.
+            raise OperationalFailure("history_unavailable:collection_busy") from exc
+        raise OperationalFailure(exc.code or "history_unavailable") from exc
+
+    # Coleta feita: a leitura é só do guardado, sem nova ida à Binance (como o lote do #1120).
+    frame = BinanceEquityMarketDataProvider(ensure=False).fetch_ohlcv(
+        symbol=symbol, timeframe=timeframe, since_str=start, until_str=end
+    )
+    if frame is None or frame.empty:
+        raise InsufficientHistory(no_candles_reason(symbol, timeframe, asset_class=equity_class))
+    service = get_history_service()
+    intraday_series = service.resolve(spec_for_request(symbol=symbol, timeframe="15m"))
+    intraday = to_loader_frame(service.read(intraday_series, start, inclusive_end(end)).candles)
+    sample = ExecutionSample("discovery", owner_ref=f"discovery:{symbol}:{timeframe}")
+    try:
+        sample.freeze_symbol("candles", symbol, timeframe, start, end, frame)
+        sample.freeze_symbol("intraday", symbol, "15m", start, end, intraday)
+    except Exception as exc:
+        code = getattr(exc, "code", None)
+        if code:
+            raise OperationalFailure(code) from exc
+        raise
+    return _manifest(
+        sample,
+        BINANCE_EQUITY_SOURCE,
+        asset=prep.asset,
+        collection=prep.collection,
+    )
+
+
+def _prepare_crypto(inputs):
+    """Congela candles e 15m em segmentos com SHA-256, compartilhados entre execuções."""
     from src.data.incremental_loader import IncrementalLoader
     from app.services.market_data_providers import CcxtMarketDataProvider
+    from app.services.market_history.sample import ExecutionSample
 
-    loader = IncrementalLoader(cache_dir=os.getenv("DISCOVERY_MARKET_CACHE_DIR"))
+    loader = IncrementalLoader()
     frame = CcxtMarketDataProvider(loader).fetch_ohlcv(
         symbol=inputs["symbol"],
         timeframe=inputs["timeframe"],
@@ -37,11 +212,84 @@ def prepare(inputs):
         until_str=inputs["end_date"],
         read_only=False,
     )
+    sample = ExecutionSample(
+        "discovery", owner_ref=f"discovery:{inputs['symbol']}:{inputs['timeframe']}"
+    )
+    try:
+        sample.freeze_crypto(
+            "candles",
+            inputs["symbol"],
+            inputs["timeframe"],
+            inputs["start_date"],
+            inputs["end_date"],
+            frame,
+        )
+        sample.freeze_crypto(
+            "intraday", inputs["symbol"], "15m", inputs["start_date"], inputs["end_date"], intraday
+        )
+    except Exception as exc:
+        code = getattr(exc, "code", None)
+        if code:
+            raise OperationalFailure(code) from exc
+        raise
+    return _manifest(sample, "ccxt")
+
+
+def manifest_source(manifest):
+    """Fonte que o otimizador recebe (card #1121, decisão 3): ``binance_equity`` ou ``ccxt``."""
+
+    if not manifest:
+        return "ccxt"
+    if manifest.get("data_source"):
+        return manifest["data_source"]
+    label = (manifest.get("provenance") or {}).get("data_source")
+    return "binance_equity" if label == "Binance Ações" else "ccxt"
+
+
+def prepare(inputs, on_progress=None):
+    """Amostra da combinação: reaproveita o manifesto dado, ou coleta e congela pela classe."""
+
+    manifest = inputs.get("candle_manifest")
+    if manifest:
+        validate(manifest)
+        return manifest
+    if _asset_class(inputs) in ("stock", "etf"):
+        return _prepare_equity(inputs, on_progress)
+    if _unified() and "/" in str(inputs.get("symbol", "")):
+        return _prepare_crypto(inputs)
+    from app.services.market_data_providers import CcxtMarketDataProvider
+
+    loader = _legacy_loader()
+    frame = CcxtMarketDataProvider(loader).fetch_ohlcv(
+        symbol=inputs["symbol"],
+        timeframe=inputs["timeframe"],
+        since_str=inputs["start_date"],
+        until_str=inputs["end_date"],
+    )
+    intraday = loader.fetch_intraday_data(
+        symbol=inputs["symbol"],
+        timeframe="15m",
+        since_str=inputs["start_date"],
+        until_str=inputs["end_date"],
+        read_only=False,
+    )
+    return _write_legacy_spool((("candles", frame), ("intraday", intraday)))
+
+
+def _legacy_loader():
+    """O carregador do caminho antigo (sem amostra durável): cache parquet local da Binance."""
+    from src.data.incremental_loader import IncrementalLoader
+
+    return IncrementalLoader(cache_dir=os.getenv("DISCOVERY_MARKET_CACHE_DIR"))
+
+
+def _write_legacy_spool(frames):
+    """Grava os parquets privados do caminho antigo e devolve o manifesto com o SHA-256 de cada um."""
     root = Path(tempfile.mkdtemp(prefix="inputs-", dir=spool_directory()))
     mark_spool_owner(root)
     manifest = {"directory": str(root), "files": {}}
     try:
-        for name, data in (("candles", frame), ("intraday", intraday)):
+        for name, data in frames:
             path = root / f"{name}.parquet"
             data.to_parquet(path, index=True)
             path.chmod(0o600)
@@ -64,7 +312,166 @@ def prepare(inputs):
         raise
 
 
+# --------------------------------------------------------------------------- caminho antigo refeito
+#
+# Card #1123 (retrabalho pós Não homologar): a cripto da Descoberta sem ``MARKET_HISTORY_UNIFIED``
+# nunca guarda amostra. Para refazer os trades, as velas são relidas do mesmo cache local (só leitura:
+# nada é coletado nem gravado no cache) e entregues ao otimizador por um spool privado, igual ao
+# ``prepare``. A versão das velas (SHA-256) não é condição: a vela diária ainda aberta na hora da
+# varredura muda o byte sem mudar os trades; quem decide se o refeito vale é a conferência das métricas
+# refeitas contra as gravadas (``discovery_reference_column``).
+
+LEGACY_MISSING = "missing"  # o cache local não tem mais a série (ou a janela)
+LEGACY_UNRECORDED = "unrecorded"  # a varredura não registrou janela/métricas para conferir
+
+
+class LegacyInputsUnavailable(Exception):
+    """Não dá para refazer os trades do caminho antigo iguais aos da varredura."""
+
+    def __init__(self, detail):
+        super().__init__(detail)
+        self.detail = detail
+
+
+def _legacy_paths(loader, symbol, timeframe):
+    return {
+        "candles": (loader._get_parquet_path(symbol, timeframe), timeframe),
+        "intraday": (loader._get_parquet_path(symbol, "15m"), "15m"),
+    }
+
+
+def legacy_cache_present(symbol, timeframe, loader=None):
+    """Os dois arquivos do cache local existem (sem ler as velas; para o aviso antes da escolha)."""
+
+    loader = loader or _legacy_loader()
+    return all(
+        os.path.exists(path) for path, _ in _legacy_paths(loader, symbol, timeframe).values()
+    )
+
+
+def legacy_window_from_training(
+    symbol, timeframe, train_start, train_end, train_ratio, loader=None
+):
+    """Janela inteira de uma varredura antiga que não gravou as datas, a partir do treino gravado.
+
+    Varreduras antigas pediam um período relativo ("2y", "all") e não gravavam datas na combinação nem
+    na varredura. O resultado guarda a primeira e a última vela devolvidas pelo otimizador
+    (``start_at``/``end_at``), que são as do recorte de treino: as ``int(N * train_ratio)`` primeiras
+    das N velas da janela (``split_train_holdout``). Essas velas já estavam fechadas, então qualquer N
+    com o mesmo corte dá o mesmo treino e as mesmas métricas gravadas; usa o menor. Devolve
+    ``(início, fim)`` em ISO, o fim até o último instante da última vela (para o 15m de dentro dela
+    entrar), lendo só o cache local; sem velas suficientes levanta ``LegacyInputsUnavailable``.
+    """
+
+    loader = loader or _legacy_loader()
+    path, _tf = _legacy_paths(loader, symbol, timeframe)["candles"]
+    if not os.path.exists(path):
+        raise LegacyInputsUnavailable(LEGACY_MISSING)
+    since = loader._parse_datetime_utc(str(train_start), pd.Timestamp("2017-01-01", tz="UTC"))
+    last_train = loader._parse_datetime_utc(str(train_end), pd.Timestamp.now(tz="UTC"))
+    try:
+        frame = loader._read_parquet_slice(path, since, pd.Timestamp.now(tz="UTC"))
+    except Exception as exc:
+        raise LegacyInputsUnavailable(LEGACY_MISSING) from exc
+    if frame is None or frame.empty:
+        raise LegacyInputsUnavailable(LEGACY_MISSING)
+    times = pd.DatetimeIndex(frame.index).sort_values()
+    train_len = int((times <= last_train).sum())
+    if train_len < 1 or times[train_len - 1] != last_train:
+        raise LegacyInputsUnavailable(LEGACY_MISSING)  # o cache não tem mais as velas do treino
+    first = max(train_len + 1, int(train_len / train_ratio) - 2)
+    total = next(
+        (
+            n
+            for n in range(first, len(times) + 1)
+            if max(1, min(n - 1, int(n * train_ratio))) == train_len
+        ),
+        None,
+    )
+    if total is None:
+        raise LegacyInputsUnavailable(LEGACY_MISSING)
+    try:
+        step = pd.Timedelta(str(timeframe))
+    except (TypeError, ValueError):
+        step = pd.Timedelta(0)
+    end = times[total - 1] + (step - pd.Timedelta(seconds=1) if step > pd.Timedelta(0) else step)
+    return times[0].isoformat(), end.isoformat()
+
+
+def legacy_cache_frames(symbol, timeframe, start_date, end_date, loader=None):
+    """Recorte do cache local igual ao que o caminho antigo devolveu, sem rede e sem escrever.
+
+    Lê o parquet direto (``_read_parquet_slice``, o mesmo recorte do ``fetch_data`` quando o cache
+    cobre a janela), inclusive com ``MARKET_HISTORY_UNIFIED`` ligado depois da varredura.
+    """
+
+    loader = loader or _legacy_loader()
+    default_start = pd.Timestamp("2017-01-01", tz="UTC")
+    since = loader._parse_datetime_utc(start_date, default_start)
+    until = loader._parse_datetime_utc(end_date, pd.Timestamp.now(tz="UTC"))
+    frames = []
+    for role, (path, _tf) in _legacy_paths(loader, symbol, timeframe).items():
+        if not os.path.exists(path):
+            raise LegacyInputsUnavailable(LEGACY_MISSING)
+        try:
+            frame = loader._read_parquet_slice(path, since, until)
+        except Exception as exc:
+            raise LegacyInputsUnavailable(LEGACY_MISSING) from exc
+        if frame is None or frame.empty:
+            raise LegacyInputsUnavailable(LEGACY_MISSING)
+        frames.append((role, frame))
+    return frames
+
+
+@contextmanager
+def legacy_frozen_inputs(symbol, timeframe, start_date, end_date, loader=None):
+    """Spool privado com o recorte do cache local da janela; aponta o processo para ele.
+
+    O spool continua necessário: é por ele (``DISCOVERY_FROZEN_INPUT_DIR``) que o otimizador lê as
+    velas sem ir à rede, e o cache não pode ser apontado direto (série inteira, outros nomes). O
+    ambiente é trocado sob a mesma trava da reprodução por amostra (um por vez no processo do worker)
+    e restaurado na saída; o spool é apagado sempre. Sem janela fechada não há o que refazer.
+    """
+
+    from app.services.market_history.reproduction import _ENV_LOCK
+
+    if not start_date or not end_date:
+        raise LegacyInputsUnavailable(LEGACY_UNRECORDED)
+    frames = legacy_cache_frames(symbol, timeframe, start_date, end_date, loader=loader)
+    manifest = _write_legacy_spool(frames)
+    try:
+        keys = ("DISCOVERY_FROZEN_INPUT_DIR", SNAPSHOT_ID_ENV, SNAPSHOT_SEGMENTS_ENV)
+        with _ENV_LOCK:
+            saved = {key: os.environ.get(key) for key in keys}
+            os.environ.pop(SNAPSHOT_ID_ENV, None)
+            os.environ.pop(SNAPSHOT_SEGMENTS_ENV, None)
+            os.environ["DISCOVERY_FROZEN_INPUT_DIR"] = manifest["directory"]
+            try:
+                yield manifest
+            finally:
+                for key, value in saved.items():
+                    if value is None:
+                        os.environ.pop(key, None)
+                    else:
+                        os.environ[key] = value
+    finally:
+        discard(manifest)
+
+
+def _validate_snapshot(manifest):
+    from app.services.market_history import snapshots
+
+    root = snapshots.snapshot_root()
+    try:
+        for role, info in manifest["files"].items():
+            snapshots.read_segments(root, info["segments"])
+    except snapshots.SnapshotError as exc:
+        raise OperationalFailure(exc.code) from exc
+
+
 def validate(manifest):
+    if is_snapshot_manifest(manifest):
+        return _validate_snapshot(manifest)
     root = Path(manifest["directory"])
     if root.is_symlink():
         raise OperationalFailure("frozen_input_invalid")
@@ -78,7 +485,31 @@ def validate(manifest):
             raise OperationalFailure("frozen_input_corrupt")
 
 
-def read(name):
+_SAMPLE_FRAMES = {}
+
+
+def read(name, snapshot_id=None):
+    sid = snapshot_id or os.getenv(SNAPSHOT_ID_ENV)
+    if sid:
+        key = (sid, name)
+        cached = _SAMPLE_FRAMES.get(key)
+        if cached is not None:
+            return cached
+        from app.services.market_history import snapshots
+
+        raw = os.getenv(SNAPSHOT_SEGMENTS_ENV) if sid == os.getenv(SNAPSHOT_ID_ENV) else None
+        try:
+            if raw:
+                segments = json.loads(raw)[name]
+                frame = snapshots.read_segments(snapshots.snapshot_root(), segments)
+            else:
+                from app.database import engine
+
+                frame = snapshots.load_frame(engine, sid, name)
+        except snapshots.SnapshotError as exc:
+            raise OperationalFailure(exc.code) from exc
+        _SAMPLE_FRAMES[key] = frame
+        return frame
     root = os.getenv("DISCOVERY_FROZEN_INPUT_DIR")
     if not root:
         return None
@@ -91,6 +522,13 @@ class FrozenProvider:
 
 
 def discard(manifest):
+    if is_snapshot_manifest(manifest):
+        # Soltar a referência, não apagar bytes: a amostra segue por 30 dias (card #1118).
+        from app.database import engine
+        from app.services.market_history import snapshots
+
+        snapshots.finish(engine, manifest["snapshot_id"])
+        return
     root = Path(manifest["directory"])
     if root.is_symlink():
         raise OperationalFailure("frozen_input_invalid")
@@ -106,7 +544,7 @@ def cleanup_unreferenced(manifests):
     from app.services.discovery_supervisor import process_identity
     import json
 
-    referenced = {manifest["directory"] for manifest in manifests}
+    referenced = {manifest["directory"] for manifest in manifests if "directory" in manifest}
     for root in spool_directory().glob("inputs-*"):
         if str(root) in referenced or root.is_symlink() or not (root / "owner.json").exists():
             continue

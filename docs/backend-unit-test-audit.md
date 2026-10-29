@@ -14,7 +14,7 @@ unit-test file is added, renamed, or removed.
 - Reference backend-unit-tests job median: **4m44s (284s)**.
 - Reference green jobs: `30679761659` (4m36s), `30679509735` (4m42s),
   `30730631820` (4m44s), `30729738750` (4m47s), and `30730180304` (4m53s).
-- Reference environment: GitHub Actions `ubuntu-latest`, Python 3.12,
+- Reference environment: GitHub Actions `ubuntu-24.04`, Python 3.12,
   PostgreSQL 15 service, `coverage run --parallel-mode`, and the five-run
   wall-time comparison supplied with the card.
 - Target: optimized median at or below **198.8s** (30% below 284s).

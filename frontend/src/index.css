@@ -23,6 +23,15 @@
   --accent-warning: #f59e0b;
   --accent-danger: #f6465d;
 
+  /* Cores de estado do seletor vivo (âmbar, azul, vermelho), declaradas uma vez e reusadas pela Descoberta
+     (estado da amostra no Decidir) e pelo bloco "Dados e execução" (card #1119). */
+  --ap-danger-text: #ff8294;
+  --ap-danger-border: rgba(246, 70, 93, 0.45);
+  --ap-warn-text: #fbbf24;
+  --ap-warn-border: rgba(245, 158, 11, 0.45);
+  --ap-info-text: #93c5fd;
+  --ap-info-border: rgba(59, 130, 246, 0.42);
+
   /* Additional accent colors */
   --accent-cyan: #3b82f6;
   --accent-pink: #f6465d;
@@ -4399,5 +4408,299 @@ select.input option {
 
   .monitor-theme .detail-foot .hint {
     overflow-wrap: anywhere;
+  }
+}
+
+/* ---------- Card #1122: ação/ETF no Monitor (linha compacta, estado do mercado, Alerta) ---------- */
+.monitor-theme .pair-icon.equity {
+  background: var(--bg-3);
+  color: var(--t-2);
+  font-size: 9px;
+  letter-spacing: 0.02em;
+}
+
+.monitor-theme .asset-identity {
+  margin-top: 4px;
+  font-size: 11px;
+  line-height: 1.45;
+  color: #b7bdc6;
+  max-width: 34ch;
+}
+
+.monitor-theme .market-state {
+  display: block;
+  margin-top: 6px;
+  max-width: 100%;
+  font-size: 11px;
+  line-height: 1.4;
+  color: #b7bdc6;
+}
+
+.monitor-theme .market-state-icon {
+  display: inline-block;
+  width: 12px;
+  height: 12px;
+  margin-right: 4px;
+  vertical-align: -2px;
+}
+
+.monitor-theme .market-state[data-tone='open'] .market-state-icon {
+  color: var(--hold);
+}
+
+.monitor-theme .market-state[data-tone='stale'] {
+  color: var(--wait);
+  background: var(--wait-soft);
+  border: 1px solid var(--wait-line);
+  border-radius: 5px;
+  padding: 3px 5px;
+}
+
+.monitor-theme .market-state[data-tone='insufficient'] {
+  border: 1px dashed #474d57;
+  border-radius: 5px;
+  padding: 3px 5px;
+}
+
+.monitor-theme .market-hold-note {
+  margin-top: 4px;
+  font-size: 11px;
+  line-height: 1.4;
+  color: var(--wait);
+  max-width: 100%;
+}
+
+.monitor-theme .market-hold-note[data-tone='insufficient'] {
+  color: #b7bdc6;
+}
+
+.monitor-theme .status-pill.no-reading {
+  background: rgba(132, 142, 156, 0.12);
+  color: #b7bdc6;
+  border: 1px solid rgba(132, 142, 156, 0.35);
+}
+
+/* Card #1122 (d2, decisão 18): interruptor "Alerta" por estratégia (linha, célula Status, cartão e
+   detalhe). Ligado: cor de sinal positivo + sino; desligado: cinza + borda tracejada + sino cortado. */
+.monitor-theme .row-action.alert-switch,
+.monitor-theme .btn.alert-switch {
+  gap: var(--space-xs);
+  color: var(--hold);
+  border-color: var(--hold-line);
+  background: var(--hold-soft);
+}
+
+.monitor-theme .alert-switch .alert-switch-icon {
+  width: 14px;
+  height: 14px;
+  flex: none;
+}
+
+.monitor-theme .alert-switch .alert-switch-state {
+  font-weight: 400;
+  color: var(--t-2);
+}
+
+.monitor-theme .alert-switch[aria-checked='false'] {
+  color: var(--t-3);
+  background: transparent;
+  border-color: var(--line);
+  border-style: dashed;
+}
+
+.monitor-theme .alert-switch[aria-checked='false'] .alert-switch-state {
+  color: var(--t-3);
+}
+
+.monitor-theme .alert-switch:focus-visible {
+  outline: 2px solid var(--accent-cyan);
+  outline-offset: 2px;
+}
+
+.monitor-theme .btn.alert-switch-card {
+  display: inline-flex;
+  align-items: center;
+}
+
+@media (max-width: 1023.98px) {
+  .monitor-theme .btn.alert-switch-card {
+    min-height: 44px;
+  }
+}
+
+.monitor-theme .alert-switch-none {
+  display: inline-flex;
+  align-items: center;
+  min-height: 30px;
+  padding: 0 var(--space-sm);
+  font-size: 12px;
+  color: var(--t-3);
+  border: 1px dashed var(--line);
+  border-radius: 6px;
+}
+
+.monitor-theme .alert-switch-help {
+  max-width: 75ch;
+  margin-top: var(--space-sm);
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--t-3);
+}
+
+/* 1024–1279 px: a célula de ações fica fora da área visível da tabela (incumbente); o interruptor
+   da linha vai para a célula Status, abaixo da pílula e do estado do mercado. Um por largura. */
+.monitor-theme .row-action.alert-switch-compact {
+  display: none;
+}
+
+@media (max-width: 1279.98px) {
+  .monitor-theme .actions-cell .row-action.alert-switch {
+    display: none;
+  }
+
+  .monitor-theme .row-action.alert-switch-compact {
+    display: inline-flex;
+    min-width: 0;
+    margin-top: var(--space-sm);
+  }
+}
+
+/* Ações da linha com o interruptor (ajuste de Alan na Aprovação de Design, 28/10/2026): botões da
+   mesma largura por coluna, rótulo em uma linha; coluna única abaixo de 1600 px e grade 2 x 2 a
+   partir de 1600 px, sem alargar a tabela. */
+.monitor-theme .actions-cell .row-actions:has(.alert-switch) {
+  display: grid;
+  grid-template-columns: max-content;
+  justify-content: end;
+}
+
+.monitor-theme .actions-cell .row-actions:has(.alert-switch) > * {
+  white-space: nowrap;
+}
+
+@media (min-width: 1600px) {
+  .monitor-theme .actions-cell .row-actions:has(.alert-switch) {
+    grid-template-columns: repeat(2, max-content);
+  }
+}
+
+/* Status da página (interruptor): anúncio do que mudou ou do erro. */
+.monitor-theme .monitor-alert-status {
+  margin: 0 0 var(--space-md);
+  padding: var(--space-sm) var(--space-md);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-lg);
+  background: var(--bg-elevated);
+  color: var(--text-secondary);
+  font-size: var(--text-base);
+  max-width: 75ch;
+}
+
+.monitor-theme .monitor-alert-status:empty {
+  display: none;
+}
+
+.monitor-theme .card-asset-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: 6px 10px;
+  padding: 8px 14px 0;
+}
+
+.monitor-theme .card-asset-meta .asset-identity {
+  margin-top: 0;
+  max-width: none;
+}
+
+.monitor-theme .card-asset-meta .market-state,
+.monitor-theme .card-asset-meta .market-hold-note {
+  flex-basis: 100%;
+  margin-top: 0;
+  max-width: 75ch;
+}
+
+.monitor-theme .asset-configuration {
+  display: block;
+}
+
+.monitor-theme .portfolio-help {
+  color: #b7bdc6;
+  font-size: 12px;
+  margin-top: 8px;
+}
+
+.monitor-theme .legacy-unavailable {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.monitor-theme .legacy-unavailable-why {
+  margin: 6px 0 0;
+  font-size: 11px;
+  line-height: 1.4;
+  color: #b7bdc6;
+  max-width: 32ch;
+  margin-left: auto;
+}
+
+.monitor-theme .detail-foot .legacy-unavailable-why,
+.monitor-theme .mobile-card .legacy-unavailable-why {
+  flex-basis: 100%;
+  max-width: 75ch;
+}
+
+.monitor-theme .alert-origin-banner {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 0 0 16px;
+  padding: 12px 14px;
+  border: 1px solid rgba(252, 213, 53, 0.35);
+  border-radius: 10px;
+  background: rgba(252, 213, 53, 0.07);
+  color: var(--t-2);
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.monitor-theme .alert-origin-banner > div {
+  flex: 1;
+  max-width: 75ch;
+}
+
+.monitor-theme .alert-origin-banner-icon {
+  width: 18px;
+  height: 18px;
+  flex: none;
+  color: var(--accent-primary);
+}
+
+.monitor-theme .alert-origin-banner-link {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  padding: 0 14px;
+  border-radius: 8px;
+  background: var(--accent-primary);
+  color: #0b0e11;
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.monitor-theme .alert-origin-banner-link:focus-visible {
+  outline: 2px solid var(--accent-cyan);
+  outline-offset: 2px;
+}
+
+@media (max-width: 640px) {
+  .monitor-theme .alert-origin-banner {
+    flex-wrap: wrap;
+  }
+
+  .monitor-theme .alert-origin-banner-link {
+    width: 100%;
+    justify-content: center;
   }
 }

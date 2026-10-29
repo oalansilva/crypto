@@ -12,6 +12,41 @@ export interface OpportunitySignalHistoryItem {
     explanation?: TradeExplanation | null;
 }
 
+/** Card #1122: fonte, sessão e ajuste do favorito, com os rótulos curto, compacto e longo. */
+export interface OpportunityConfiguration {
+    data_source?: string | null;
+    session?: string | null;
+    adjustment?: string | null;
+    label_short?: string | null;
+    label_compact?: string | null;
+    label_long?: string | null;
+}
+
+/** Card #1122: estado do mercado da linha (pregão de NY para ação/ETF; cripto 24/7). */
+export interface MarketState {
+    state: 'open' | 'closed' | 'stale' | 'insufficient' | string;
+    reason?: string | null;
+    session_state?: string | null;
+    closes_at?: string | null;
+    next_open?: string | null;
+    early_close?: boolean | null;
+    last_candle?: string | null;
+    expected_candle?: string | null;
+    stale_since?: string | null;
+    available?: number | null;
+    required?: number | null;
+    /** Linha em espera por outro tempo gráfico do mesmo ativo (série atrasada e os horários dela). */
+    stale_timeframe?: string | null;
+    stale_detail?: MarketStaleDetail | null;
+}
+
+/** Card #1122 (residual P2 da w3): a série atrasada que retém a linha (ex.: o 15m de um 1d). */
+export interface MarketStaleDetail {
+    timeframe?: string | null;
+    last_candle?: string | null;
+    expected_candle?: string | null;
+}
+
 export interface Opportunity {
     id: number;
     symbol: string;
@@ -55,6 +90,15 @@ export interface Opportunity {
     entry_price?: number | null;
     stop_price?: number | null;
     distance_to_stop_pct?: number | null;
+
+    /** Card #1122: classe, moeda, configuração, estado do mercado e alerta ligado do favorito (d2). */
+    asset_class?: 'crypto' | 'stock' | 'etf' | string | null;
+    currency?: string | null;
+    configuration?: OpportunityConfiguration | null;
+    market_state?: MarketState | null;
+    notify_telegram?: boolean;
+    candle_time?: string | null;
+    is_curated_fallback?: boolean;
 }
 
 export const PROTECTED_STRATEGY_LABEL = 'Estratégia protegida';

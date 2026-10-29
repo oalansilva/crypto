@@ -31,7 +31,14 @@ test('Combo configuration uses authenticated fetch for protected combo execution
   assert.match(source, /import \{ authFetch \} from ['"]@\/lib\/authFetch['"]/)
   assert.match(source, /authFetch\(`\$\{API_BASE_URL\}\/combos\/meta\/\$\{templateName\}`/)
   assert.match(source, /authFetch\(`\$\{API_BASE_URL\}\/combos\/optimize`/)
-  assert.match(source, /authFetch\(`\$\{API_BASE_URL\}\/combos\/backtest\/batch`/)
+  // Lote (card #1120): o hook compartilhado fala com o servidor, sempre com authFetch.
+  assert.match(source, /batch\.requestPreview\(/)
+  const hook = await readFile(path.resolve(__dirname, '../src/hooks/useBatchJob.ts'), 'utf8')
+  assert.match(hook, /import \{ authFetch \} from ['"]\.\.\/lib\/authFetch['"]/)
+  assert.match(hook, /const BASE = `\$\{API_BASE_URL\}\/combos\/backtest\/batch`/)
+  assert.match(hook, /authFetch\(`\$\{BASE\}\/preview`/)
+  assert.match(hook, /authFetch\(BASE,/)
+  assert.doesNotMatch(hook, /[^h]fetch\(`\$\{BASE\}/)
   assert.doesNotMatch(source, /await fetch\(`\$\{API_BASE_URL\}\/combos\//)
 })
 

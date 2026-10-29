@@ -128,6 +128,46 @@ class IncrementalLoader:
             except Exception:
                 pass
 
+    @staticmethod
+    def _unified_history_enabled(symbol) -> bool:
+        """Card #1118: com MARKET_HISTORY_UNIFIED=1 a cripto lê da autoridade única (PostgreSQL).
+
+        O carregador deixa de baixar da CCXT por conta própria e de manter uma cópia
+        Parquet própria: o histórico é completado pelo HistoryService e o Parquet vira
+        cache derivado e versionado.
+        """
+        # ``unified_enabled`` lê o mesmo ``MARKET_HISTORY_UNIFIED`` e aceita o ligar por execução
+        # (``force_unified``), que o lote do card #1120 usa por ativo.
+        from app.services.market_history import unified_enabled
+
+        return unified_enabled() and "/" in str(symbol or "")
+
+    def _fetch_unified(
+        self,
+        symbol,
+        timeframe,
+        since_str,
+        until_str,
+        read_only,
+        full_history_if_empty,
+        allow_large_backfill,
+    ):
+        from app.services.market_history.facade import loader_frame
+
+        since_dt = self._parse_datetime_utc(since_str, pd.Timestamp("2017-01-01", tz="UTC"))
+        until_dt = self._parse_datetime_utc(until_str, pd.Timestamp.now(tz="UTC"))
+        if until_dt < since_dt:
+            since_dt, until_dt = until_dt, since_dt
+        return loader_frame(
+            symbol,
+            str(timeframe).strip().lower(),
+            since_dt,
+            until_dt,
+            read_only=read_only,
+            full_history_if_empty=full_history_if_empty,
+            allow_large_backfill=allow_large_backfill,
+        )
+
     def fetch_data(
         self,
         symbol,
@@ -147,6 +187,16 @@ class IncrementalLoader:
         Args:
             _retry_count: Internal parameter to prevent infinite recursion (max 1 retry)
         """
+        if self._unified_history_enabled(symbol):
+            return self._fetch_unified(
+                symbol,
+                timeframe,
+                since_str,
+                until_str,
+                read_only,
+                full_history_if_empty,
+                allow_large_backfill,
+            )
         # Normalize limit: some callers may explicitly pass None
         # Ensure we always use a positive integer to avoid TypeError in len(ohlcv) < limit
         if not isinstance(limit, int) or limit <= 0:
@@ -627,6 +677,18 @@ class IncrementalLoader:
             allow_large_backfill=allow_large_backfill,
         )
     
+    def unified_coverage(self, symbol, timeframe):
+        """Cobertura da série na autoridade única: ``(início, fim)`` em UTC ou ``None``."""
+        from app.services.market_history.facade import get_history_service
+        from app.services.market_history.model import crypto_spec
+
+        service = get_history_service()
+        series = service.resolve(crypto_spec(symbol, str(timeframe).strip().lower()))
+        covered = service.read(series, limit=1).coverage["covered"]
+        if not covered["start"] or not covered["end"]:
+            return None
+        return pd.Timestamp(covered["start"]), pd.Timestamp(covered["end"])
+
     def check_intraday_availability(self, symbol, timeframe='15m', since_str=None):
         """
         Check if intraday data is available in cache for the requested period.
@@ -639,6 +701,26 @@ class IncrementalLoader:
         Returns:
             dict with 'available' (bool), 'coverage' (dict with start/end dates), 'reason' (str if not available)
         """
+        if self._unified_history_enabled(symbol):
+            extent = self.unified_coverage(symbol, timeframe)
+            if extent is None:
+                return {
+                    'available': False,
+                    'reason': f'No stored {timeframe} history for {symbol}',
+                    'coverage': None,
+                }
+            start_date, end_date = extent
+            coverage = {'start': start_date.isoformat(), 'end': end_date.isoformat()}
+            if since_str:
+                since_dt = pd.to_datetime(since_str)
+                since_dt = since_dt.tz_localize('UTC') if since_dt.tz is None else since_dt
+                if start_date > since_dt:
+                    return {
+                        'available': False,
+                        'reason': f'Stored data starts at {start_date.date()}, but requested from {since_dt.date()}',
+                        'coverage': coverage,
+                    }
+            return {'available': True, 'coverage': coverage}
         parquet_path = self._get_parquet_path(symbol, timeframe)
         
         if not os.path.exists(parquet_path):

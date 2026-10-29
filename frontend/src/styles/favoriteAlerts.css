@@ -1,0 +1,142 @@
+/* Card #1122 — Favoritos (a estrela é a porta do Monitor e do alerta), vitrine do catálogo e modais.
+   Portado do `delta.css` do protótipo aprovado (frontend/public/prototypes/card-1122-favoritos-alertas-acoes-etfs/).
+   Design d2: Favoritos não tem mais "Alertar" (coluna, sino, "Alertar: on/off" e "Fora da carteira"). */
+
+/* ---------- Favoritos: ajuda das estrelas, status e legenda "No Monitor"/"Fora do Monitor" ---------- */
+.favorites-workbench .fav-monitor-help {
+  margin: var(--space-sm) 0 0;
+  max-width: 75ch;
+  font-size: var(--text-sm);
+  line-height: 1.5;
+  color: var(--fav-muted-strong);
+}
+
+.favorites-workbench .fav-star-status {
+  margin: var(--space-sm) 0 0;
+  padding: var(--space-sm) var(--space-md);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-lg);
+  background: var(--bg-elevated);
+  color: var(--text-secondary);
+  font-size: var(--text-base);
+  max-width: 75ch;
+}
+
+.favorites-workbench .fav-star-status:empty {
+  display: none;
+}
+
+.favorites-workbench .fav-monitor-legend {
+  display: block;
+  margin-top: var(--space-xs);
+  font-size: var(--text-xs);
+  line-height: 1.3;
+  text-align: center;
+  color: var(--fav-muted-strong);
+}
+
+.favorites-workbench .fav-monitor-legend[data-on='true'] {
+  color: var(--accent-success);
+}
+
+.favorites-workbench .fav-mobile-stars .fav-monitor-legend {
+  align-self: center;
+  margin: 0 0 0 var(--space-sm);
+  text-align: left;
+}
+
+/* Celular: a estrela decide Monitor e alerta; alvo de 44 px. */
+@media (max-width: 1023.98px) {
+  .favorites-workbench .fav-mobile-stars [aria-label='Prioridade por estrelas'] button {
+    width: 44px;
+    height: 44px;
+    min-height: 44px;
+  }
+}
+
+.favorites-workbench .fav-refresh-status.waiting {
+  color: #929aa5;
+}
+
+.favorites-workbench .strategy-stack .fav-refresh-status[data-testid='fav-refresh-status'] {
+  white-space: normal;
+  overflow: visible;
+  text-overflow: clip;
+}
+
+.favorites-workbench .alert-catalog-banner {
+  margin: 0 0 14px;
+  padding: 12px 14px;
+  border: 1px solid rgba(252, 213, 53, 0.35);
+  border-radius: 10px;
+  background: rgba(252, 213, 53, 0.07);
+  font-size: 13px;
+  line-height: 1.5;
+  max-width: 100%;
+}
+
+/* ---------- Resultado: modal de salvar ação/ETF ---------- */
+.save-favorite-identity {
+  display: grid;
+  gap: 2px;
+  padding: 10px 12px;
+  border: 1px solid #474d57;
+  border-radius: 8px;
+  font-size: 13px;
+  color: #eaecef;
+}
+
+.save-favorite-identity span {
+  color: #b7bdc6;
+  font-size: 12px;
+}
+
+.save-favorite-note {
+  font-size: 12px;
+  line-height: 1.5;
+  color: #b7bdc6;
+  margin: 0;
+  max-width: 75ch;
+}
+
+.save-favorite-duplicate {
+  font-size: 13px;
+  color: #f6465d;
+  margin: 0;
+}
+
+.save-favorite-success {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
+  font-size: 13px;
+  color: #0ecb81;
+  margin: 0;
+}
+
+.save-favorite-success p {
+  margin: 0;
+}
+
+.save-favorite-success-link {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  padding: 0 14px;
+  border-radius: 8px;
+  border: 1px solid #fcd535;
+  color: #fcd535;
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.save-favorite-success-link:focus-visible {
+  outline: 2px solid #3b82f6;
+  outline-offset: 2px;
+}
+
+/* ---------- Descoberta: nota do destino ---------- */
+.discovery-destination-note {
+  max-width: 75ch;
+}

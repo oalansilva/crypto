@@ -1,4 +1,6 @@
 # file: backend/app/api.py
+import asyncio
+import logging
 import os
 import threading
 import time
@@ -78,14 +80,19 @@ async def list_presets():
 
 @router.get("/exchanges/binance/symbols")
 async def get_binance_symbols():
-    """Get all available USDT trading pairs from Binance (excludes unsupported/delisted)."""
-    from app.services.exchange_service import ExchangeService
-    from app.services.opportunity_service import _is_unsupported_symbol
+    """Pares cripto USDT negociáveis, lidos do catálogo de ativos (#1117).
 
-    service = ExchangeService()
-    raw = service.fetch_binance_symbols()
-    symbols = [s for s in raw if not _is_unsupported_symbol(s)]
+    Mantido por compatibilidade; pausados e removidos não entram. Sem lista
+    válida de cripto a rota responde 503 com motivo, nunca lista vazia nem fixa.
+    """
+    from app.services.asset_catalog_service import list_tradable_crypto_symbols
 
+    symbols = await asyncio.to_thread(list_tradable_crypto_symbols)
+    if symbols is None:
+        raise HTTPException(
+            status_code=503,
+            detail="Lista de cripto da Binance indisponível agora. Tente de novo em instantes.",
+        )
     return {"symbols": symbols, "count": len(symbols)}
 
 
@@ -413,6 +420,33 @@ def _schedule_full_history_backfill(raw_symbol: str, timeframe: str) -> str | No
         return None
 
 
+def _attach_history_coverage(payload: Dict[str, Any], raw_symbol: str, timeframe: str) -> None:
+    """Card #1118: o gráfico lê pela mesma autoridade das análises e devolve a cobertura."""
+
+    from app.services.market_history import unified_enabled
+
+    if not unified_enabled() or "coverage" in payload:
+        return
+    candles = payload.get("candles") or []
+    if not isinstance(candles, list):
+        return
+    try:
+        from app.services.market_history.facade import get_history_service
+        from app.services.market_history.model import crypto_spec
+
+        service = get_history_service()
+        series = service.resolve(crypto_spec(raw_symbol, timeframe))
+        start = candles[0].get("timestamp_utc") if candles else None
+        end = candles[-1].get("timestamp_utc") if candles else None
+        result = service.read(series, start, end, limit=1)
+        payload["coverage"] = result.coverage
+        payload["data_version"] = result.coverage["version_label"]
+    except Exception:  # a cobertura nunca derruba o gráfico
+        logging.getLogger(__name__).warning(
+            "Cobertura indisponível para %s %s", raw_symbol, timeframe
+        )
+
+
 @router.get("/market/candles")
 async def get_market_candles(
     symbol: str = Query(..., description="Ticker or pair (e.g. NVDA or BTC/USDT)"),
@@ -423,6 +457,15 @@ async def get_market_candles(
         description="When true, return all persisted candles for the symbol/timeframe when available.",
     ),
 ):
+    payload = await _market_candles_payload(symbol, timeframe, limit, full_history)
+    if isinstance(payload, dict) and payload.get("candles") is not None:
+        raw_symbol = str(symbol or "").strip()
+        tf = str(timeframe or "").strip().lower()
+        _attach_history_coverage(payload, raw_symbol, tf)
+    return payload
+
+
+async def _market_candles_payload(symbol, timeframe, limit, full_history):
     raw_symbol = str(symbol or "").strip()
     if not raw_symbol:
         raise HTTPException(status_code=400, detail="Query param 'symbol' must not be empty.")

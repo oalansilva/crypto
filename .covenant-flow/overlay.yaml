@@ -3,6 +3,8 @@ board:
   number: 1
   status_field_id: PVTSSF_lAHOAAHtBM4BV8b2zhRUdMM
   project_id: PVT_kwHOAAHtBM4BV8b2
+  executor:
+    repo: oalansilva/crypto-portao
   status_options:
     Em Refinamento: fed46e78
     Todo: 4c26ac72
@@ -25,7 +27,7 @@ design_globs:
 - frontend/public/prototypes/**
 integration_branch: develop
 production_branch: main
-pin: v1.1.22
+pin: v1.1.26
 canonical_paths:
   dev: /srv/apps/dev/criptofarol/source
   prod: /srv/apps/prod/criptofarol/source
@@ -57,6 +59,7 @@ environments:
     - criptofarol-dev-frontend.service
     - criptofarol-dev-runtime-worker.service
     - criptofarol-dev-discovery-worker.service
+    - criptofarol-dev-batch-worker.service
     - criptofarol-dev-candle-writer.service
     - criptofarol-dev-telegram-alert-scan.service
   prod:
@@ -69,6 +72,7 @@ environments:
     - criptofarol-prod-leads.service
     - criptofarol-prod-runtime-worker.service
     - criptofarol-prod-discovery-worker.service
+    - criptofarol-prod-batch-worker.service
     - criptofarol-prod-candle-writer.service
     - criptofarol-prod-telegram-alert-scan.service
     oneshot_services:

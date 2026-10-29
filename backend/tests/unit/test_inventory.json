@@ -21,6 +21,15 @@
       "evidence": "PostgreSQL fixture and route assertions"
     },
     {
+      "file": "backend/tests/unit/test_alembic_single_head.py",
+      "protected_behavior": "Cadeia de migrações do Alembic com uma única head (o alembic upgrade head do ./restart recusa várias) e merge 20261028_0002 unindo as heads do #1122 e do #1123",
+      "production_reachability": "reachable",
+      "persistence_need": "pure",
+      "regression_risk": "high",
+      "decision": "keep",
+      "evidence": "ScriptDirectory sobre backend/alembic.ini e backend/alembic/versions, sem banco"
+    },
+    {
       "file": "backend/tests/unit/test_api_coverage.py",
       "protected_behavior": "API health, candles and metadata",
       "production_reachability": "reachable",
@@ -40,12 +49,12 @@
     },
     {
       "file": "backend/tests/unit/test_batch_backtest_async_support.py",
-      "protected_behavior": "batch queue/store/task lifecycle",
+      "protected_behavior": "batch queue/store/task lifecycle: lote no PostgreSQL (fila, hooks e tarefa) e o armazém antigo do Redis para lotes anteriores ao #1120",
       "production_reachability": "reachable",
-      "persistence_need": "pure",
+      "persistence_need": "postgres",
       "regression_risk": "medium",
       "decision": "keep",
-      "evidence": "in-memory store and fake Redis/Celery"
+      "evidence": "postgres_isolation nos testes do lote durável; LegacyBatchStore com Redis simulado e memória"
     },
     {
       "file": "backend/tests/unit/test_backtest_execution_costs.py",
@@ -147,6 +156,141 @@
       "evidence": "frozen OHLCV, exact 568 numerical edges, adversarial snapshots/index/ABA/LRU and compiler fallback invariants"
     },
     {
+      "file": "backend/tests/unit/test_card_1117_asset_catalog_adapters.py",
+      "protected_behavior": "adaptadores do catálogo Binance: reconciliação por ac, exclusões por motivo, mapa de estados e schema inesperado",
+      "production_reachability": "reachable",
+      "persistence_need": "pure",
+      "regression_risk": "high",
+      "decision": "keep",
+      "evidence": "parse_spot_exchange_info e parse_equity_payloads com payloads sintéticos, sem rede nem banco"
+    },
+    {
+      "file": "backend/tests/unit/test_card_1117_asset_catalog_api.py",
+      "protected_behavior": "rotas /api/assets/catalog, compatibilidade de /exchanges/binance/symbols e recusa 422 estruturada em otimização e lote",
+      "production_reachability": "reachable",
+      "persistence_need": "postgres",
+      "regression_risk": "high",
+      "decision": "keep",
+      "evidence": "TestClient com catálogo semeado no PostgreSQL de teste e isolamento por fixture unit_database_url"
+    },
+    {
+      "file": "backend/tests/unit/test_card_1117_asset_catalog_migration.py",
+      "protected_behavior": "migração Alembic de asset_catalog e asset_catalog_refresh em schema privado",
+      "production_reachability": "reachable",
+      "persistence_need": "postgres",
+      "regression_risk": "medium",
+      "decision": "keep",
+      "evidence": "upgrade e downgrade reais, colunas conferidas contra os modelos, schema descartável"
+    },
+    {
+      "file": "backend/tests/unit/test_card_1117_asset_catalog_service.py",
+      "protected_behavior": "catálogo persistido: atualização, removido preservado, falha sem esvaziar, pesquisa, Todos do filtro e validação das análises",
+      "production_reachability": "reachable",
+      "persistence_need": "postgres",
+      "regression_risk": "high",
+      "decision": "keep",
+      "evidence": "refresh_group com fetchers falsos, consulta e guarda sobre o PostgreSQL de teste com isolamento por fixture unit_database_url"
+    },
+    {
+      "file": "backend/tests/unit/test_card_1118_api_and_catalog.py",
+      "protected_behavior": "rota GET /market/history (autenticação, ação e ETF coletados só pela consulta), /market/candles só cripto com cobertura, recusa por classe e 'Todos do filtro' sem coleta, catálogo com cobertura por timeframe",
+      "production_reachability": "reachable",
+      "persistence_need": "postgres",
+      "regression_risk": "high",
+      "decision": "keep",
+      "evidence": "FakeEquityProvider no formato da rota da Binance, schema privado descartável por teste (unit_database_url) e TestClient autenticado; garante que nenhuma página do catálogo dispara coleta"
+    },
+    {
+      "file": "backend/tests/unit/test_card_1118_calendar_and_provider.py",
+      "protected_behavior": "calendário XNYS (78 candles de 5m por pregão nas duas viradas de horário de verão, feriados, meio-pregão), 15m montado do 5m e adaptador BinanceEquityProvider (488006 em HTTP 200, formato mudou, 429/418/5xx, página vazia confirmada)",
+      "production_reachability": "reachable",
+      "persistence_need": "pure",
+      "regression_risk": "high",
+      "decision": "keep",
+      "evidence": "payloads sintéticos e transporte httpx falso, sem rede nem banco; exchange_calendars real"
+    },
+    {
+      "file": "backend/tests/unit/test_card_1118_consumers.py",
+      "protected_behavior": "consumidores de cripto pelo HistoryService: escritor canônico, IncrementalLoader sem CCXT, combo/otimização/descoberta, paridade gráfico x backtest, amostra congelada por SHA-256 e proveniência",
+      "production_reachability": "reachable",
+      "persistence_need": "postgres",
+      "regression_risk": "high",
+      "decision": "keep",
+      "evidence": "schema privado descartável (unit_database_url), CCXT falso e segmentos Parquet em tmp_path; backtest antes e depois da troca com os mesmos números"
+    },
+    {
+      "file": "backend/tests/unit/test_card_1118_history_service.py",
+      "protected_behavior": "HistoryService: séries separadas por ajuste e fonte, coleta paginada que retoma, lock por série, limitador compartilhado (2 req/s, 2 séries, Retry-After, circuito de 5 min), pregão regular, lacunas, versão por split e cobertura honesta",
+      "production_reachability": "reachable",
+      "persistence_need": "postgres",
+      "regression_risk": "high",
+      "decision": "keep",
+      "evidence": "schema privado descartável (unit_database_url) com provedor falso programável por página; falhas viram cobertura, não lista vazia"
+    },
+    {
+      "file": "backend/tests/unit/test_card_1118_migration_and_cache.py",
+      "protected_behavior": "revisão Alembic 20261023_0001 (idempotente e reversível), script de migração (cópia, importação do Parquet, divergências, conferência e troca de nomes reversível) e cache Parquet derivado (refazer sem a Binance, versão e teto de 3 GiB)",
+      "production_reachability": "reachable",
+      "persistence_need": "postgres",
+      "regression_risk": "high",
+      "decision": "keep",
+      "evidence": "schema privado descartável (unit_database_url), banco legado semeado e Parquet antigo em tmp_path"
+    },
+    {
+      "file": "backend/tests/unit/test_card_1118_optimizer_regression.py",
+      "protected_behavior": "otimização de cripto dá os mesmos números antes e depois de MARKET_HISTORY_UNIFIED, com a amostra congelada no início",
+      "production_reachability": "reachable",
+      "persistence_need": "postgres",
+      "regression_risk": "high",
+      "decision": "keep",
+      "evidence": "ComboOptimizer real com templates congelados do card 945, Parquet antigo contra o HistoryService, manifesto conferido"
+    },
+    {
+      "file": "backend/tests/unit/test_card_1118_result_provenance.py",
+      "protected_behavior": "resultado da descoberta grava fonte, classe, sessão, ajuste, origem do timeframe, períodos, versão e snapshot_id da série",
+      "production_reachability": "reachable",
+      "persistence_need": "postgres",
+      "regression_risk": "high",
+      "decision": "keep",
+      "evidence": "run_combination com sweep semeado no PostgreSQL de teste isolado (postgres_isolation)"
+    },
+    {
+      "file": "backend/tests/unit/test_card_1119_equity_backtest_api.py",
+      "protected_behavior": "POST /api/combos/backtest e /optimize de 1 ação/ETF (identidade, precisão efetiva, convenções, taxa por classe, coleta só do que usa, recusa do lote, da Descoberta e do marcado, 1m/5m, favoritar ação/ETF 422)",
+      "production_reachability": "reachable",
+      "persistence_need": "postgres",
+      "regression_risk": "high",
+      "decision": "keep",
+      "evidence": "FakeEquityProvider no formato da Binance, schema privado descartável (unit_database_url) e TestClient; trade com a taxa de 0,10% de ação/ETF"
+    },
+    {
+      "file": "backend/tests/unit/test_card_1119_equity_optimizer.py",
+      "protected_behavior": "ComboOptimizer de ação/ETF: intrabar de 15m montado do 5m, queda para o candle do tempo gráfico com o trecho sem intradiário, 1h no pregão e taxa de ação/ETF no lucro",
+      "production_reachability": "reachable",
+      "persistence_need": "postgres",
+      "regression_risk": "high",
+      "decision": "keep",
+      "evidence": "ComboOptimizer real com FakeEquityProvider e schema privado descartável (unit_database_url)"
+    },
+    {
+      "file": "backend/tests/unit/test_card_1119_equity_timeframes.py",
+      "protected_behavior": "1h e 4h de ação/ETF montados do 5m no pregão (pregão cheio, meio-pregão, viradas do horário de verão, fim de semana e feriado, 5m faltando, split da NVDA) e cobertura 'montado do 5m'",
+      "production_reachability": "reachable",
+      "persistence_need": "postgres",
+      "regression_risk": "high",
+      "decision": "keep",
+      "evidence": "derive_blocks sobre o calendário XNYS real e HistoryService em schema privado descartável (unit_database_url)"
+    },
+    {
+      "file": "backend/tests/unit/test_card_1119_stop_gap.py",
+      "protected_behavior": "gap no stop (long e short, toque sem gap, retomada, 15m), taxa por classe e regressão cripto antes/depois em BTC/USDT 1d e 4h: sem gap idêntico, toda diferença é trade com gap",
+      "production_reachability": "reachable",
+      "persistence_need": "pure",
+      "regression_risk": "high",
+      "decision": "keep",
+      "evidence": "rotinas legada, rápida e compilada sobre amostra Parquet fixa e saída gravada com a rotina anterior; sem banco nem rede"
+    },
+    {
       "file": "backend/tests/unit/test_card_1074_combo_templates.py",
       "protected_behavior": "card 1074 combo template and VWAP indicator smoke backtests",
       "production_reachability": "reachable",
@@ -172,6 +316,15 @@
       "regression_risk": "high",
       "decision": "keep",
       "evidence": "explicit postgres_isolation fixture; real initial seed and named refresh; other definitions and saved strategy preserved"
+    },
+    {
+      "file": "backend/tests/unit/test_celery_queue_consumers.py",
+      "protected_behavior": "card 1120 Celery queue consumers: every queue in celery_app.task_routes has exactly one DEV and one PROD worker template consuming it with -Q, installed by the installer and listed in the overlay services",
+      "production_reachability": "reachable",
+      "persistence_need": "pure",
+      "regression_risk": "high",
+      "decision": "keep",
+      "evidence": "reads celery_app.task_routes and ops/systemd templates, installer and overlay; fails when a routed queue (e.g. batch_backtest) has no worker unit"
     },
     {
       "file": "backend/tests/unit/test_chart_pattern_service.py",
@@ -298,6 +451,15 @@
       "regression_risk": "high",
       "decision": "keep",
       "evidence": "27 daily bars skip ComboOptimizer; empty listing cut; sufficient listing still optimizes; insufficient-only → completed; skipped-only operational_failure remains"
+    },
+    {
+      "file": "backend/tests/unit/test_discovery_ops_scripts.py",
+      "protected_behavior": "card 1110 operator scripts for the per-environment Discovery ceiling: admission probe against a unit cgroup and circuit acknowledgement for DEV or PROD",
+      "production_reachability": "reachable",
+      "persistence_need": "pure",
+      "regression_risk": "high",
+      "decision": "keep",
+      "evidence": "unit and cgroup derived from the environment, profile limits compared exactly, missing cgroup refused, circuit key pinned to --env, all under tmp_path with stubbed systemctl/session"
     },
     {
       "file": "backend/tests/unit/test_discovery_ranking_metrics.py",
@@ -624,6 +786,15 @@
       "evidence": "PostgreSQL snapshot session fixture"
     },
     {
+      "file": "backend/tests/unit/test_prod_discovery_installer.py",
+      "protected_behavior": "card 1110 PROD Discovery installer contract: idle ledger wait, deferral without touching the unit, stop only Discovery, leftover-process guard and unit ceilings",
+      "production_reachability": "reachable",
+      "persistence_need": "pure",
+      "regression_risk": "high",
+      "decision": "keep",
+      "evidence": "real installer copied to temp roots with stub systemctl/sleep and a fake probe; asserts call order, deferral exit 75, only the Discovery unit written, DEV guard unchanged"
+    },
+    {
       "file": "backend/tests/unit/test_retrospectives_flow.py",
       "protected_behavior": "workflow retrospective service/routes",
       "production_reachability": "reachable",
@@ -802,6 +973,141 @@
       "regression_risk": "high",
       "decision": "keep",
       "evidence": "PostgreSQL workflow session fixture"
+    },
+    {
+      "file": "backend/tests/unit/test_card_1120_batch_plan.py",
+      "protected_behavior": "aceite por classe e plano do lote (roda/fora, motivo por ativo, o que precisa de coleta, regra de fora da Otimização), preview sem coleta, 422 só quando nada roda, 409 batch_paused, resume e lote ativo",
+      "production_reachability": "reachable",
+      "persistence_need": "postgres",
+      "regression_risk": "high",
+      "decision": "keep",
+      "evidence": "catálogo semeado no PostgreSQL de teste (unit_database_url), cobertura simulada e TestClient"
+    },
+    {
+      "file": "backend/tests/unit/test_card_1120_batch_control.py",
+      "protected_behavior": "estado durável do lote e dos itens, claim exclusivo, pausa/retomada/encerramento ao fim da etapa, lote antigo do Redis",
+      "production_reachability": "reachable",
+      "persistence_need": "postgres",
+      "regression_risk": "high",
+      "decision": "keep",
+      "evidence": "PostgreSQL de teste (unit_database_url) com coleta e otimizador simulados"
+    },
+    {
+      "file": "backend/tests/unit/test_card_1120_batch_run.py",
+      "protected_behavior": "lote misto cripto + ação + ETF pelo executor real: favoritos com precisão e janela, mesma amostra, 5m, problemas que não param o lote, progresso de coleta",
+      "production_reachability": "reachable",
+      "persistence_need": "postgres",
+      "regression_risk": "high",
+      "decision": "keep",
+      "evidence": "ComboOptimizer real, HistoryService com Binance Spot e Ações simuladas em schema privado (unit_database_url)"
+    },
+    {
+      "file": "backend/tests/unit/test_card_1120_favorites_asset.py",
+      "protected_behavior": "GET /api/favorites/ com asset de qualquer classe, contrato de unicidade com data_source e asset, favoritar ação/ETF pela tela aceito desde o #1122 (sem Alertar, 409 da mesma configuração), Monitor com ação/ETF",
+      "production_reachability": "reachable",
+      "persistence_need": "postgres",
+      "regression_risk": "high",
+      "decision": "keep",
+      "evidence": "PostgreSQL de teste (unit_database_url) e TestClient"
+    },
+    {
+      "file": "backend/tests/unit/test_card_1120_combination_errors.py",
+      "protected_behavior": "combinação com erro é descartada e contada (execute_stream tolerante × estrito, Descoberta segue abortando), ativo só falha sem nenhuma combinação válida, lote grava o favorito com as válidas e mostra a contagem, template bollinger_rsi_adx avalia toda a faixa e a migração de dados corrige só esse registro",
+      "production_reachability": "reachable",
+      "persistence_need": "postgres",
+      "regression_risk": "high",
+      "decision": "keep",
+      "evidence": "ComboOptimizer real com dados sintéticos, executor real do lote e migração Alembic em schema privado (unit_database_url)"
+    },
+    {
+      "file": "backend/tests/unit/test_card_1121_discovery_multiclass.py",
+      "protected_behavior": "Descoberta com cripto, ação e ETF na mesma varredura: aquisição e congelamento por classe (binance_equity), amostra única por ativo e tempo reaproveitada por outras combinações e novas tentativas, sem candles como amostra insuficiente com motivo, falha de coleta nas 3 tentativas sem derrubar a varredura, cobertura pelo calendário de NY, identidade/precisão/convenções por resultado, estado por ativo, filtro de classe no ranking, promoção de ação/ETF sem nível de estrela e varredura só de cripto inalterada",
+      "production_reachability": "reachable",
+      "persistence_need": "postgres",
+      "regression_risk": "high",
+      "decision": "keep",
+      "evidence": "PostgreSQL de teste (unit_database_url) com postgres_isolation, coleta e otimizador simulados e histórico de ações em schema privado"
+    },
+    {
+      "file": "backend/tests/unit/test_card_1122_favorite_alerts.py",
+      "protected_behavior": "Alertas do Telegram por favorito (#1122): origem só nos favoritos marcados do dono, estado por favorito com base na primeira leitura, evento com chave e reserva (sending vira unknown, failed volta), sem limite por hora para sinal e atraso, matriz de ação/ETF na carteira, falha da carteira só pausa cripto, aviso único de atraso por episódio e recuperação silenciosa, mercado fechado sem mensagem, transição só para quem recebia pelo catálogo, mensagem com configuração e candle e sem ordem, 409 da mesma configuração e coexistência de fontes, Alertar só do dono, signal_monitor sem ticker e calendário de NY (sábado, feriado, meio pregão)",
+      "production_reachability": "reachable",
+      "persistence_need": "postgres",
+      "regression_risk": "high",
+      "decision": "keep",
+      "evidence": "PostgreSQL de teste (unit_database_url) com postgres_isolation, serviço de oportunidades e envio do Telegram simulados, TestClient"
+    },
+    {
+      "file": "backend/tests/unit/test_card_1122_migration.py",
+      "protected_behavior": "Migração Alembic do #1122 em schema privado: backfill de fonte/sessão/ajuste, marcas Alertar de quem não é admin zeradas, estado por favorito semeado do par, tabelas e índice único parcial, default falso, ON DELETE CASCADE e downgrade",
+      "production_reachability": "reachable",
+      "persistence_need": "postgres",
+      "regression_risk": "high",
+      "decision": "keep",
+      "evidence": "PostgreSQL de teste (unit_database_url) com schema privado descartado no fim"
+    },
+    {
+      "file": "backend/tests/unit/test_card_1122_monitor_refresh.py",
+      "protected_behavior": "Monitor com ação/ETF pelo calendário de NY (candle fechado sem descartar o último, estado aberto/fechado/atrasado/insuficiente, configuração por linha) e atualização diária de ação/ETF (domingo sem candle novo mantém SUCCESS, INSUFFICIENT N de M candles, fim no último pregão, atraso real falha com o motivo)",
+      "production_reachability": "reachable",
+      "persistence_need": "postgres",
+      "regression_risk": "high",
+      "decision": "keep",
+      "evidence": "PostgreSQL de teste (unit_database_url) com postgres_isolation, provedor de mercado, coleta e otimizador simulados"
+    },
+    {
+      "file": "backend/tests/unit/test_card_1123_benchmark_compute.py",
+      "protected_behavior": "Cálculo da comparação com referência (#1123): período comum encaixado no calendário da referência (BTC/USDT x SPY com 01/01/2019 fora e 0 trades), trades fora (BTC x SOL), NVDA x SPY sem aviso de moeda, ETF x próprio ativo, igualdade com o Retorno total, CRCL sem interseção, período comum curto (mínimo 30 dias), sem histórico, short long-only, nunca zero",
+      "production_reachability": "reachable",
+      "persistence_need": "pure",
+      "regression_risk": "high",
+      "decision": "keep",
+      "evidence": "Função pura com séries sintéticas, sem banco nem rede"
+    },
+    {
+      "file": "backend/tests/unit/test_card_1123_benchmark_routes.py",
+      "protected_behavior": "Rotas da comparação (#1123): gravação no resultado e no favorito, leitura sem cálculo nem coleta, dono e admin, falha na coleta sem gravar, herança ao salvar nos Favoritos com fixação da amostra, troca no favorito soltando a amostra anterior, reabrir com histórico novo mantém os números, refresh refaz com a mesma referência, padrão do próprio ativo na rodada",
+      "production_reachability": "reachable",
+      "persistence_need": "postgres",
+      "regression_risk": "high",
+      "decision": "keep",
+      "evidence": "PostgreSQL de teste (unit_database_url) com postgres_isolation, fonte de referência simulada e TestClient"
+    },
+    {
+      "file": "backend/tests/unit/test_card_1123_crypto_without_sample.py",
+      "protected_behavior": "Coluna extra do Decidir com cripto sem amostra (#1123, retrabalho pós Não homologar, Conferir pelas métricas): recorte do cache local com a mesma serialização do caminho antigo; trades refeitos pelo caminho antigo com mesma janela (da combinação, da varredura ou derivada do treino gravado nas varreduras antigas), parâmetros, template congelado e split, e célula com número só quando trades, taxa de acerto e CAGR (tolerância 0.0005) batem com os gravados, mesmo com SHA das velas diferente ou sem versão gravada (cache só lido, spool apagado, ambiente restaurado); métricas diferentes (metrics_mismatch), cache ausente e janela indeterminável (GET unavailable e célula unrecorded sem rodar o otimizador) fecham sem número com o motivo verdadeiro (nunca vencida), também na planilha; erro inesperado no refeito fecha regeneration_failed sem citar amostra e com Sem comparação na planilha; ação/ETF com amostra e amostra vencida de verdade inalteradas",
+      "production_reachability": "reachable",
+      "persistence_need": "postgres",
+      "regression_risk": "high",
+      "decision": "keep",
+      "evidence": "PostgreSQL de teste (unit_database_url) com postgres_isolation, cache parquet local em tmp_path no formato do IncrementalLoader, rede bloqueada, otimizador e fonte de referência simulados, TestClient e openpyxl"
+    },
+    {
+      "file": "backend/tests/unit/test_card_1123_discovery_column.py",
+      "protected_behavior": "Coluna extra do Decidir (#1123): SPY igual ao resultado (02/01/2019, 0 trades fora, aviso de moeda), PENGU/USDT período curto, CRCL sem período comum em todos, ordem e rank iguais, leitura e exportação sem cálculo nem coleta, reativar sem recalcular, falha na coleta sem gravar e Tentar de novo, troca cancela o job, amostra vencida, fixação e soltura, outra varredura e outro usuário sem coluna, ativo marcado recusado, planilha com 13 colunas (extra), herança na promoção",
+      "production_reachability": "reachable",
+      "persistence_need": "postgres",
+      "regression_risk": "high",
+      "decision": "keep",
+      "evidence": "PostgreSQL de teste (unit_database_url) com postgres_isolation, fonte de referência e regeneração de trades simuladas, TestClient"
+    },
+    {
+      "file": "backend/tests/unit/test_card_1123_export_context.py",
+      "protected_behavior": "Planilhas com contexto (#1123): Favoritos pelo servidor com colunas de hoje e os 22 campos, favorito antigo com deduzido e não registrado, aviso de moeda, Legenda com Tela × planilha e Comparação refeita, admin-only; trades com abas Trades (+Moeda), Contexto e Legenda, insuficiente com células vazias, contexto do favorito",
+      "production_reachability": "reachable",
+      "persistence_need": "postgres",
+      "regression_risk": "high",
+      "decision": "keep",
+      "evidence": "PostgreSQL de teste (unit_database_url) com postgres_isolation, openpyxl e TestClient"
+    },
+    {
+      "file": "backend/tests/unit/test_card_1123_migration.py",
+      "protected_behavior": "Migração Alembic do #1123 em schema privado: tabelas benchmark_comparisons e discovery_reference_columns, ponteiro do favorito sem backfill, índice único parcial da coluna ativa, idempotência",
+      "production_reachability": "reachable",
+      "persistence_need": "postgres",
+      "regression_risk": "high",
+      "decision": "keep",
+      "evidence": "PostgreSQL de teste (unit_database_url) com schema privado descartado no fim"
     }
   ]
 }

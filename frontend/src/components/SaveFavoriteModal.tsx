@@ -1,6 +1,35 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
+import { Link } from 'react-router-dom'
 import { X, Star, AlertCircle, ShieldAlert } from 'lucide-react'
 import { useAuth } from '@/stores/authStore'
+import '@/styles/favoriteAlerts.css'
+
+/** Card #1122 (d2): o favorito entra sem estrela; a estrela põe no Monitor com o alerta ligado. */
+export const SAVE_FAVORITE_ALERT_NOTE =
+    'O favorito entra sem estrela, só em Favoritos. Dê pelo menos 1 estrela lá para acompanhar no Monitor e receber os sinais no Telegram; o alerta já vem ligado e você desliga no Monitor.'
+export const SAVE_FAVORITE_DUPLICATE =
+    'Já está nos favoritos com esta configuração (fonte, sessão e ajuste). Nada foi salvo.'
+
+/** Erro do salvar com o status HTTP (409 = mesma configuração já salva). */
+export class SaveFavoriteError extends Error {
+    status: number
+
+    constructor(message: string, status: number) {
+        super(message)
+        this.status = status
+    }
+}
+
+export interface SaveFavoriteIdentity {
+    /** "NVDA · Ação · USD" */
+    title: string
+    /** "Binance Ações · pregão regular de NY · ajustado por split · 1d · Long" */
+    detail: string
+    /** "Binance Ações" (texto do sucesso) */
+    configurationShort: string
+}
+
+const FOCUSABLE = 'a[href], button:not([disabled]), input:not([disabled]), textarea:not([disabled]), select:not([disabled]), summary, [tabindex]:not([tabindex="-1"])'
 
 interface SaveFavoriteModalProps {
     isOpen: boolean
@@ -48,14 +77,21 @@ interface SaveFavoriteModalProps {
         oos_proof?: string | null
         override_oos?: boolean
     }) => Promise<void>
+    /** Card #1122: ativo, classe, moeda e configuração do resultado. */
+    identity?: SaveFavoriteIdentity | null
 }
 
-export function SaveFavoriteModal({ isOpen, onClose, backtestResult, onSave }: SaveFavoriteModalProps) {
+export function SaveFavoriteModal({ isOpen, onClose, backtestResult, onSave, identity = null }: SaveFavoriteModalProps) {
     const [name, setName] = useState('')
     const [notes, setNotes] = useState('')
     const [isSaving, setIsSaving] = useState(false)
     const [error, setError] = useState<string | null>(null)
     const [overrideOos, setOverrideOos] = useState(false)
+    const [duplicate, setDuplicate] = useState(false)
+    const [saved, setSaved] = useState(false)
+    const dialogRef = useRef<HTMLDivElement | null>(null)
+    const successLinkRef = useRef<HTMLAnchorElement | null>(null)
+    const triggerRef = useRef<HTMLElement | null>(null)
     const { user } = useAuth()
     const isAdmin = Boolean(user?.isAdmin)
 
@@ -74,8 +110,54 @@ export function SaveFavoriteModal({ isOpen, onClose, backtestResult, onSave }: S
             setNotes('')
             setError(null)
             setOverrideOos(false)
+            setDuplicate(false)
+            setSaved(false)
         }
     }, [isOpen, backtestResult, totalReturnPct])
+
+    const handleClose = () => {
+        onClose()
+        // O foco volta ao gatilho ("Salvar nos Favoritos").
+        const trigger = triggerRef.current
+        window.setTimeout(() => trigger?.focus(), 0)
+    }
+
+    // Diálogo: guarda o gatilho, prende o foco (Tab e Shift+Tab) e fecha com Esc em qualquer foco.
+    useEffect(() => {
+        if (!isOpen) return
+        triggerRef.current = document.activeElement instanceof HTMLElement ? document.activeElement : null
+        const firstField = dialogRef.current?.querySelector<HTMLElement>('input, textarea, button')
+        firstField?.focus()
+        const onKeyDown = (event: KeyboardEvent) => {
+            if (event.key === 'Escape') {
+                event.preventDefault()
+                handleClose()
+                return
+            }
+            if (event.key !== 'Tab' || !dialogRef.current) return
+            const items = Array.from(dialogRef.current.querySelectorAll<HTMLElement>(FOCUSABLE))
+                .filter((element) => element.offsetParent !== null || element === document.activeElement)
+            if (items.length === 0) return
+            const first = items[0]
+            const last = items[items.length - 1]
+            const active = document.activeElement as HTMLElement | null
+            const inside = active ? dialogRef.current.contains(active) : false
+            if (event.shiftKey && (active === first || !inside)) {
+                event.preventDefault()
+                last.focus()
+            } else if (!event.shiftKey && (active === last || !inside)) {
+                event.preventDefault()
+                first.focus()
+            }
+        }
+        document.addEventListener('keydown', onKeyDown)
+        return () => document.removeEventListener('keydown', onKeyDown)
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [isOpen])
+
+    useEffect(() => {
+        if (saved) successLinkRef.current?.focus()
+    }, [saved])
 
     const handleSave = async () => {
         if (!name.trim()) {
@@ -95,6 +177,7 @@ export function SaveFavoriteModal({ isOpen, onClose, backtestResult, onSave }: S
 
         setIsSaving(true)
         setError(null)
+        setDuplicate(false)
 
         try {
             await onSave({
@@ -123,9 +206,14 @@ export function SaveFavoriteModal({ isOpen, onClose, backtestResult, onSave }: S
                 oos_proof: backtestResult.oos_proof ?? null,
                 override_oos: isBlocked && overrideOos
             })
-            onClose()
+            // Card #1122: o sucesso fica no modal, com "Ver em Favoritos" (recebe o foco).
+            setSaved(true)
         } catch (err: any) {
-            setError(err.message || 'Erro ao salvar favorito')
+            if (err instanceof SaveFavoriteError && err.status === 409) {
+                setDuplicate(true)
+            } else {
+                setError(err.message || 'Erro ao salvar favorito')
+            }
         } finally {
             setIsSaving(false)
         }
@@ -134,20 +222,33 @@ export function SaveFavoriteModal({ isOpen, onClose, backtestResult, onSave }: S
     if (!isOpen) return null
 
     return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
-            <div className="bg-gray-800 rounded-2xl border border-gray-700 w-full max-w-2xl p-6 shadow-2xl">
+        <div
+            className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="save-favorite-title"
+            data-testid="save-favorite-dialog"
+        >
+            <div ref={dialogRef} className="bg-gray-800 rounded-2xl border border-gray-700 w-full max-w-2xl p-6 shadow-2xl max-h-[calc(100vh-2rem)] overflow-y-auto">
                 {/* Header */}
                 <div className="flex justify-between items-center mb-6">
-                    <h3 className="text-xl font-bold text-white flex items-center gap-2">
-                        <Star className="w-5 h-5 text-yellow-500" />
+                    <h3 id="save-favorite-title" className="text-xl font-bold text-white flex items-center gap-2">
+                        <Star className="w-5 h-5 text-yellow-500" aria-hidden="true" />
                         Salvar nos Favoritos
                     </h3>
-                    <button onClick={onClose} className="text-gray-400 hover:text-white">
-                        <X className="w-5 h-5" />
+                    <button type="button" onClick={handleClose} className="text-gray-400 hover:text-white" aria-label="Fechar">
+                        <X className="w-5 h-5" aria-hidden="true" />
                     </button>
                 </div>
 
                 <div className="space-y-4">
+                    {identity ? (
+                        <div className="save-favorite-identity" data-testid="favorite-identity">
+                            <strong>{identity.title}</strong>
+                            <span>{identity.detail}</span>
+                        </div>
+                    ) : null}
+
                     {/* Error Alert */}
                     {error && (
                         <div className="bg-red-500/10 border border-red-500/50 rounded-lg p-4 flex items-start gap-3">
@@ -256,10 +357,26 @@ export function SaveFavoriteModal({ isOpen, onClose, backtestResult, onSave }: S
                         </div>
                     </details>
 
+                    <p className="save-favorite-note" data-testid="favorite-alert-note">{SAVE_FAVORITE_ALERT_NOTE}</p>
+                    {duplicate ? (
+                        <p className="save-favorite-duplicate" role="alert" data-testid="favorite-duplicate">{SAVE_FAVORITE_DUPLICATE}</p>
+                    ) : null}
+                    {saved ? (
+                        <div className="save-favorite-success" data-testid="favorite-saved">
+                            <p role="status">
+                                Salvo em Favoritos{identity ? ` com a configuração ${identity.configurationShort}` : ''}.
+                            </p>
+                            <Link ref={successLinkRef} className="save-favorite-success-link" to="/favorites" data-testid="favorite-saved-link">
+                                Ver em Favoritos
+                            </Link>
+                        </div>
+                    ) : null}
+
                     {/* Save Button */}
                     <button
+                        type="button"
                         onClick={handleSave}
-                        disabled={isSaving || !name.trim() || (isBlocked && (!isAdmin || !overrideOos))}
+                        disabled={saved || isSaving || !name.trim() || (isBlocked && (!isAdmin || !overrideOos))}
                         className="w-full py-3 rounded-lg font-bold flex items-center justify-center gap-2 transition-all bg-blue-600 hover:bg-blue-700 text-white disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                         {isSaving ? (

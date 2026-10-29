@@ -98,14 +98,18 @@ def evaluate_listing_sample(
     """
     from app.services.combo_optimizer import split_train_holdout
     from app.services.market_data_providers import (
+        BINANCE_EQUITY_SOURCE,
+        CCXT_SOURCE,
         get_market_data_provider,
-        resolve_data_source_for_symbol,
         validate_data_source_timeframe,
     )
 
-    fetch_start = start_date or "2017-01-01"
+    # Card #1121 (P3): fonte pela classe, como a Descoberta coleta (ticker sem ``/`` é ação/ETF da
+    # Binance, nunca Stooq); "todo o histórico" de ação/ETF começa onde a Binance começa.
+    equity = "/" not in str(symbol or "")
+    fetch_start = start_date or ("2000-01-01" if equity else "2017-01-01")
     fetch_end = end_date or datetime.now(timezone.utc).strftime("%Y-%m-%d")
-    inferred = resolve_data_source_for_symbol(symbol, "ccxt")
+    inferred = BINANCE_EQUITY_SOURCE if equity else CCXT_SOURCE
     source = validate_data_source_timeframe(inferred, timeframe)
     provider = get_market_data_provider(source)
     df = provider.fetch_ohlcv(
@@ -272,6 +276,7 @@ def run_combination(
     )
     from app.services.discovery_supervisor import run_supervised
     from app.services.discovery_resources import OperationalFailure, CalculationFailure
+    from app.services.discovery_recovery import shared_sample
 
     token = Possession.of(combination)
     if token.owner != owner:
@@ -280,6 +285,11 @@ def run_combination(
         sweep, combination, _ = locked_possession(db, token)
         inputs = combination.input_snapshot or {}
         snapshot = inputs.get("snapshot") or sweep.snapshot or {}
+        # Card #1121 (decisão 4): a amostra é única por ativo, tempo e janela na varredura; a
+        # combinação seguinte do mesmo ativo e tempo lê o manifesto já congelado.
+        candle_manifest = inputs.get("candle_manifest") or shared_sample(db, sweep, combination)
+        sweep_snapshot = sweep.snapshot if isinstance(sweep.snapshot, dict) else {}
+        asset_class = (sweep_snapshot.get("asset_classes") or {}).get(combination.symbol)
         db.rollback()
 
         def beat(events, supervisor):
@@ -295,7 +305,8 @@ def run_combination(
                 "start_date": inputs.get("start_date"),
                 "end_date": inputs.get("end_date"),
                 "template_metadata": inputs.get("template_metadata"),
-                "candle_manifest": inputs.get("candle_manifest"),
+                "candle_manifest": candle_manifest,
+                "asset_class": asset_class,
             },
             beat,
         )
@@ -309,6 +320,8 @@ def run_combination(
                 listing_len=result["listing_len"],
                 train_len=result["train_len"],
                 token=token,
+                reason=result.get("reason"),
+                asset_class=asset_class,
             )
             return
     except LostPossession:
@@ -320,6 +333,8 @@ def run_combination(
         code = getattr(exc, "code", type(exc).__name__)
         logger.warning("Discovery attempt failed token=%s code=%s", token, code)
         try:
+            # Falha de coleta (``history_*``) entra nas 3 tentativas e, esgotada, vira "Falha"
+            # só da combinação (card #1121, decisão 7; ``isolated_failure``).
             fail(
                 db,
                 token,
@@ -339,13 +354,25 @@ def run_combination(
     _ensure_in_sample_ranking(best_metrics, trades, candles)
     start_at = _first_candle_time(candles, snapshot)
     end_at = _last_candle_time(candles, snapshot)
-    # Calendário 24x7 versionado por timeframe: denominador de coverage vem do
-    # intervalo UTC [start_at, end_at), não dos candles retornados (spec
-    # discovery-leaderboard: gaps reduzem coverage; sem forward-fill).
-    expected_candles = _expected_candles_for_window(combination.timeframe, start_at, end_at)
+    # Card #1118: proveniência da série e referência da amostra congelada (decisão 15).
+    candle_manifest = inputs.get("candle_manifest") or {}
+    provenance = candle_manifest.get("provenance") or {}
+    series_source = provenance.get("data_source")
+    series_version = provenance.get("version_label")
+    result_asset = result.get("asset") if isinstance(result.get("asset"), dict) else None
+    result_class = (
+        provenance.get("asset_class") or (result_asset or {}).get("asset_class") or asset_class
+    )
+    # Calendário da classe (card #1121, decisão 5): 24x7 na cripto (como antes), pregões de NY na
+    # ação e no ETF. O denominador de coverage vem do intervalo [start_at, end_at], não dos candles
+    # retornados (spec discovery-leaderboard: gaps reduzem coverage; sem forward-fill).
+    expected_candles = _expected_candles_for_window(
+        combination.timeframe, start_at, end_at, asset_class=result_class, symbol=combination.symbol
+    )
     observed_valid_candles = len(candles) or 0
     coverage = min(1.0, (observed_valid_candles / expected_candles) if expected_candles else 0.0)
     trades_count = len(trades)
+    fees_slippage = fees_slippage_record(combination.timeframe, result_class)
 
     metadata = inputs.get("template_metadata") or {}
     identity = build_strategy_identity(
@@ -374,7 +401,7 @@ def run_combination(
         expected_candles=expected_candles,
         observed_valid_candles=observed_valid_candles,
         coverage=coverage,
-        fees_slippage=fees_slippage_record(combination.timeframe),
+        fees_slippage=fees_slippage,
         metrics=metrics_snapshot,
     )
 
@@ -409,6 +436,10 @@ def run_combination(
     persisted_metrics = _persist_metrics_snapshot(
         best_metrics, result, len(trades), eligible=eligible
     )
+    # Card #1121 (decisões 6 e 11): identidade do ativo, precisão efetiva e convenções da execução.
+    for key in ("asset", "execution", "conventions"):
+        if isinstance(result.get(key), dict):
+            persisted_metrics[key] = result[key]
 
     db.add(
         DiscoveryResult(
@@ -423,15 +454,25 @@ def run_combination(
             parameters=parameters,
             start_at=start_at,
             end_at=end_at,
-            candle_source=result.get("data_source"),
-            candle_version=(inputs.get("candle_manifest") or {})
+            candle_source=series_source or result.get("data_source"),
+            candle_version=series_version
+            or (inputs.get("candle_manifest") or {})
             .get("files", {})
             .get("candles", {})
             .get("sha256"),
+            data_source=series_source,
+            asset_class=provenance.get("asset_class"),
+            session=provenance.get("session"),
+            adjustment=provenance.get("adjustment"),
+            timeframe_origin=provenance.get("timeframe_origin"),
+            period_requested=provenance.get("period_requested"),
+            period_covered=provenance.get("period_covered"),
+            data_version=provenance.get("data_version"),
+            snapshot_id=provenance.get("snapshot_id"),
             expected_candles=expected_candles,
             observed_valid_candles=observed_valid_candles,
             coverage=coverage,
-            fees_slippage=fees_slippage_record(combination.timeframe),
+            fees_slippage=fees_slippage,
             metrics=persisted_metrics,
             trades_count=trades_count,
             win_rate=best_metrics.get("win_rate"),
@@ -454,6 +495,14 @@ def run_combination(
     settled(db, combination, "succeeded")
     combination.updated_at = datetime.now(timezone.utc)
     db.commit()
+    if provenance.get("snapshot_id"):
+        # Prazo de 30 dias da amostra conta do fim da execução (decisão 14); os bytes ficam.
+        try:
+            from app.services.discovery_inputs import discard
+
+            discard(candle_manifest)
+        except Exception:  # pragma: no cover - a limpeza periódica repete
+            logger.warning("Could not set the retention of the discovery sample", exc_info=True)
     logger.info(
         "Discovery combination completed: sweep=%s combination=%s result=%s eligibility=%s",
         combination.sweep_id,
@@ -471,8 +520,14 @@ def _persist_insufficient_sample(
     listing_len: int,
     train_len: int,
     token=None,
+    reason: str | None = None,
+    asset_class: str | None = None,
 ) -> None:
-    """Persist a Decidir-visible result without running the optimizer grid."""
+    """Persist a Decidir-visible result without running the optimizer grid.
+
+    Card #1121 (decisão 7): ``reason`` distingue "sem candles de <tempo> de <ativo> nessa janela"
+    (a Binance não tem a série) de "treino N < mínimo 30" (poucas velas).
+    """
     from app.services.discovery_recovery import Possession, locked_possession, settled
 
     token = token or Possession.of(combination)
@@ -504,7 +559,9 @@ def _persist_insufficient_sample(
         db.commit()
         return
 
-    if listing_len < 2:
+    if reason:
+        pass
+    elif listing_len < 2:
         reason = f"listagem {listing_len} barras"
     else:
         reason = f"treino {train_len} < mínimo {MIN_ELIGIBLE_TRADES}"
@@ -535,6 +592,7 @@ def _persist_insufficient_sample(
             end_at=now,
             candle_source=None,
             candle_version=None,
+            asset_class=asset_class,
             expected_candles=None,
             observed_valid_candles=listing_len or None,
             coverage=None,
@@ -713,9 +771,37 @@ def _drop_nonfinite_ranking_keys(metrics: dict[str, Any]) -> None:
         metrics.pop("benchmark", None)
 
 
-def _expected_candles_for_window(timeframe: str, start_at: datetime, end_at: datetime) -> int:
-    """Calendário 24x7: número de candles esperados no intervalo [start, end)
-    para 4h (6/dia) ou 1d (1/dia). Fonte de coverage versionada."""
+def _expected_candles_for_window(
+    timeframe: str,
+    start_at: datetime,
+    end_at: datetime,
+    *,
+    asset_class: str | None = None,
+    symbol: str | None = None,
+) -> int:
+    """Candles esperados na janela pelo calendário da classe (card #1121, decisão 5).
+
+    Cripto: calendário 24x7 no intervalo [start, end) para 4h (6/dia) ou 1d (1/dia), como antes.
+    Ação e ETF: pregões regulares de Nova York em [start, end] (fim de semana e feriado não contam),
+    por ``nyse_calendar.expected_candles`` em 15m, 1h, 4h e 1d.
+    """
+    from app.services.discovery_multiclass import is_equity
+
+    if (asset_class or symbol) and is_equity(symbol or "", asset_class):
+        import pandas as pd
+
+        from app.services.market_history.nyse_calendar import expected_candles
+
+        start = pd.Timestamp(start_at)
+        end = pd.Timestamp(end_at)
+        start = start.tz_localize("UTC") if start.tzinfo is None else start.tz_convert("UTC")
+        end = end.tz_localize("UTC") if end.tzinfo is None else end.tz_convert("UTC")
+        if end < start:
+            return 0
+        try:
+            return max(1, len(expected_candles(timeframe, start, end)))
+        except Exception:  # calendário indisponível: cai no 24x7 (melhor sub-cobrir que travar)
+            logger.warning("Calendário de NY indisponível; cobertura pelo 24x7", exc_info=True)
     delta = end_at - start_at
     hours = delta.total_seconds() / 3600.0
     if hours <= 0:

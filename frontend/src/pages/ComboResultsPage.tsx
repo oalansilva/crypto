@@ -2,8 +2,21 @@ import { useLocation, useNavigate } from 'react-router-dom'
 import { useState, useMemo, useEffect } from 'react'
 import { BarChart3, ArrowLeft, Star } from 'lucide-react'
 import { MonitorAlignedCandlestickChart } from '../components/MonitorAlignedCandlestickChart'
-import { SaveFavoriteModal } from '../components/SaveFavoriteModal'
+import { SaveFavoriteError, SaveFavoriteModal, type SaveFavoriteIdentity } from '../components/SaveFavoriteModal'
 import { StrategyTradesTable } from '../components/charts/StrategyTradesTable'
+import { DataExecutionBlock } from '../components/results/DataExecutionBlock'
+import { BenchmarkComparison } from '../components/results/BenchmarkComparison'
+import type { BenchmarkComparison as BenchmarkComparisonPayload } from '@/lib/benchmarkComparison'
+import {
+    CLASS_CHIP_LABEL,
+    currencyOf,
+    isEquityClass,
+    type CombinationErrorsInfo,
+    type ConventionsInfo,
+    type ExecutionInfo,
+    type ProvenanceInfo,
+    type ResultAsset,
+} from '@/lib/equityExecution'
 import { StrategyTransparencyPanel } from '../components/trades/StrategyTransparencyPanel'
 import { StrategyRuleOverview } from '../components/trades/StrategyRuleOverview'
 import { API_BASE_URL } from '../lib/apiBase'
@@ -37,6 +50,19 @@ interface BacktestResult {
     end_date?: string | null
     period_type?: string | null
     execution_mode?: string
+    /** Card #1119 (decisão 12): identidade, amostra, precisão efetiva e convenções da execução. */
+    asset?: ResultAsset | null
+    data_provenance?: ProvenanceInfo | null
+    execution?: ExecutionInfo | null
+    conventions?: ConventionsInfo | null
+    combination_errors?: CombinationErrorsInfo | null
+    /** Card #1123: comparação gravada (padrão do próprio ativo ao rodar, ou a escolhida). */
+    benchmark_comparison?: BenchmarkComparisonPayload | null
+    benchmark_comparison_error?: { message?: string } | null
+    snapshot_id?: string | null
+    /** Análise aberta de Favoritos: a troca grava no favorito. */
+    favorite_id?: number | null
+    favorite_name?: string | null
     strategy_description?: string | null
     is_strategy_protected?: boolean
     parameters: Record<string, any>
@@ -58,6 +84,8 @@ interface BacktestResult {
         exit_price?: number
         profit?: number
         type?: string
+        exit_reason?: string
+        stop_price?: number
         pnl?: number
         initial_capital?: number
         final_capital?: number
@@ -94,6 +122,36 @@ export function ComboResultsPage() {
     const returnTo = location.state?.returnTo as string | undefined
     const isOptimization = location.state?.isOptimization === true
     const [isModalOpen, setIsModalOpen] = useState(false)
+    // Card #1123: comparação gravada; a troca substitui `history.state` (recarregar mantém a escolha).
+    const [comparison, setComparison] = useState<BenchmarkComparisonPayload | null>(
+        result?.benchmark_comparison ?? null,
+    )
+    const [exportStatus, setExportStatus] = useState('')
+    const favoriteOwner = returnTo === '/favorites' && Boolean(result?.favorite_id)
+
+    const handleComparisonRecorded = (payload: BenchmarkComparisonPayload) => {
+        setComparison(payload)
+        navigate(`${location.pathname}${location.search}`, {
+            replace: true,
+            state: { ...(location.state || {}), result: { ...result, benchmark_comparison: payload } },
+        })
+    }
+
+    const resultContext = () => ({
+        symbol: result.symbol,
+        timeframe: result.timeframe,
+        asset: result.asset ?? null,
+        data_provenance: result.data_provenance ?? null,
+        execution: result.execution ?? null,
+        conventions: result.conventions ?? null,
+        start_date: result.start_date ?? null,
+        end_date: result.end_date ?? null,
+        period_type: result.period_type ?? null,
+        execution_mode: result.execution_mode ?? null,
+        snapshot_id: result.snapshot_id ?? null,
+        direction: (result as any).direction ?? result.parameters?.direction ?? 'long',
+        is_optimization: isOptimization,
+    })
 
     const handleSaveFavorite = async (data: any) => {
         console.log('📤 handleSaveFavorite chamado com:', data)
@@ -102,20 +160,22 @@ export function ComboResultsPage() {
             const response = await authFetch(`${API_BASE_URL}/favorites`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(data)
+                // Card #1123: a referência escolhida vai junto ao salvar.
+                body: JSON.stringify({ ...data, benchmark_comparison_id: comparison?.id ?? null })
             })
 
             console.log('📡 Response status:', response.status)
 
             if (!response.ok) {
-                const error = await response.json()
+                const error = await response.json().catch(() => ({}))
                 console.error('❌ Erro da API:', error)
-                throw new Error(error.detail || 'Erro ao salvar favorito')
+                const detail = typeof error?.detail === 'string' ? error.detail : 'Erro ao salvar favorito'
+                // Card #1122: 409 = mesma configuração já salva (o modal mostra a duplicata).
+                throw new SaveFavoriteError(detail, response.status)
             }
 
             const savedFavorite = await response.json()
             console.log('✅ Favorito salvo com sucesso:', savedFavorite)
-            navigate('/favorites')
         } catch (err) {
             console.error('❌ Erro ao salvar favorito:', err)
             throw err
@@ -181,14 +241,19 @@ export function ComboResultsPage() {
                 };
             });
 
-            const response = await fetch(`${API_BASE_URL}/combos/export-trades`, {
+            setExportStatus('Gerando a planilha…');
+            const response = await authFetch(`${API_BASE_URL}/combos/export-trades`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     trades: tradesData,
                     symbol: result.symbol,
                     template_name: result.template_name,
-                    timeframe: result.timeframe
+                    timeframe: result.timeframe,
+                    // Card #1123: contexto e comparação gravada (aba Contexto); do favorito, o servidor lê o dele.
+                    context: resultContext(),
+                    benchmark_comparison_id: comparison?.id ?? null,
+                    favorite_id: favoriteOwner ? result.favorite_id : null,
                 })
             });
 
@@ -206,7 +271,7 @@ export function ComboResultsPage() {
             const contentDisposition = response.headers.get('Content-Disposition');
             let filename = `${result.template_name}_${result.symbol.replace('/', '_')}_${result.timeframe}_trades.xlsx`;
             if (contentDisposition) {
-                const filenameMatch = contentDisposition.match(/filename="?(.+)"?/);
+                const filenameMatch = contentDisposition.match(/filename="?([^";]+)"?/);
                 if (filenameMatch) {
                     filename = filenameMatch[1];
                 }
@@ -217,9 +282,15 @@ export function ComboResultsPage() {
             a.click();
             window.URL.revokeObjectURL(url);
             document.body.removeChild(a);
+            const refText = !comparison
+                ? 'referência não registrada'
+                : comparison.reference.kind === 'own'
+                    ? 'referência próprio ativo'
+                    : `referência ${comparison.reference.symbol}`;
+            setExportStatus(`Planilha baixada: ${filename} · abas Trades, Contexto e Legenda · ${refText}.`);
         } catch (err) {
             console.error('❌ Erro ao exportar trades:', err);
-            alert('Erro ao exportar trades para Excel. Tente novamente.');
+            setExportStatus('Não foi possível exportar a planilha. Tente de novo.');
         }
     }
 
@@ -357,6 +428,18 @@ export function ComboResultsPage() {
 
     const direction = markerDirection
     const isShort = direction === 'short'
+    // Classe, moeda e relógio da lista (card #1119): ação/ETF em USD, hora de Nova York no intradiário.
+    const resultAsset: ResultAsset | null = result.asset ?? null
+    const isEquity = isEquityClass(resultAsset?.asset_class)
+    const resultCurrency = currencyOf(resultAsset, result.symbol)
+    const newYorkClock = isEquity && ['15m', '1h', '4h'].includes(String(result.timeframe).toLowerCase())
+    const classChip = resultAsset?.asset_class ? CLASS_CHIP_LABEL[resultAsset.asset_class] : null
+    // Card #1122: identidade do favorito no modal (ativo, classe, moeda e configuração).
+    const favoriteIdentity: SaveFavoriteIdentity = {
+        title: `${result.symbol} · ${classChip ?? (isEquity ? 'Ação' : 'Cripto')} · ${resultCurrency}`,
+        detail: `${isEquity ? 'Binance Ações · pregão regular de NY · ajustado por split' : 'Binance Spot · 24/7'} · ${result.timeframe} · ${isShort ? 'Short' : 'Long'}`,
+        configurationShort: isEquity ? 'Binance Ações' : 'Binance Spot',
+    }
     const snapshotMetrics = favoriteGridMetrics(
         result.promotion_metrics
             ? { origin_type: 'discovery_sweep', metrics_snapshot: result.promotion_metrics, ...(result.metrics || {}) }
@@ -421,13 +504,14 @@ export function ComboResultsPage() {
                             {returnTo === '/favorites' ? 'Voltar aos favoritos' : 'Voltar'}
                         </button>
                         {isOptimization ? (
+                            // Card #1122: ação e ETF salvam nos Favoritos como a cripto.
                             <button
                                 type="button"
                                 onClick={() => setIsModalOpen(true)}
                                 className="inline-flex min-h-11 items-center gap-2 rounded-md bg-[#fcd535] px-4 py-2 text-sm font-semibold text-[#0b0e11] transition-colors hover:bg-[#fcd535]/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#3b82f6]"
                                 data-testid="save-favorite-button"
                             >
-                                <Star className="h-4 w-4" />
+                                <Star className="h-4 w-4" aria-hidden="true" />
                                 Salvar nos Favoritos
                             </button>
                         ) : null}
@@ -442,6 +526,9 @@ export function ComboResultsPage() {
                             <div className="min-w-0">
                                 <div className="flex flex-wrap items-center gap-2 text-xs font-semibold">
                                     <span className="rounded-md border border-[#2b3139] bg-[#0b0e11] px-2.5 py-1.5">{result.symbol}</span>
+                                    {classChip ? (
+                                        <span className="r19-chip rounded-md border border-[#2b3139] bg-[#0b0e11] px-2.5 py-1.5" data-testid="result-asset-class">{classChip}</span>
+                                    ) : null}
                                     <span className="rounded-md border border-[#2b3139] bg-[#0b0e11] px-2.5 py-1.5 uppercase">{result.timeframe}</span>
                                     <span className="rounded-md border border-[#fcd535]/50 bg-[#fcd535]/10 px-2.5 py-1.5 text-[#fcd535]">{directionLabel}</span>
                                 </div>
@@ -485,6 +572,40 @@ export function ComboResultsPage() {
                             </dl>
                         </div>
                     </section>
+
+                    <BenchmarkComparison
+                        strategy={{
+                            symbol: result.symbol,
+                            assetClass: resultAsset?.asset_class ?? (result.symbol.includes('/') ? 'crypto' : null),
+                            currency: resultCurrency,
+                            name: resultAsset?.name ?? null,
+                            direction,
+                            window: {
+                                start: result.execution?.window?.covered?.start ?? comparison?.strategy?.window?.start ?? result.start_date ?? null,
+                                end: result.execution?.window?.covered?.end ?? comparison?.strategy?.window?.end ?? result.end_date ?? null,
+                            },
+                        }}
+                        comparison={comparison}
+                        initialError={result.benchmark_comparison_error ?? null}
+                        owner={favoriteOwner ? 'favorite' : 'result'}
+                        favoriteId={favoriteOwner ? result.favorite_id ?? null : null}
+                        favoriteName={result.favorite_name ?? null}
+                        buildContext={() => ({ ...resultContext(), trades: result.trades })}
+                        onRecorded={handleComparisonRecorded}
+                        readOnly={returnTo === '/favorites' && !result.favorite_id}
+                    />
+
+                    <DataExecutionBlock
+                        asset={resultAsset}
+                        provenance={result.data_provenance}
+                        execution={result.execution}
+                        conventions={result.conventions}
+                        combinationErrors={result.combination_errors}
+                        timeframe={result.timeframe}
+                        periodAll={result.period_type === 'all'}
+                        trades={result.trades}
+                        requestedFallback={{ start: result.start_date, end: result.end_date }}
+                    />
 
                     {(result.oos_verdict || result.oos_metrics) ? (
                         <section
@@ -563,8 +684,11 @@ export function ComboResultsPage() {
                         direction={direction}
                         metrics={isDiscovery ? derivedMetrics || metrics : metrics}
                         onExport={handleExportTrades}
+                        exportStatus={exportStatus}
                         testId="result-trades"
                         showMetrics={false}
+                        currency={resultCurrency}
+                        newYorkClock={newYorkClock}
                     />
 
                     <p className="rounded-lg border border-[#2b3139] bg-[#181a20] px-4 py-3 text-xs leading-5 text-[#929aa5]">
@@ -585,8 +709,18 @@ export function ComboResultsPage() {
                         start_date: result.start_date ?? null,
                         end_date: result.end_date ?? null,
                         period_type: result.period_type ?? null,
-                        parameters: { ...(result.parameters || (result as any).best_parameters || {}), direction: isShort ? 'short' : 'long' },
-                        metrics: metrics,
+                        parameters: {
+                            ...(result.parameters || (result as any).best_parameters || {}),
+                            direction: isShort ? 'short' : 'long',
+                            ...(isEquity ? { data_source: 'binance_equity' } : {}),
+                        },
+                        metrics: {
+                            ...metrics,
+                            // Card #1122: identidade, precisão e convenções do resultado vão para o favorito.
+                            ...(result.asset ? { analysis_asset: result.asset } : {}),
+                            ...(result.execution ? { analysis_execution: result.execution } : {}),
+                            ...(result.conventions ? { analysis_conventions: result.conventions } : {}),
+                        },
                         promotion_metrics: result.promotion_metrics ?? null,
                         oos_verdict: result.oos_verdict ?? null,
                         oos_metrics: result.oos_metrics ?? null,
@@ -621,6 +755,7 @@ export function ComboResultsPage() {
                         })()
                     }}
                     onSave={handleSaveFavorite}
+                    identity={favoriteIdentity}
                 />
             ) : null}
         </div>

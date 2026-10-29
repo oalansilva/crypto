@@ -1,0 +1,658 @@
+--- a/openspec/changes/card-1098-codex-agentes-nativos/design.md
++++ b/openspec/changes/card-1098-codex-agentes-nativos/design.md
+@@ -1,93 +1,124 @@
+-## Context
+-
+-O #1098 exige preservar visibilidade e controle de Alan sobre os filhos do card. O briefing literal está em `proposal.md`. O problema do #1095 expôs a diferença entre diretório de uma chamada shell e vínculo da sessão/hook. O #1049 corrigiu revisão sob permissões herdadas por meio de sessão dedicada somente leitura; este Design não apaga essa garantia.
+-
+-UI impact: none
+-live_route: N/A — não existe rota Cripto para a lista de agentes do host Codex.
+-surface: none
+-
+-Sem alteração de interface do produto. A experiência operacional acontece na lista nativa de subagentes e nas mensagens do chat; este repositório não implementa essa lista.
+-
+-### Evidências disponíveis em 2026-10-17
+-
+-Esta autoria substitui a versão de 13/10 porque o briefing passou a incluir todas as superfícies Codex e a coleta TUI foi recuperada. Não é nova rodada de polish. Fontes locais: `docs/codex-bootstrap-1098.md` e `docs/codex-runtime-evidence.md`.
+-
+-| Fonte | Fato comprovado ou informado | Limite |
+-| --- | --- | --- |
+-| Bootstrap explicitamente autorizado por Alan | 118 testes focados passaram; delta local preserva schema, integridade, filiação, seleção e permissões | Não é T7/T8, implementação concluída, pin publicado ou aprovação humana |
+-| Ensaio TUI 0.163.0 em `/source` | Nascimento nativo, par observado, filiação, execução, completed/payload, coleta/proxy e qualificação; recusa real `birth_mismatch` antes do nascimento | `danger-full-access`; não prova worktree do card, revisão, interação visual ou app/IDE |
+-| Retomada nativa do mesmo chat no worktree | Pai informou preflight ready e preparou receipt válido para este autor, após retomada pelo operador | Coleta deste nascimento ocorrerá após o retorno; receipt não comprova completed/payload antecipadamente |
+-| Exec 0.162.1, evidência #1095 | Ensaio nativo documentado de coleta, seleção e retorno | Workspace-write; exige regressão após adaptação; não qualifica TUI ou app |
+-| App/IDE via app-server | Fixtures de contrato | Sem ensaio real; suporte não comprovado e qualificação própria obrigatória |
+-| Ferramenta spawn desta sessão | Aceita modelo/esforço e `fork_turns`; não expõe cwd nem sandbox | `workdir` do shell não altera o nascimento; não inventar API |
+-| Turno deste autor | Worktree informado é o do #1098, permissões `danger-full-access` | Não comprova Guard nem read-only; escrita documental não vale como ensaio de autorização |
+-
+-O par e a versão do ensaio TUI deixaram de ser `unavailable`; isso não preenche observações de outros filhos. O receipt deste autor referencia a captura própria, e o pai verificará sua fonte após o retorno. Isolamento de contexto efetivo continua exigindo evidência além de `fork_turns=none` solicitado. A revisão nativa permanece bloqueada neste turno gravável. Interação visual, escrita autorizada/denies vivos, refinamento interativo completo e app/IDE seguem pendentes.
+-
+-## Goals / Non-Goals
+-
+-**Goals:** suportar terminal interativo, exec e app/IDE conforme suas capacidades comprovadas, sem exigir troca para exec pelo nome do host; delegar refinamento, Design, Apply, os dois reviewers e QA no chat do card; tornar responsável, estado, interação e retorno localizáveis; conservar worktree autorizado, captura por nascimento, contexto sem transcript do pai e revisão sobre o mesmo diff. Recusar antes do trabalho quando falta capacidade, com etapa e garantia explicitadas. Publicar evidências separadas de solicitações e testes sintéticos.
+-
+-**Non-Goals:** executar etapas no pai, esconder CLI externa atrás de wrapper, trocar modelos ou confiança, mudar FSM/T1/T7/T15/T18, tocar PROD ou outros clientes, migrar/interromper agentes do #1095. Não desenvolver uma UI de subagentes nem modificar o host fornecedor neste card.
+-
+-## Decisions
+-
+-### 1. Delegação nativa condicionada à capacidade da superfície
+-
+-O driver valida schema e origem, não uma igualdade exclusiva com `codex_exec`. Terminal interativo, exec e app/IDE via app-server passam pelos mesmos requisitos de evidência; cada superfície precisa de qualificação real própria e revalidada. Host e versão identificam diagnóstico e procedência. Versão diferente com schema compatível não reprova sozinha; schema incompatível ou campo obrigatório ausente produz `unsupported_schema`, qualificação ausente produz `unverified`. Prova exec não qualifica TUI/app, mesmo copiada; receipts legados exec permanecem legíveis sem permitir reclassificá-los. Remover a comparação de host sem verificar o resto é insuficiente.
+-
+-O bootstrap já prepara essa adaptação; o Apply deve revisar sua procedência, completar cobertura e ensaios, não marcá-lo automaticamente como entrega. O positivo obrigatório inclui refinamento interativo completo e regressão exec. App/IDE precisam de ensaio equivalente ou limitação específica por garantia ausente, nunca suporte universal inferido de fixtures.
+-
+-
+-O orquestrador prepara um registro da tentativa ligado a card, Status, papel, faixa, chat, worktree e captura de seleção. Antes do spawn verifica: ferramenta nativa disponível e vinculada ao chat, contexto isolado, capacidade de aplicar e observar modelo/esforço, vínculo efetivo ao worktree, cobertura necessária do Guard e permissões da etapa. Ausência conhecida recusa o spawn. Se uma garantia só puder ser observada após o nascimento, o filho inicia restrito a diagnóstico e não recebe liberação para trabalho da etapa antes da verificação. Se o host não puder assegurar essa barreira antes do trabalho, recusa já no preflight.
+-
+-Resultado operacional: `bloqueado` com razão ou tentativa nativa rastreável. Não são novos estados da FSM. Exemplo de mensagem: “Code Review do #1098 impedido: o host não oferece prova do contexto somente leitura que governa pai e filhos. Nenhum reviewer iniciou a revisão; etapa não executada.” Uma etapa executada cujo retorno falhou é `falhou`/`interrompido`, nunca `bloqueado antes do spawn` retroativamente.
+-
+-Alternativa externa é excluída pelo briefing. Executar no pai ou renomear processo externo não atende ao vínculo. Quando a capacidade aparecer, repetir preflight explicitamente; nada de retry com modelo alternativo, migração automática ou retomada de filho interrompido.
+-
+-### 2. Vínculo ao card não deriva de um path arbitrário
+-
+-Na futura implementação, separar identidade autorizada da sessão/tentativa, diretório efetivo da ferramenta e alvos da escrita. O vínculo contém card, worktree canônico, branch e ação permitida, obtidos do contexto verificado e da FSM; prompt e `workdir` não concedem autorização. Resolver caminhos reais e conferir todos os alvos contra esse vínculo antes de chamar `guard.decide()`.
+-
+-O adapter pode normalizar o schema efetivamente observado (`cmd`/`command`, `workdir`, paths de edição), mantendo o evento original e a decisão auditáveis. Uma sessão inicialmente em `source` só poderá operar no worktree declarado quando o vínculo ao mesmo card estiver comprovado e a ferramenta/hook usar esse contexto validado. `workdir` de outro card, caminho que escapa por symlink, mistura de alvos, identidade ausente ou divergente devem receber deny. Não trocar cegamente `event.cwd` por entrada fornecida pelo agente. Se o hook ainda resolver checkout errado, mostrar o conflito e interromper o trabalho afetado.
+-
+-O contrato não presume API de rebind nem parâmetro cwd no spawn. O caminho observado é o operador retomar nativamente o mesmo chat com `codex resume <id> --cd <worktree>`; isso não é uma sessão externa de delegação. Validar o efeito real no `turn_context` ativo antes do nascimento: `session_meta.cwd` inicial é histórico e não prevalece sobre uma retomada nativa comprovada. Conferir ainda metadata de nascimento e todos os turnos do filho no worktree esperado. `--root`/`workdir` não reconfiguram o chat; divergência mantém `worktree_mismatch`, com diretórios observados e recuperação precisa. A retomada não altera card, Status ou confiança automaticamente. Vínculo runtime e decisão do Guard são provas distintas; ambos precisam passar. Para refinamento, sem worktree criado, vale cwd do contexto vinculado à issue conforme regra existente. Depois de T1, cada filho usa worktree `card-<id>-*`.
+-
+-### 3. Seleção e contexto têm evidências próprias
+-
+-Reusar resolver e captura local por nascimento, sem fallback ao mapa histórico ou picker. Passar literalmente o par capturado e `fork_turns=none` na ferramenta deste host, prompt autocontido e sem transcript do pai. Captura e chamada provam pedido; metadata autoritativo de runtime/trace prova aplicação. Não extrair modelo observado de texto produzido pelo filho. Isolamento de contexto exige sinal efetivo do host, podendo ser complementado por ensaio de sentinela não secreta ausente do prompt; o silêncio do filho sozinho não prova isolamento.
+-
+-Registro mínimo: tentativa, chat/parent id e child id, papel, card/Status, worktree pedido/efetivo, captura/digest, argumentos reais, par requested/observed, fonte de cada observação, host/versão, política efetiva, nascimento/execução/conclusão/interrupção e payload ou referência verificável. Ausente = `unavailable`, nunca campo sintetizado. O conteúdo retornado precisa ser vinculado ao mesmo child id. Evento de spawn não prova execução; completed sem payload não passa. Mudança de escolha entre reviewers invalida a onda; filhos vivos conservam sua captura de nascimento.
+-
+-### 4. Revisão nativa conserva a garantia de #1049
+-
+-Caminho proposto, habilitável somente após prova: pai gravável prepara diff exato e SHA-256, capturas e prompts; o **mesmo chat** entra em contexto efetivo somente leitura por mecanismo nativo suportado e verificável; os dois reviewers nascem no mesmo turno, com filhos distintos, mesma onda, path/digest e nenhum transcript. Pai e filhos permanecem somente leitura até ambos retornarem. Persistência de proxies ocorre apenas depois, em contexto gravável comprovado do mesmo chat. Não exigir do agente alterar permissões nem inventar uma ferramenta para fazê-lo.
+-
+-A prova precisa cobrir contexto efetivo que governa pai/filhos, leitura do mesmo artefato e tentativa controlada de escrita negada para cada revisor, com alvo inalterado. Prompt “não escreva”, perfil TOML, teste unitário e `sandbox_mode` declarado no proxy não substituem essa evidência. Ensaios negativos usam fixtures descartáveis e guardam pedido, deny e readback/digest; não arriscam arquivos de produto. A tentativa de escrita é parte do ensaio do isolamento, não trabalho normal do reviewer.
+-
+-Neste host não há controle nativo de permissões exposto ao agente e o turno é gravável. Logo, **não habilitar a onda**. A futura alteração retira a recomendação de `codex exec --sandbox read-only` como alternativa para delegação e usa recusa explícita; até aprovação e implementação, o runbook atual continua vigente. Nenhuma transição de Review/QA/commit pode se apoiar em onda recusada. `verify-wave` e checklist continuam exigidos; evidência efetiva complementa, não reduz, seus checks.
+-
+-### 5. Experiência do operador e aceitação no host real
+-
+-Usar nome nativo contendo papel e card, por exemplo `design-autor 1098`; vínculo de chat e child id permitem Alan encontrar o responsável. Evidência viva inclui lista da interface, estado em execução, abertura/inspeção do filho, mensagem de orientação entregue e retorno no chat; interrupção aparece como tal. Não prometer botão específico: testar controles realmente disponíveis na superfície do operador e registrar se interação ocorre pelo chat pai ou pelo thread.
+-
+-A matriz de aceitação cruza superfície (interativo, exec, app/IDE) com refinamento, autor/crítico Design, Apply, diff-reviewer, code-reviewer e QA. Cada linha identifica host/versão, schema, chat/card/child, prova e limite; app e IDE são identificados separadamente quando expõem capacidades distintas. Por linha registrar suportado/provado/bloqueado, evidências e motivo. Demonstrar uma delegação concluída e uma impedida, escrita autorizada na etapa correta, denies fora de card/etapa, pares reais, isolamento e a onda completa de revisão. Unit tests não encerram linhas runtime. Enquanto faltar garantia, manter linha bloqueada e task correspondente pendente; não anunciar “substituição concluída” nem fazer avançar etapa afetada. Recusa correta é critério de comportamento, não substitui a prova positiva exigida pelo card.
+-
+-## Risks / Trade-offs
+-
+-- Host sem telemetry de seleção ou isolamento → bloqueio pode persistir mesmo com código correto; registrar dependência do host, sem exceção automática.
+-- Normalização de diretório pode autorizar outro card → validar identidade independente, caminho real e todos os alvos no Guard, com negativos antes de ativar.
+-- Hooks hospedados podem não executar → documentar cobertura por rota; não anunciar Auto nem confiança implícita.
+-- Registro recebido pode só repetir configuração → conservar proveniência e distinguir pedido de runtime; ausência reprova gate.
+-- Remover CLI externa reduz caminhos disponíveis → consequência deliberada do escopo; o operador vê a limitação e a etapa permanece pendente.
+-
+-## Migration Plan
+-
+-Após T7 e T8, implementar adapter, verificação de evidências e ensaios; atualizar apenas documentação Codex e referências operacionais afetadas. Revisar e completar no nucleus o delta do bootstrap; distribuir cópias verificadas e manifesto pelo processo existente, mantendo o pin-base v1.1.22 até publicação autorizada. Não editar instalação da conta, registrar confiança ou anunciar novo pin automaticamente; não duplicar lei em stubs. Ativar capacidades por qualificação íntegra de schema/superfície e preflight atual; uma versão nova compatível não exige recusa só pelo número, nem autoriza copiar sucesso entre superfícies. Agentes já vivos permanecem associados à captura original. Rollback de código conserva evidências, capturas e agentes vivos; não torna permissões mais amplas nem autoriza caminho externo automaticamente. Sem deploy de produto neste card.
+-
+-## Open Questions
+-
+-Não há decisão de produto pendente: caminho nativo ou recusa. Permanecem capacidades a ensaiar: refinamento interativo completo, regressão exec, isolamento efetivo sem transcript, vínculo Guard/worktree em escrita autorizada e recusada, controle read-only no mesmo chat e interface do operador. App/IDE via app-server exigem descobrir fonte verificável, schema e capacidades reais, adaptar o driver quando possível e registrar a garantia específica ausente quando não for. Nenhuma dessas lacunas sai do escopo: mantém tarefa e etapa dependentes bloqueadas; recusa correta não vale como positivo exigido nem como substituição integral concluída.
++## Revisão do critério de contexto — decisão de Alan em 17/10/2026
++
++Alan escolheu explicitamente a opção 2: avaliar isolamento operacional por **contrato documentado aplicável ao runtime + chamada nativa registrada com `fork_turns=none` + ensaio complementar não secreto de herança indevida**. Este conjunto é evidência contratual e empírica de escopo limitado; **não atesta o contexto interno completo entregue ao modelo**. Essa atestação permanece `unavailable` e deixa de ser requisito deste critério específico. Não é uma dispensa de filiação, seleção observada, Guard, permissões efetivas, leitura/deny/readback dos reviewers ou dos gates humanos.
++
++Esta revisão altera o contrato e o digest do Design. A crítica histórica abaixo é preservada e cobre a versão anterior; não equivale a crítica ou T7 do novo digest. A decisão autoriza preparar os artefatos revisados, sem alterar FSM ou autorizar implementação pelo wording. O pai precisa publicar e revalidar pelo caminho canônico antes de qualquer Apply dependente deste critério. O adapter integrado ainda aplica o critério anterior.
++
++## Context
++
++O #1098 exige preservar visibilidade e controle de Alan sobre os filhos do card. O briefing literal está em `proposal.md`. O problema do #1095 expôs a diferença entre diretório de uma chamada shell e vínculo da sessão/hook. O #1049 corrigiu revisão sob permissões herdadas por meio de sessão dedicada somente leitura; este Design não apaga essa garantia.
++
++UI impact: none
++live_route: N/A — não existe rota Cripto para a lista de agentes do host Codex.
++surface: none
++
++Sem alteração de interface do produto. A experiência operacional acontece na lista nativa de subagentes e nas mensagens do chat; este repositório não implementa essa lista.
++
++### Evidências disponíveis em 2026-10-17
++
++Esta autoria substitui a versão de 13/10 porque o briefing passou a incluir todas as superfícies Codex e a coleta TUI foi recuperada. Não é nova rodada de polish. Fontes locais: `docs/codex-bootstrap-1098.md` e `docs/codex-runtime-evidence.md`.
++
++| Fonte | Fato comprovado ou informado | Limite |
++| --- | --- | --- |
++| Bootstrap explicitamente autorizado por Alan | 118 testes focados passaram; delta local preserva schema, integridade, filiação, seleção e permissões | Não é T7/T8, implementação concluída, pin publicado ou aprovação humana |
++| Ensaio TUI 0.163.0 em `/source` | Nascimento nativo, par observado, filiação, execução, completed/payload, coleta/proxy e qualificação; recusa real `birth_mismatch` antes do nascimento | `danger-full-access`; não prova worktree do card, revisão, interação visual ou app/IDE |
++| Retomada nativa do mesmo chat no worktree | Pai informou preflight ready e preparou receipt válido para este autor, após retomada pelo operador | Coleta deste nascimento ocorrerá após o retorno; receipt não comprova completed/payload antecipadamente |
++| Exec 0.162.1, evidência #1095 | Ensaio nativo documentado de coleta, seleção e retorno | Workspace-write; exige regressão após adaptação; não qualifica TUI ou app |
++| App/IDE via app-server | Fixtures de contrato | Sem ensaio real; suporte não comprovado e qualificação própria obrigatória |
++| Ferramenta spawn desta sessão | Aceita modelo/esforço e `fork_turns`; não expõe cwd nem sandbox | `workdir` do shell não altera o nascimento; não inventar API |
++| Turno deste autor | Worktree informado é o do #1098, permissões `danger-full-access` | Não comprova Guard nem read-only; escrita documental não vale como ensaio de autorização |
++
++O par e a versão do ensaio TUI deixaram de ser `unavailable`; isso não preenche observações de outros filhos. O receipt deste autor referencia a captura própria, e o pai verificará sua fonte após o retorno. Na versão original, isolamento efetivo exigia um sinal interno adicional a `fork_turns=none`; essa exigência foi substituída para o critério de contexto pela decisão de Alan descrita nesta revisão. Os ensaios antigos continuam comprovando apenas os fatos coletados e não são promovidos ao novo conjunto de evidências. A revisão nativa permanece bloqueada neste turno gravável. Interação visual, escrita autorizada/denies vivos, refinamento interativo completo e app/IDE seguem pendentes.
++
++## Goals / Non-Goals
++
++**Goals:** suportar terminal interativo, exec e app/IDE conforme suas capacidades comprovadas, sem exigir troca para exec pelo nome do host; delegar refinamento, Design, Apply, os dois reviewers e QA no chat do card; tornar responsável, estado, interação e retorno localizáveis; conservar worktree autorizado, captura por nascimento, contexto operacional avaliado pelo critério revisado, sem fornecer transcript do pai, e revisão sobre o mesmo diff. Recusar antes do trabalho quando falta capacidade, com etapa e garantia explicitadas. Publicar evidências separadas de solicitações e testes sintéticos.
++
++**Non-Goals:** executar etapas no pai, esconder CLI externa atrás de wrapper, trocar modelos ou confiança, mudar FSM/T1/T7/T15/T18, tocar PROD ou outros clientes, migrar/interromper agentes do #1095. Não desenvolver uma UI de subagentes nem modificar o host fornecedor neste card.
++
++## Decisions
++
++### 1. Delegação nativa condicionada à capacidade da superfície
++
++O driver valida schema e origem, não uma igualdade exclusiva com `codex_exec`. Terminal interativo, exec e app/IDE via app-server passam pelos mesmos requisitos de evidência; cada superfície precisa de qualificação real própria e revalidada. Host e versão identificam diagnóstico e procedência. Versão diferente com schema compatível não reprova sozinha; schema incompatível ou campo obrigatório ausente produz `unsupported_schema`, qualificação ausente produz `unverified`. Prova exec não qualifica TUI/app, mesmo copiada; receipts legados exec permanecem legíveis sem permitir reclassificá-los. Remover a comparação de host sem verificar o resto é insuficiente.
++
++O bootstrap já prepara essa adaptação; o Apply deve revisar sua procedência, completar cobertura e ensaios, não marcá-lo automaticamente como entrega. O positivo obrigatório inclui refinamento interativo completo e regressão exec. App/IDE precisam de ensaio equivalente ou limitação específica por garantia ausente, nunca suporte universal inferido de fixtures.
++
++
++O orquestrador prepara um registro da tentativa ligado a card, Status, papel, faixa, chat, worktree e captura de seleção. Antes do spawn verifica: ferramenta nativa disponível e vinculada ao chat, documentação aplicável e qualificação empírica do critério de contexto descrito na decisão 3, argumentos preparados com `fork_turns=none`, capacidade de aplicar e observar modelo/esforço, vínculo efetivo ao worktree, cobertura necessária do Guard e permissões da etapa. Ausência conhecida recusa o spawn. A chamada nativa de cada nascimento deve ser posteriormente revalidada na fonte; divergência invalida a tentativa, sem convertê-la retroativamente em bloqueio antes do spawn. Se outra garantia obrigatória só puder ser observada após o nascimento, o filho inicia restrito a diagnóstico e não recebe liberação para trabalho da etapa antes da verificação. Se o host não puder assegurar essa barreira antes do trabalho, recusa já no preflight.
++
++Resultado operacional: `bloqueado` com razão ou tentativa nativa rastreável. Não são novos estados da FSM. Exemplo de mensagem: “Code Review do #1098 impedido: o host não oferece prova do contexto somente leitura que governa pai e filhos. Nenhum reviewer iniciou a revisão; etapa não executada.” Uma etapa executada cujo retorno falhou é `falhou`/`interrompido`, nunca `bloqueado antes do spawn` retroativamente.
++
++Alternativa externa é excluída pelo briefing. Executar no pai ou renomear processo externo não atende ao vínculo. Quando a capacidade aparecer, repetir preflight explicitamente; nada de retry com modelo alternativo, migração automática ou retomada de filho interrompido.
++
++### 2. Vínculo ao card não deriva de um path arbitrário
++
++Na futura implementação, separar identidade autorizada da sessão/tentativa, diretório efetivo da ferramenta e alvos da escrita. O vínculo contém card, worktree canônico, branch e ação permitida, obtidos do contexto verificado e da FSM; prompt e `workdir` não concedem autorização. Resolver caminhos reais e conferir todos os alvos contra esse vínculo antes de chamar `guard.decide()`.
++
++O adapter pode normalizar o schema efetivamente observado (`cmd`/`command`, `workdir`, paths de edição), mantendo o evento original e a decisão auditáveis. Uma sessão inicialmente em `source` só poderá operar no worktree declarado quando o vínculo ao mesmo card estiver comprovado e a ferramenta/hook usar esse contexto validado. `workdir` de outro card, caminho que escapa por symlink, mistura de alvos, identidade ausente ou divergente devem receber deny. Não trocar cegamente `event.cwd` por entrada fornecida pelo agente. Se o hook ainda resolver checkout errado, mostrar o conflito e interromper o trabalho afetado.
++
++O contrato não presume API de rebind nem parâmetro cwd no spawn. O caminho observado é o operador retomar nativamente o mesmo chat com `codex resume <id> --cd <worktree>`; isso não é uma sessão externa de delegação. Validar o efeito real no `turn_context` ativo antes do nascimento: `session_meta.cwd` inicial é histórico e não prevalece sobre uma retomada nativa comprovada. Conferir ainda metadata de nascimento e todos os turnos do filho no worktree esperado. `--root`/`workdir` não reconfiguram o chat; divergência mantém `worktree_mismatch`, com diretórios observados e recuperação precisa. A retomada não altera card, Status ou confiança automaticamente. Vínculo runtime e decisão do Guard são provas distintas; ambos precisam passar. Para refinamento, sem worktree criado, vale cwd do contexto vinculado à issue conforme regra existente. Depois de T1, cada filho usa worktree `card-<id>-*`.
++
++### 3. Seleção e contexto têm evidências próprias
++
++Reusar resolver e captura local por nascimento, sem fallback ao mapa histórico ou picker. Passar literalmente o par capturado e `fork_turns=none` na ferramenta deste host, prompt autocontido sem fornecer transcript do pai. Seleção de modelo/esforço continua exigindo metadata autoritativa observada, separada do pedido; texto do filho não a substitui.
++
++O critério de contexto revisado exige cumulativamente:
++
++1. **Contrato aplicável:** identificar fonte oficial ou schema nativo documentado da ferramenta, superfície, host/versão e semântica pertinente à herança de turnos. Conservar URL ou referência verificável, data e digest da fonte/schema usado. Contrato genérico de outro produto não qualifica esta superfície por analogia. A documentação [Responses Multi-agent](https://developers.openai.com/api/docs/guides/responses-multi-agent) descreve contexto próprio por subagente no seu âmbito; a documentação [app-server](https://learn.chatgpt.com/docs/app-server) descreve threads e consulta de histórico. Nenhuma delas fornece atestação do contexto interno completo deste filho. `excludeTurns` de uma resposta app-server não equivale a `fork_turns=none` nem prova que o histórico não foi herdado.
++2. **Chamada registrada:** conservar na fonte nativa a chamada real com `fork_turns=none`, seu call id, parent/chat/turno e child id, captura de seleção e referências/digests de origem. Configuração, receipt preparado, texto do prompt ou declaração do filho não substituem os argumentos realmente registrados. Ausência, `all`, divergência ou fonte inconsistente impedem validar a tentativa.
++3. **Ensaio empírico complementar completo:** qualificar o mesmo contrato, ferramenta e superfície por diagnóstico sem trabalho de produto, com controle positivo e sentinela exclusiva do pai conforme protocolo abaixo. Uma prova de outra superfície, fixture ou ensaio incompleto não qualifica. Mudança relevante de contrato/schema/comportamento exige revalidação; o número da versão isoladamente continua diagnóstico.
++
++O preflight da etapa deve conferir contrato aplicável, qualificação empírica íntegra e argumentos a enviar antes do trabalho; cada nascimento mantém verificação posterior da chamada real e demais fatos runtime. A falta de uma atestação interna completa não reprova sozinha este critério revisado. Em contrapartida, falha de qualquer uma das três partes, ou de qualquer outra garantia obrigatória da etapa, continua bloqueando o caminho dependente.
++
++#### Protocolo do ensaio de herança indevida
++
++- O pai estabelece **antes do nascimento** dois valores novos, distintos e não secretos: uma sentinela de herança `S`, presente somente em seu contexto anterior, e um marcador de controle `C` entregue explicitamente no prompt autocontido do filho. Não usar valores reais de produção ou exemplos fixos deste documento.
++- O valor de `S` não entra no prompt do filho, mensagens de steering, títulos, nomes de arquivos, fixtures, arquivos compartilhados, variáveis de ambiente, capturas ou outros payloads disponibilizados ao filho. Não fornecer o transcript nem sua localização ao filho. Logs nativos preservam sua procedência privada; não copiá-los como contexto do diagnóstico. Se houver vazamento por um desses canais, o ensaio fica inválido e não qualifica a superfície.
++- O filho recebe `C` e uma tarefa diagnóstica clara: devolver o controle exato e informar qualquer sentinela de herança que realmente tenha recebido; se não tiver uma, declarar ausência sem adivinhar. Não recebe trabalho de etapa nem acesso a fontes para procurar `S`. A origem deve confirmar que não houve consulta a transcript, arquivos ou outros canais que contaminem o diagnóstico.
++- O controle correto retornado com completed/payload e filiação/call id válidos comprova que a instrução e o canal de retorno do diagnóstico funcionaram. Controle ausente ou incorreto, silêncio, interrupção, falta de payload, fonte incompleta ou contaminação tornam o resultado `incomplete`/inválido; não contam como positivo.
++- Sentinela do pai devolvida sem entrega autorizada é resultado divergente e bloqueia a qualificação e o trabalho dependente. Chamada registrada diferente de `fork_turns=none` também diverge. Não repetir com outro modelo para apagar o resultado nem converter falha em sucesso.
++- Somente contrato aplicável + chamada registrada correta + controle exato/retorno íntegro + ausência de `S` no resultado de um ensaio não contaminado satisfazem o **critério operacional escolhido**, no escopo observado. A ausência de `S` isoladamente não prova não herança; mesmo o conjunto positivo **não atesta o contexto interno completo** nem ausência universal de acesso a todo o histórico.
++
++Persistir separadamente evidência contratual, chamada nativa e resultado empírico, cada qual com escopo e proveniência. O resumo sanitizado registra identificadores, digests dos marcadores, controle conferido, resultado da sentinela, integridade/contaminação e `passed|failed|incomplete`; omite os valores de `S` e `C` do relatório público. `S` não é transferida ao filho; `C` é entregue explicitamente no prompt do diagnóstico. `internal_context_attestation=unavailable` permanece explícito, separado do resultado operacional. Esses nomes são metadados do registro a implementar, não campos alegadamente expostos pelo provedor ou novos estados da FSM.
++
++Registro mínimo: tentativa, chat/parent id e child id, papel, card/Status, worktree pedido/efetivo, captura/digest, argumentos reais, par requested/observed, fonte de cada observação, host/versão, política efetiva, nascimento/execução/conclusão/interrupção e payload ou referência verificável. Ausente = `unavailable`, nunca campo sintetizado. A exceção de exigibilidade é apenas a atestação interna completa: sua indisponibilidade permanece registrada e não é convertida em uma garantia; o critério operacional de contexto usa as três partes acima. O conteúdo retornado precisa ser vinculado ao mesmo child id. Evento de spawn não prova execução; completed sem payload não passa. Mudança de escolha entre reviewers invalida a onda; filhos vivos conservam sua captura de nascimento.
++
++### 4. Revisão nativa conserva a garantia de #1049
++
++Caminho proposto, habilitável somente após prova: pai gravável prepara diff exato e SHA-256, capturas e prompts; o **mesmo chat** entra em contexto efetivo somente leitura por mecanismo nativo suportado e verificável; os dois reviewers nascem no mesmo turno, com filhos distintos, mesma onda, path/digest, prompts sem transcript fornecido e critério operacional de contexto validado. Pai e filhos permanecem somente leitura até ambos retornarem. Persistência de proxies ocorre apenas depois, em contexto gravável comprovado do mesmo chat. Não exigir do agente alterar permissões nem inventar uma ferramenta para fazê-lo.
++
++A prova precisa cobrir contexto efetivo que governa pai/filhos, leitura do mesmo artefato e tentativa controlada de escrita negada para cada revisor, com alvo inalterado. Prompt “não escreva”, perfil TOML, teste unitário e `sandbox_mode` declarado no proxy não substituem essa evidência. Ensaios negativos usam fixtures descartáveis e guardam pedido, deny e readback/digest; não arriscam arquivos de produto. A tentativa de escrita é parte do ensaio do isolamento, não trabalho normal do reviewer.
++
++Neste host não há controle nativo de permissões exposto ao agente e o turno é gravável. Logo, **não habilitar a onda**. A futura alteração retira a recomendação de `codex exec --sandbox read-only` como alternativa para delegação e usa recusa explícita; até aprovação e implementação, o runbook atual continua vigente. Nenhuma transição de Review/QA/commit pode se apoiar em onda recusada. `verify-wave` e checklist continuam exigidos; evidência efetiva complementa, não reduz, seus checks.
++
++### 5. Experiência do operador e aceitação no host real
++
++Usar nome nativo contendo papel e card, por exemplo `design-autor 1098`; vínculo de chat e child id permitem Alan encontrar o responsável. Evidência viva inclui lista da interface, estado em execução, abertura/inspeção do filho, mensagem de orientação entregue e retorno no chat; interrupção aparece como tal. Não prometer botão específico: testar controles realmente disponíveis na superfície do operador e registrar se interação ocorre pelo chat pai ou pelo thread.
++
++A matriz de aceitação cruza superfície (interativo, exec, app/IDE) com refinamento, autor/crítico Design, Apply, diff-reviewer, code-reviewer e QA. Cada linha identifica host/versão, schema, chat/card/child, prova e limite; app e IDE são identificados separadamente quando expõem capacidades distintas. Por linha registrar suportado/provado/bloqueado, evidências e motivo. Demonstrar uma delegação concluída e uma impedida, escrita autorizada na etapa correta, denies fora de card/etapa, pares reais, isolamento e a onda completa de revisão. Unit tests não encerram linhas runtime. Enquanto faltar garantia, manter linha bloqueada e task correspondente pendente; não anunciar “substituição concluída” nem fazer avançar etapa afetada. Recusa correta é critério de comportamento, não substitui a prova positiva exigida pelo card.
++
++## Apply contract
++
++UI impact: none. O trabalho desta revisão se limita a Design/spec/tasks/evidence. O briefing original em `proposal.md`, a crítica histórica e a entrega integrada 4.4 são preservados. Não alterar código, adapter, manifesto, trust, conta ou permissões nesta revisão. A implementação futura deve substituir somente o gate de contexto pelo conjunto contratual/empírico aprovado, manter atestação interna unavailable e preservar Guard, seleção observada, read-only, leitura/deny/readback dos reviewers, duas identidades/mesmo diff e os gates humanos.
++
++O novo digest precisa de revalidação canônica; não há T7 nova implícita. O pai informou que `pedir_review --dry-run` hoje recusa no preflight antigo antes de avaliar digest/I4. Registrar esse bloqueio e usar o processo existente, sem contornar a ordem dos checks ou inventar uma transição.
++
++## Risks / Trade-offs
++
++- Host sem telemetria de seleção ou sem contrato/chamada/ensaio de contexto completos → bloqueio persiste. Atestação interna completa permanece unavailable e não é prometida; um positivo empírico não estabelece garantia universal.
++- Normalização de diretório pode autorizar outro card → validar identidade independente, caminho real e todos os alvos no Guard, com negativos antes de ativar.
++- Hooks hospedados podem não executar → documentar cobertura por rota; não anunciar Auto nem confiança implícita.
++- Registro recebido pode só repetir configuração → conservar proveniência e distinguir pedido de runtime; ausência reprova gate.
++- Remover CLI externa reduz caminhos disponíveis → consequência deliberada do escopo; o operador vê a limitação e a etapa permanece pendente.
++
++## Migration Plan
++
++Após T7 e T8, implementar adapter, verificação de evidências e ensaios; atualizar apenas documentação Codex e referências operacionais afetadas. Revisar e completar no nucleus o delta do bootstrap; distribuir cópias verificadas e manifesto pelo processo existente, mantendo o pin-base v1.1.22 até publicação autorizada. Não editar instalação da conta, registrar confiança ou anunciar novo pin automaticamente; não duplicar lei em stubs. Ativar capacidades por qualificação íntegra de schema/superfície e preflight atual; uma versão nova compatível não exige recusa só pelo número, nem autoriza copiar sucesso entre superfícies. Agentes já vivos permanecem associados à captura original. Rollback de código conserva evidências, capturas e agentes vivos; não torna permissões mais amplas nem autoriza caminho externo automaticamente. Sem deploy de produto neste card.
++
++## Open Questions
++
++Não há decisão de produto pendente: caminho nativo ou recusa. Permanecem capacidades a ensaiar: refinamento interativo completo, regressão exec, ensaio completo do critério operacional de contexto revisado, vínculo Guard/worktree em escrita autorizada e recusada, controle read-only no mesmo chat e interface do operador. App/IDE via app-server exigem descobrir fonte verificável, schema e capacidades reais, adaptar o driver quando possível e registrar a garantia específica ausente quando não for. Nenhuma dessas lacunas sai do escopo: mantém tarefa e etapa dependentes bloqueadas; recusa correta não vale como positivo exigido nem como substituição integral concluída.
+ 
+ ## Prototype
+ 
+--- a/openspec/changes/card-1098-codex-agentes-nativos/specs/codex-harness/spec.md
++++ b/openspec/changes/card-1098-codex-agentes-nativos/specs/codex-harness/spec.md
+@@ -1,137 +1,168 @@
+ ## MODIFIED Requirements
+ 
+ ### Requirement: Codex stage children are isolated and reviews use the exact diff
+-Refinement, Design authoring and critique, Apply, both Code Review roles, and QA SHALL use native Codex children linked to the card chat, with self-contained prompts, no parent transcript, and the locally captured band model/effort. The operator MUST be able to locate each responsible child, inspect its state, interact with it through supported native controls, and receive its result in the same chat. External CLI orchestration sessions, wrappers around them, and parent execution as a replacement MUST NOT be used. The two Code Review children MUST receive the same parent-materialized exact diff and digest, remain effectively read-only, and return separate findings. The parent MUST NOT treat a missing, interrupted, blocked, or unverified child as a successful completed stage.
+-
+-#### Scenario: Design and QA are separate children
+-- **WHEN** the parent enters Design or QA and the host capability preflight passes
+-- **THEN** it spawns a native stage child in the same card chat with only the stage context and the captured pair
+-- **AND** the parent does not execute that stage's authoring or checks in its own transcript
+-- **AND** the operator can inspect the child's state, steer it using available native controls, and locate its returned payload
+-
+-#### Scenario: All delegated stages preserve native visibility
+-- **WHEN** refinement, Design critique, Apply, or either review role is delegated
+-- **THEN** the child is linked to the same card chat with a stable identity and role
+-- **AND** birth, execution, result and interruption evidence refer to that same identity
+-- **AND** no external orchestration session is presented as a native child
+-
+-#### Scenario: Two read-only reviewers inspect one interval
+-- **WHEN** Code Review begins with a materialized pre-commit or closing diff and a verified native read-only context in the card chat
+-- **THEN** diff-reviewer and code-reviewer are spawned in the same parent turn as distinct children with separate prompts and the same exact path and SHA-256
+-- **AND** neither fetches another diff from git or inherits the parent transcript
+-- **AND** runtime evidence proves the permission context governing parent and both children stays read-only until both complete
+-- **AND** a controlled isolation essay proves each reviewer can read the diff and that each reviewer's write attempt is denied with unchanged target bytes
+-- **AND** their findings and completed status are recorded separately before the writable parent persists proxies
+-
+-#### Scenario: Incomplete child blocks stage success
+-- **WHEN** a child is interrupted, lacks a result, runs under the wrong model or effort, or lacks required runtime evidence
+-- **THEN** that stage does not advance as a successful child execution
+-- **AND** the parent reports the actual failure or unavailable evidence without synthesizing completion
+-
+-#### Scenario: Review host cannot prove effective read-only permissions
+-- **WHEN** the current host lacks a supported and verifiable native read-only context governing parent and children in the same chat
+-- **THEN** the parent refuses the review before review work or reviewer spawns
+-- **AND** it names the missing guarantee and does not start an external session or relax review gates
+-- **AND** a role file or instruction claiming read-only does not satisfy the gate
+-
+-## ADDED Requirements
+-
+-### Requirement: Codex qualifies capabilities independently for each operator surface
+-The harness SHALL assess interactive Codex, non-interactive exec, and app/IDE through app-server using verifiable schema, origin and session capabilities, not an exclusive host-name comparison with codex_exec. Host/version SHALL remain diagnostic provenance. Qualification MUST be backed by a real native success and refusal on the observed surface with revalidated source integrity. Fixtures and qualification copied from another surface MUST NOT establish support. Legacy exec evidence MUST remain readable without permitting surface relabeling. Every required lifecycle, worktree, selection and permission check MUST remain enforced.
+-
+-#### Scenario: Interactive refinement succeeds natively
+-- **WHEN** a qualified interactive session meets all guarantees for an authorized refinement
+-- **THEN** it can begin and complete refinement with a native isolated child and verified evidence in the same chat
+-- **AND** it is not redirected to exec because its originator is codex-tui
+-
+-#### Scenario: Exec retains its valid path
+-- **WHEN** qualified exec supplies compatible schema and all required native evidence after the adaptation
+-- **THEN** preflight and collection succeed without opening another orchestration session
+-- **AND** legacy exec proof cannot be relabeled to qualify TUI or app
+-
+-#### Scenario: App or IDE lacks a guarantee
+-- **WHEN** an app/IDE session lacks a required verifiable field, native linkage, qualification or isolation capability
+-- **THEN** the affected stage is refused with the specific missing guarantee and surface identified
+-- **AND** state and human gates are preserved; no universal support or executed stage is claimed
+-- **AND** its acceptance record contains either an equivalent real essay or the specific documented limitation
+-
+-#### Scenario: Name and version do not replace validation
+-- **WHEN** a session exposes a compatible schema but a different diagnostic host name or version
+-- **THEN** the driver validates origin, surface qualification and all required guarantees
+-- **AND** missing fields or incompatible schema still fail explicitly and a different surface cannot reuse exec qualification
+-
+-### Requirement: Codex preflights native delegation guarantees before stage work
+-The orchestrator MUST check native chat linkage, context isolation, applied model/effort observability, authorized working context, and effective permissions for the requested stage before its work begins. Known unavailable capabilities MUST produce a visible refusal before spawn. Where runtime verification requires a child to exist, the host MUST support withholding stage work until the verification passes; otherwise the spawn MUST be refused. Refusal MUST identify card, stage, missing guarantee and non-executed outcome without changing FSM state or human gates.
+-
+-#### Scenario: Capability is known missing
+-- **WHEN** the host exposes no required directory, linkage, isolation or model-observation capability
+-- **THEN** the parent reports which stage cannot begin and why
+-- **AND** it does not spawn for stage execution, substitute a model, change trust, or launch an external session
+-
+-#### Scenario: Startup verification fails
+-- **WHEN** a native diagnostic-only child is supported and its startup metadata is absent or differs from the captured selection or authorized context
+-- **THEN** no stage work is released to that child
+-- **AND** the failure records the actual child identity and unavailable or divergent values
+-- **AND** the diagnostic birth is not counted as completed stage execution
+-
+-### Requirement: Codex validates the effective card worktree independently of tool paths
+-The adapter MUST distinguish session/card authorization, tool working directory, and mutation targets. It SHALL normalize only observed supported host payload schemas, verify the canonical card worktree and branch against the bound card and current FSM authorization, validate all effective paths, and use that verified context with the existing Guard. A supplied workdir or prompt MUST NOT authorize another checkout or stage. Missing identity, unresolved ambiguity, escaped paths, or unsupported hook coverage MUST yield a visible refusal of the affected work. Refinement SHALL retain the existing issue-bound pre-worktree context; post-T1 children SHALL operate in the bound card worktree.
+-
+-#### Scenario: Authorized Design write after native same-chat resumption
+-- **WHEN** the session originally starts in source but the operator resumes the same chat natively in the card worktree and active turn_context, child birth metadata and all child turns prove that effective binding
+-- **THEN** the Guard permits the authorized OpenSpec artifact write there
+-- **AND** command result, target readback and Guard context prove the same card and worktree
+-- **AND** historical session_meta cwd does not override the verified current turn
+-- **AND** a shell workdir or root argument alone cannot establish this binding or authorize another card
+-
+-#### Scenario: Native resumption does not prove child completion
+-- **WHEN** preflight becomes ready after same-chat resumption and a birth receipt is prepared
+-- **THEN** completion still requires source-verified child lifecycle and returned payload
+-- **AND** neither the receipt nor a Design artifact write proves Guard enforcement or effective read-only isolation
+-
+-#### Scenario: Workdir cannot impersonate another card
+-- **WHEN** a call supplies another card worktree, escaped symlink target or mixed unauthorized mutation paths
+-- **THEN** the covered write is denied before mutation and readback proves targets unchanged
+-- **AND** no supplied path changes the authorized card identity
+-
+-#### Scenario: Stage gate remains active
+-- **WHEN** a bound Design or Todo card attempts a product write through a covered command or edit route
+-- **THEN** the existing Guard denies it before mutation
+-- **AND** a legal product fixture write after T8 is allowed only in the authorized card worktree
+-
+-#### Scenario: Hook resolves the wrong checkout or does not run
+-- **WHEN** the native command uses the intended worktree but its hook uses another checkout or cannot provide the required interception evidence
+-- **THEN** the operation is not claimed as proven safe or as a successful solution to the directory failure
+-- **AND** affected work is refused without launching a replacement session or bypassing hook trust
+-
+-### Requirement: Codex records requested and observed native lifecycle evidence separately
+-Each attempt MUST retain the birth selection capture, actual native arguments, card/stage/role/chat/child identity, effective worktree, runtime host/version, effective permissions, lifecycle events and returned payload evidence with provenance. Requested model and effort MUST remain distinct from runtime-observed values and MUST match the validated birth capture. Context isolation MUST be supported by effective host evidence rather than prompt text alone. Missing values SHALL remain unavailable and fail gates that require them; completed SHALL require a returned payload associated with the same child. Review wave validation SHALL retain two distinct roles and children, stable captured selection, exact diff SHA-256, effective read-only proof, and both successful payloads.
+-
+-#### Scenario: Requested pair is not observed telemetry
+-- **WHEN** a native spawn accepts the captured model and effort but returns only a task identity and result
+-- **THEN** the evidence records the requested pair and marks missing observed values unavailable
+-- **AND** it does not report selection verified or mark the proxy successful
+-
+-#### Scenario: Valid completed native delegation
+-- **WHEN** authoritative runtime evidence verifies the captured pair, isolated context, correct worktree and permissions and the child completes with payload
+-- **THEN** the record relates birth, execution, completion and content to the same card, stage and child
+-- **AND** the operator can find the child and its result in the card chat
+-
+-#### Scenario: Partial or interrupted review wave
+-- **WHEN** either reviewer is interrupted, fails, lacks payload or lacks runtime/digest evidence
+-- **THEN** the wave remains unsuccessful even if the other reviewer completed
+-- **AND** no review approval, commit gate or QA transition is justified by that wave
+-
+-### Requirement: Codex reports proven host coverage without declaring partial replacement complete
+-Acceptance evidence MUST distinguish unit/contract tests, runtime facts, operator-interface observations, and unavailable guarantees for each delegated stage and operator surface (interactive, exec, app/IDE). The native path SHALL be demonstrated on the real host for successful delegation and a refused attempt, authorized and unauthorized writes, context and selection evidence, lifecycle visibility and the complete read-only review wave. Unproved stages MUST remain explicitly blocked with outstanding acceptance tasks and MUST NOT count as completed replacement. Documentation SHALL describe the proven native path and refusal behavior without claiming Auto or changing other clients.
+-
+-#### Scenario: Host exposes only part of the required capability
+-- **WHEN** native authoring can return content but runtime selection or read-only review remains unproved
+-- **THEN** the evidence identifies precisely the observed capabilities and blocked stages
+-- **AND** refusal tests may pass while positive runtime acceptance remains pending
+-- **AND** the card is not reported as an integral completed substitution
+-
+-#### Scenario: Operator verifies live visibility and interaction
+-- **WHEN** a supported stage is exercised on the real operator surface
+-- **THEN** evidence shows the responsible child in the native list, its running state, inspection or steering through supported controls, and its returned content in the chat
+-- **AND** failure and interruption are displayed as such rather than completed results
++Refinement, Design authoring and critique, Apply, both Code Review roles, and QA SHALL use native Codex children linked to the card chat, with self-contained prompts that do not supply the parent transcript, a native request for no inherited turns, the operational context evidence criterion defined below, and the locally captured band model/effort. The operator MUST be able to locate each responsible child, inspect its state, interact with it through supported native controls, and receive its result in the same chat. External CLI orchestration sessions, wrappers around them, and parent execution as a replacement MUST NOT be used. The two Code Review children MUST receive the same parent-materialized exact diff and digest, remain effectively read-only, and return separate findings. The parent MUST NOT treat a missing, interrupted, blocked, or unverified child as a successful completed stage.
++
++#### Scenario: Design and QA are separate children
++- **WHEN** the parent enters Design or QA and the host capability preflight passes
++- **THEN** it spawns a native stage child in the same card chat with only the stage context and the captured pair
++- **AND** the parent does not execute that stage's authoring or checks in its own transcript
++- **AND** the operator can inspect the child's state, steer it using available native controls, and locate its returned payload
++
++#### Scenario: All delegated stages preserve native visibility
++- **WHEN** refinement, Design critique, Apply, or either review role is delegated
++- **THEN** the child is linked to the same card chat with a stable identity and role
++- **AND** birth, execution, result and interruption evidence refer to that same identity
++- **AND** no external orchestration session is presented as a native child
++
++#### Scenario: Two read-only reviewers inspect one interval
++- **WHEN** Code Review begins with a materialized pre-commit or closing diff and a verified native read-only context in the card chat
++- **THEN** diff-reviewer and code-reviewer are spawned in the same parent turn as distinct children with separate prompts and the same exact path and SHA-256
++- **AND** neither fetches another diff from git, supplies the parent transcript, or bypasses the documented-contract/native-call/complementary-essay criterion
++- **AND** runtime evidence proves the permission context governing parent and both children stays read-only until both complete
++- **AND** a controlled isolation essay proves each reviewer can read the diff and that each reviewer's write attempt is denied with unchanged target bytes
++- **AND** their findings and completed status are recorded separately before the writable parent persists proxies
++
++#### Scenario: Incomplete child blocks stage success
++- **WHEN** a child is interrupted, lacks a result, runs under the wrong model or effort, or lacks required runtime evidence
++- **THEN** that stage does not advance as a successful child execution
++- **AND** the parent reports the actual failure or unavailable evidence without synthesizing completion
++
++#### Scenario: Review host cannot prove effective read-only permissions
++- **WHEN** the current host lacks a supported and verifiable native read-only context governing parent and children in the same chat
++- **THEN** the parent refuses the review before review work or reviewer spawns
++- **AND** it names the missing guarantee and does not start an external session or relax review gates
++- **AND** a role file or instruction claiming read-only does not satisfy the gate
++
++## ADDED Requirements
++
++### Requirement: Codex qualifies capabilities independently for each operator surface
++The harness SHALL assess interactive Codex, non-interactive exec, and app/IDE through app-server using verifiable schema, origin and session capabilities, not an exclusive host-name comparison with codex_exec. Host/version SHALL remain diagnostic provenance. Qualification MUST be backed by a real native success and refusal on the observed surface with revalidated source integrity. Fixtures and qualification copied from another surface MUST NOT establish support. Legacy exec evidence MUST remain readable without permitting surface relabeling. Every required lifecycle, worktree, selection and permission check MUST remain enforced.
++
++#### Scenario: Interactive refinement succeeds natively
++- **WHEN** a qualified interactive session meets all guarantees for an authorized refinement
++- **THEN** it can begin and complete refinement with a native isolated child and verified evidence in the same chat
++- **AND** it is not redirected to exec because its originator is codex-tui
++
++#### Scenario: Exec retains its valid path
++- **WHEN** qualified exec supplies compatible schema and all required native evidence after the adaptation
++- **THEN** preflight and collection succeed without opening another orchestration session
++- **AND** legacy exec proof cannot be relabeled to qualify TUI or app
++
++#### Scenario: App or IDE lacks a guarantee
++- **WHEN** an app/IDE session lacks a required verifiable field, native linkage, qualification or isolation capability
++- **THEN** the affected stage is refused with the specific missing guarantee and surface identified
++- **AND** state and human gates are preserved; no universal support or executed stage is claimed
++- **AND** its acceptance record contains either an equivalent real essay or the specific documented limitation
++
++#### Scenario: Name and version do not replace validation
++- **WHEN** a session exposes a compatible schema but a different diagnostic host name or version
++- **THEN** the driver validates origin, surface qualification and all required guarantees
++- **AND** missing fields or incompatible schema still fail explicitly and a different surface cannot reuse exec qualification
++
++### Requirement: Codex preflights native delegation guarantees before stage work
++The orchestrator MUST check native chat linkage, the selected operational context criterion, applied model/effort observability, authorized working context, and effective permissions for the requested stage before its work begins. The context preflight MUST require an applicable documented contract, an intact surface-specific complementary essay qualification, and prepared fork_turns=none arguments; the actual native call MUST be revalidated for each birth. Internal full-context attestation SHALL remain unavailable and SHALL NOT be required by this context criterion. Other known unavailable required capabilities MUST produce a visible refusal before spawn. Where another required runtime verification requires a child to exist, the host MUST support withholding stage work until the verification passes; otherwise the spawn MUST be refused. Refusal MUST identify card, stage, missing guarantee and non-executed outcome without changing FSM state or human gates.
++
++#### Scenario: Capability is known missing
++- **WHEN** the host lacks required directory/linkage/model-observation evidence or any required part of the selected operational context criterion
++- **THEN** the parent reports which stage cannot begin and why
++- **AND** it does not spawn for stage execution, substitute a model, change trust, or launch an external session
++
++#### Scenario: Startup verification fails
++- **WHEN** a native diagnostic-only child is supported and its startup metadata is absent or differs from the captured selection or authorized context
++- **THEN** no stage work is released to that child
++- **AND** the failure records the actual child identity and unavailable or divergent values
++- **AND** the diagnostic birth is not counted as completed stage execution
++
++### Requirement: Codex validates the effective card worktree independently of tool paths
++The adapter MUST distinguish session/card authorization, tool working directory, and mutation targets. It SHALL normalize only observed supported host payload schemas, verify the canonical card worktree and branch against the bound card and current FSM authorization, validate all effective paths, and use that verified context with the existing Guard. A supplied workdir or prompt MUST NOT authorize another checkout or stage. Missing identity, unresolved ambiguity, escaped paths, or unsupported hook coverage MUST yield a visible refusal of the affected work. Refinement SHALL retain the existing issue-bound pre-worktree context; post-T1 children SHALL operate in the bound card worktree.
++
++#### Scenario: Authorized Design write after native same-chat resumption
++- **WHEN** the session originally starts in source but the operator resumes the same chat natively in the card worktree and active turn_context, child birth metadata and all child turns prove that effective binding
++- **THEN** the Guard permits the authorized OpenSpec artifact write there
++- **AND** command result, target readback and Guard context prove the same card and worktree
++- **AND** historical session_meta cwd does not override the verified current turn
++- **AND** a shell workdir or root argument alone cannot establish this binding or authorize another card
++
++#### Scenario: Native resumption does not prove child completion
++- **WHEN** preflight becomes ready after same-chat resumption and a birth receipt is prepared
++- **THEN** completion still requires source-verified child lifecycle and returned payload
++- **AND** neither the receipt nor a Design artifact write proves Guard enforcement or effective read-only isolation
++
++#### Scenario: Workdir cannot impersonate another card
++- **WHEN** a call supplies another card worktree, escaped symlink target or mixed unauthorized mutation paths
++- **THEN** the covered write is denied before mutation and readback proves targets unchanged
++- **AND** no supplied path changes the authorized card identity
++
++#### Scenario: Stage gate remains active
++- **WHEN** a bound Design or Todo card attempts a product write through a covered command or edit route
++- **THEN** the existing Guard denies it before mutation
++- **AND** a legal product fixture write after T8 is allowed only in the authorized card worktree
++
++#### Scenario: Hook resolves the wrong checkout or does not run
++- **WHEN** the native command uses the intended worktree but its hook uses another checkout or cannot provide the required interception evidence
++- **THEN** the operation is not claimed as proven safe or as a successful solution to the directory failure
++- **AND** affected work is refused without launching a replacement session or bypassing hook trust
++
++### Requirement: Codex records requested and observed native lifecycle evidence separately
++Each attempt MUST retain the birth selection capture, actual native arguments, card/stage/role/chat/child identity, effective worktree, runtime host/version, effective permissions, lifecycle events and returned payload evidence with provenance. Requested model and effort MUST remain distinct from runtime-observed values and MUST match the validated birth capture. Operational context evidence MUST separately retain the applicable documented runtime contract, the actual source-registered native fork_turns=none call and the complete complementary non-secret essay described below. It MUST NOT claim to attest the complete internal context. Missing values SHALL remain unavailable and fail gates that require them; full internal-context attestation is explicitly unavailable and is not a prerequisite of the selected operational context criterion; completed SHALL require a returned payload associated with the same child. Review wave validation SHALL retain two distinct roles and children, stable captured selection, exact diff SHA-256, effective read-only proof, and both successful payloads.
++
++#### Scenario: Requested pair is not observed telemetry
++- **WHEN** a native spawn accepts the captured model and effort but returns only a task identity and result
++- **THEN** the evidence records the requested pair and marks missing observed values unavailable
++- **AND** it does not report selection verified or mark the proxy successful
++
++#### Scenario: Valid completed native delegation
++- **WHEN** source-verified evidence validates the captured pair, actual native call, documented-contract/complementary-essay context criterion, correct worktree and effective permissions and the child completes with payload
++- **THEN** the record relates birth, execution, completion and content to the same card, stage and child
++- **AND** the operator can find the child and its result in the card chat
++
++#### Scenario: Partial or interrupted review wave
++- **WHEN** either reviewer is interrupted, fails, lacks payload or lacks runtime/digest evidence
++- **THEN** the wave remains unsuccessful even if the other reviewer completed
++- **AND** no review approval, commit gate or QA transition is justified by that wave
++
++### Requirement: Codex reports proven host coverage without declaring partial replacement complete
++Acceptance evidence MUST distinguish unit/contract tests, runtime facts, operator-interface observations, and unavailable guarantees for each delegated stage and operator surface (interactive, exec, app/IDE). The native path SHALL be demonstrated on the real host for successful delegation and a refused attempt, authorized and unauthorized writes, the scoped operational context evidence and selection observations, lifecycle visibility and the complete read-only review wave. Unproved stages MUST remain explicitly blocked with outstanding acceptance tasks and MUST NOT count as completed replacement. Documentation SHALL describe the proven native path and refusal behavior without claiming Auto or changing other clients.
++
++#### Scenario: Host exposes only part of the required capability
++- **WHEN** native authoring can return content but runtime selection or read-only review remains unproved
++- **THEN** the evidence identifies precisely the observed capabilities and blocked stages
++- **AND** refusal tests may pass while positive runtime acceptance remains pending
++- **AND** the card is not reported as an integral completed substitution
++
++#### Scenario: Operator verifies live visibility and interaction
++- **WHEN** a supported stage is exercised on the real operator surface
++- **THEN** evidence shows the responsible child in the native list, its running state, inspection or steering through supported controls, and its returned content in the chat
++- **AND** failure and interruption are displayed as such rather than completed results
++
++### Requirement: Codex evaluates operational context using a documented contract and a controlled complementary essay
++The selected context criterion SHALL require all of: a documented contract applicable to the observed runtime surface and native tool, a source-registered native birth call with fork_turns=none and parent/chat/turn/child provenance, and a complete complementary non-secret essay of unintended history inheritance qualified for that surface and contract. Documentation from another product, configuration, a prepared receipt, child prose or a sentinel's absence alone MUST NOT satisfy the criterion. Full internal-context attestation SHALL remain explicitly unavailable; a positive operational result MUST NOT be described as an attestation of the complete context delivered internally to the model. This scoped criterion MUST NOT replace or relax model/effort observations, Guard, effective read-only permissions, reviewer diff read/write-denial/readback evidence, lifecycle gates or human approval.
++
++#### Scenario: Complete controlled essay satisfies the scoped operational criterion
++- **WHEN** the parent establishes a new non-secret sentinel S only in its earlier context and delivers a distinct positive-control marker C in the child's self-contained diagnostic prompt
++- **AND** S is not supplied through that prompt, steering, shared files, fixtures, environment variables, names or other child-visible channels, and the child does not retrieve parent transcripts or contamination sources
++- **AND** the applicable documented contract and the actual native fork_turns=none call, identities and source digests are validated
++- **AND** the same child completes with payload returning C exactly and reports no inherited S
++- **THEN** the essay may qualify the observed operational context criterion for that surface and contract
++- **AND** its result explicitly states that S's absence alone is insufficient and complete internal-context attestation remains unavailable
++
++#### Scenario: Parent sentinel or native call diverges
++- **WHEN** an uncontaminated essay returns the parent-only sentinel without authorized delivery, or the source-registered birth call differs from fork_turns=none
++- **THEN** the result is divergent, qualification and dependent work are blocked, and no positive context evidence is recorded
++- **AND** changing models or repeating the attempt does not erase the recorded divergence
++
++#### Scenario: Missing control or contaminated essay is not positive
++- **WHEN** C is absent or incorrect, the child is interrupted, payload or provenance is incomplete, or S reached a child-visible channel
++- **THEN** the essay is incomplete or invalid and does not qualify the surface or release dependent stage work
++- **AND** silence or an absent S does not convert that result to success
++
++#### Scenario: Documentation or surface qualification cannot be substituted
++- **WHEN** only generic multi-agent documentation, another surface's essay, configuration or a declared isolation value is available
++- **THEN** the required documented-contract/native-call/complementary-essay set remains unverified
++- **AND** app-server excludeTurns response pagination is not treated as native fork_turns=none or proof of non-inheritance
++
++#### Scenario: Internal attestation remains unavailable after a positive essay
++- **WHEN** all three operational evidence parts pass but the provider does not expose complete internal context telemetry
++- **THEN** the record separates contractual evidence, empirical observations and internal_context_attestation=unavailable with their provenance and scope
++- **AND** this unavailable attestation alone does not fail the revised context criterion or supply any other missing required guarantee
+--- a/openspec/changes/card-1098-codex-agentes-nativos/tasks.md
++++ b/openspec/changes/card-1098-codex-agentes-nativos/tasks.md
+@@ -10,50 +10,60 @@
+ - [x] 1.5 Revisar e completar driver/coleta do bootstrap: validar schema/origem/capacidades sem comparação exclusiva com codex_exec, manter qualificação real por superfície e compatibilidade legada exec; testar cópia de qualificação, reclassificação de host e ausência de campos obrigatórios como recusas.
+ - [x] 1.6 Investigar fonte de evidência real do app/IDE via app-server e adaptar coleta quando suportada; registrar por superfície qual garantia falta quando não houver caminho verificável, sem trocar para exec ou prometer suporte universal.
+ 
+-## 2. Contexto correto das operações
+-
+-- [x] 2.1 Normalizar payloads nativos realmente suportados em codex_adapter, incluindo variantes de comando/diretório observadas, preservando o evento original e a identidade autorizada independente de workdir.
+-- [x] 2.2 Validar worktree/branch/card e caminhos reais de todos os alvos antes do Guard; não permitir que cwd, prompt, symlink ou alvo misto concedam outro card/etapa.
+-- [x] 2.3 Ensaiar regressão source/develop versus worktree vinculado, Design OpenSpec permitido, Todo/Design produto negado e produto permitido somente após T8; provar targets inalterados nos denies em fixtures.
+-- [x] 2.4 Ensaiar divergência/ausência de vínculo e cobertura/trust do hook: falha visível sem sessão externa, sem correção silenciosa de permissões e sem alegação Auto.
+-
+-- [x] 2.5 Validar retomada NATIVA do mesmo chat pelo operador: turn_context atual no worktree prevalece sobre cwd histórico; metadata de nascimento e todos os turnos do filho devem corresponder. Testar que workdir/--root sozinhos continuam recusados; preservar receita de recuperação sem API fictícia de rebind.
+-
+-## 3. Revisão nativa com garantia equivalente
+-
+-- [x] 3.1 Implementar caminho de recusa da onda quando não houver contexto nativo somente leitura comprovado para pai e filhos; preservar verify-wave e checklist sem exceção para metadata unavailable.
+-- [ ] 3.2 Implementar contrato de coleta/verificação de evidência efetiva read-only, leitura do diff e deny de escrita por reviewer, vinculado ao mesmo path/SHA-256, dois papéis e dois child ids; ensaiar negativos de evidência ausente, divergente ou apenas declarativa.
+-- [ ] 3.3 Implementar a orquestração nativa suportada somente onde o preflight provar o contexto do mesmo chat: preparar diff/capturas gravável, dois nascimentos no mesmo turno read-only, ambos retornos, persistência posterior gravável. Se capacidade faltar, deixar esta task pendente com evidência do bloqueio; não inventar API nem chamar codex exec.
+-- [x] 3.4 Ensaiar onda incompleta, child interrompido, completed sem payload, mudança de seleção, digest divergente e metadata sintética; confirmar que nenhum caso libera aprovação da revisão.
+-
+-## 4. Documentação e verificação local
+-
+-- [x] 4.1 Atualizar runbook canônico Codex e docs/model-selection.md para caminho nativo comprovado ou recusa, removendo recomendação de sessão externa para delegação e preservando gates humanos e a garantia de #1049; manter AGENTS.md curto e outros clientes intocados.
+-- [x] 4.2 Documentar como Alan localiza responsável, acompanha estado, inspeciona/interage e encontra retorno usando controles reais da superfície observada; não prometer controles não expostos.
+-- [x] 4.3 Rodar testes focados de adapter/proxy/review/seleção e validar OpenSpec; registrar resultados, origem canônica das mudanças e limitações sem misturar testes de contrato com prova viva.
+-
+-- [x] 4.4 Conferir procedência nucleus → consumidor, cópia byte a byte e manifesto do delta; documentar pin-base v1.1.22 e publicação pendente. Distribuir pelo processo autorizado, sem confiar hooks automaticamente, mudar conta ou tratar bootstrap como novo pin.
+-
+-## 5. Aceitação viva e handoff
+-
+-- [ ] 5.1 Demonstrar no host real uma delegação nativa concluída com nascimento/execução/completed/payload, par observado válido e contexto isolado; mostrar lista nativa, estado, inspeção/interação e retorno no mesmo chat. <!-- covenant-flow:after-qa -->
+-- [ ] 5.2 Demonstrar tentativa impedida por limitação do host antes do trabalho, com razão exata e nenhuma sessão externa; preservar interrupção/falha como estados distintos de conclusão. <!-- covenant-flow:after-qa -->
+-- [ ] 5.3 Demonstrar escrita autorizada pelo Guard no card/etapa corretos e denies fora do card/etapa por rotas suportadas, com contexto efetivo e readback; não usar a escrita deste Design como substituto da prova. <!-- covenant-flow:after-qa -->
+-- [ ] 5.4 Demonstrar no mesmo chat a onda nativa read-only: runtime de pai e filhos, leitura do mesmo diff, deny de escrita de cada revisor, ambos retornos vinculados e verify-wave/checklist válidos. Sem capacidade comprovada, manter pendente e revisão bloqueada. <!-- covenant-flow:after-qa -->
+-- [ ] 5.5 Completar matriz por refinamento, autor/crítico Design, Apply, ambos reviewers e QA com evidências reais; não marcar substituição integral concluída enquanto qualquer garantia exigida permanecer bloqueada/não comprovada. <!-- covenant-flow:after-qa -->
+-
+-- [ ] 5.6 Demonstrar refinamento interativo autorizado do início ao retorno do filho nativo no mesmo chat, com captura, filiação, contexto, par observado e payload válidos; o ensaio de qualificação em /source e este autor não substituem refinamento. <!-- covenant-flow:after-qa -->
+-- [ ] 5.7 Repetir ensaio real positivo de exec após adaptação e recusas de evidência ausente, vínculo incorreto, modelo/esforço divergentes e isolamento insuficiente; distinguir negativos reais de fixtures. <!-- covenant-flow:after-qa -->
+-- [ ] 5.8 Ensaiar app e IDE por capacidades reais via app-server; para cada superfície registrar positivo equivalente ou limitação específica comprovada. Sem prova positiva, manter a etapa afetada bloqueada e a substituição integral incompleta; a documentação da limitação não conclui o positivo. <!-- covenant-flow:after-qa -->
+-
+-As anotações after-qa somente definem quando revalidar evidências finais; não dispensam preflight, não autorizam revisão/commit com onda ausente e não transformam tarefa bloqueada em concluída. O trabalho de implementação só inicia após T7/T8; este checklist não move a FSM.
+-
+-## Estado do Apply em 17/10/2026
+-
+-16/27 tasks implementadas e verificadas no nucleus. Pacote preparado para integração, ainda sem ativação do adapter no consumidor. A task 4.4 depende da cópia byte a byte e revisão de confiança pelo operador após o pai coletar o retorno deste filho. Pin-base permanece v1.1.22; publicação pendente. Evidência e limitações em `evidence.md`.
+-
+-- 3.2 parcial: refusas e verificação do runtime/sandbox/digest/lifecycle existem; falta fonte autoritativa suportada para isolamento efetivo e leitura do diff/deny de escrita/readback por reviewer. Campos declarativos e fixtures não suprem a fonte; task permanece pendente.
+-- 3.3 bloqueada: não há nesta sessão controle nativo exposto ao agente para preparar e conduzir a onda no mesmo chat com as garantias exigidas. O turno gravável atual recusa antes de qualquer reviewer; isso não demonstra incapacidade definitiva do TUI.
+-- 5.1–5.8 permanecem pendentes: aceitação viva completa não foi executada; recusa correta e qualificação histórica não substituem positivos.
+-
+-Não houve alteração da FSM/Status, commit/push, sessão externa, conta, trust ou snapshots de crítica por este Apply.
++As tasks 1.1–1.6 acima registram a entrega do critério anterior; a revisão abaixo não transforma esse código em implementação do novo critério.
++
++- [ ] 1.7 Implementar, após revalidação do Design/digest pelo processo canônico, o critério de contexto escolhido por Alan: contrato documentado aplicável à superfície/ferramenta + chamada nativa registrada fork_turns=none + qualificação por ensaio complementar completo; registrar atestação interna completa unavailable sem exigir nem afirmar sua existência, preservando todos os outros gates.
++- [ ] 1.8 Implementar e executar o diagnóstico não secreto com controle C entregue ao filho e sentinela S exclusiva do contexto anterior do pai, sem vazamento por prompt/steering/arquivos/env; validar origem e ausência de contaminação, controle exato/completed/payload e filiação; S devolvida ou chamada divergente bloqueia, controle/proveniência incompletos não contam como positivo.
++- [ ] 1.9 Persistir e verificar separadamente evidência contratual, chamada real e resultado empírico com escopo/proveniência/digests, sem publicar marcadores ou sintetizar telemetria; testar positivos controlados e negativos de silêncio, controle errado, sentinela vazada/devolvida, fork divergente, origem incompleta, contrato de outra superfície e uso indevido de excludeTurns. Ausência de S sozinha não comprova isolamento.
++
++## 2. Contexto correto das operações
++
++- [x] 2.1 Normalizar payloads nativos realmente suportados em codex_adapter, incluindo variantes de comando/diretório observadas, preservando o evento original e a identidade autorizada independente de workdir.
++- [x] 2.2 Validar worktree/branch/card e caminhos reais de todos os alvos antes do Guard; não permitir que cwd, prompt, symlink ou alvo misto concedam outro card/etapa.
++- [x] 2.3 Ensaiar regressão source/develop versus worktree vinculado, Design OpenSpec permitido, Todo/Design produto negado e produto permitido somente após T8; provar targets inalterados nos denies em fixtures.
++- [x] 2.4 Ensaiar divergência/ausência de vínculo e cobertura/trust do hook: falha visível sem sessão externa, sem correção silenciosa de permissões e sem alegação Auto.
++
++- [x] 2.5 Validar retomada NATIVA do mesmo chat pelo operador: turn_context atual no worktree prevalece sobre cwd histórico; metadata de nascimento e todos os turnos do filho devem corresponder. Testar que workdir/--root sozinhos continuam recusados; preservar receita de recuperação sem API fictícia de rebind.
++
++## 3. Revisão nativa com garantia equivalente
++
++- [x] 3.1 Implementar caminho de recusa da onda quando não houver contexto nativo somente leitura comprovado para pai e filhos; preservar verify-wave e checklist sem exceção para metadata unavailable.
++- [ ] 3.2 Implementar contrato de coleta/verificação de evidência efetiva read-only, leitura do diff e deny de escrita por reviewer, vinculado ao mesmo path/SHA-256, dois papéis e dois child ids; ensaiar negativos de evidência ausente, divergente ou apenas declarativa.
++- [ ] 3.3 Implementar a orquestração nativa suportada somente onde o preflight provar o contexto do mesmo chat: preparar diff/capturas gravável, dois nascimentos no mesmo turno read-only, ambos retornos, persistência posterior gravável. Se capacidade faltar, deixar esta task pendente com evidência do bloqueio; não inventar API nem chamar codex exec.
++- [x] 3.4 Ensaiar onda incompleta, child interrompido, completed sem payload, mudança de seleção, digest divergente e metadata sintética; confirmar que nenhum caso libera aprovação da revisão.
++
++## 4. Documentação e verificação local
++
++- [x] 4.1 Atualizar runbook canônico Codex e docs/model-selection.md para caminho nativo comprovado ou recusa, removendo recomendação de sessão externa para delegação e preservando gates humanos e a garantia de #1049; manter AGENTS.md curto e outros clientes intocados.
++- [x] 4.2 Documentar como Alan localiza responsável, acompanha estado, inspeciona/interage e encontra retorno usando controles reais da superfície observada; não prometer controles não expostos.
++- [x] 4.3 Rodar testes focados de adapter/proxy/review/seleção e validar OpenSpec; registrar resultados, origem canônica das mudanças e limitações sem misturar testes de contrato com prova viva.
++
++- [x] 4.4 Conferir procedência nucleus → consumidor, cópia byte a byte e manifesto do delta; documentar pin-base v1.1.22 e publicação pendente. Distribuir pelo processo autorizado, sem confiar hooks automaticamente, mudar conta ou tratar bootstrap como novo pin.
++
++- [ ] 4.5 Após revalidação canônica e implementação do critério revisado, atualizar runbook/docs/matriz/preflight/proxy/verify-wave para a separação contratual versus empírica versus atestação interna unavailable, reexecutar testes e distribuir o novo delta nucleus → consumidor com hashes/manifesto/revisão de trust pelo operador quando exigidos; não reutilizar a integração 4.4 ou a aprovação anterior como prova do novo código.
++
++## 5. Aceitação viva e handoff
++
++- [ ] 5.1 Demonstrar no host real uma delegação nativa concluída com nascimento/execução/completed/payload, par observado válido e o conjunto contratual/chamada nativa/ensaio complementar do critério revisado, mantendo atestação interna completa unavailable; mostrar lista nativa, estado, inspeção/interação e retorno no mesmo chat. <!-- covenant-flow:after-qa -->
++- [ ] 5.2 Demonstrar tentativa impedida por limitação do host antes do trabalho, com razão exata e nenhuma sessão externa; preservar interrupção/falha como estados distintos de conclusão. <!-- covenant-flow:after-qa -->
++- [ ] 5.3 Demonstrar escrita autorizada pelo Guard no card/etapa corretos e denies fora do card/etapa por rotas suportadas, com contexto efetivo e readback; não usar a escrita deste Design como substituto da prova. <!-- covenant-flow:after-qa -->
++- [ ] 5.4 Demonstrar no mesmo chat a onda nativa read-only: runtime de pai e filhos, leitura do mesmo diff, deny de escrita de cada revisor, ambos retornos vinculados e verify-wave/checklist válidos. Sem capacidade comprovada, manter pendente e revisão bloqueada. <!-- covenant-flow:after-qa -->
++- [ ] 5.5 Completar matriz por refinamento, autor/crítico Design, Apply, ambos reviewers e QA com evidências reais; não marcar substituição integral concluída enquanto qualquer garantia exigida permanecer bloqueada/não comprovada. <!-- covenant-flow:after-qa -->
++
++- [ ] 5.6 Demonstrar refinamento interativo autorizado do início ao retorno do filho nativo no mesmo chat, com captura, filiação, contexto avaliado pelo critério contratual/chamada/ensaio revisado, par observado e payload válidos; o ensaio de qualificação em /source e este autor não substituem refinamento. <!-- covenant-flow:after-qa -->
++- [ ] 5.7 Repetir ensaio real positivo de exec após adaptação e recusas de evidência ausente, vínculo incorreto, modelo/esforço divergentes e evidência de contexto insuficiente/divergente pelo critério revisado; distinguir negativos reais de fixtures e não afirmar atestação interna completa. <!-- covenant-flow:after-qa -->
++- [ ] 5.8 Ensaiar app e IDE por capacidades reais via app-server; para cada superfície registrar positivo equivalente ou limitação específica comprovada. Sem prova positiva, manter a etapa afetada bloqueada e a substituição integral incompleta; a documentação da limitação não conclui o positivo. <!-- covenant-flow:after-qa -->
++
++As anotações after-qa somente definem quando revalidar evidências finais; não dispensam preflight, não autorizam revisão/commit com onda ausente e não transformam tarefa bloqueada em concluída. O trabalho de implementação só inicia após T7/T8; este checklist não move a FSM.
++
++## Estado do Apply e revisão do critério em 17/10/2026
++
++A entrega anterior e a integração local correspondem a **17/27 tasks concluídas**, incluindo 4.4, conforme evidência do orquestrador. Essa entrega é preservada. A revisão autorizada acrescenta quatro tasks de implementação/verificação ainda pendentes (1.7–1.9 e 4.5): o total passa a **17/31**, sem fabricar implementação ou ensaio do critério novo. As tasks já realizadas não são reclassificadas retroativamente.
++
++- 3.2 continua parcial e pendente: contexto passa a usar o critério contratual/chamada/ensaio escolhido, mas efetividade read-only e leitura do diff/deny de escrita/readback de cada reviewer mantêm suas exigências originais.
++- 3.3 permanece pendente: a onda exige o mesmo chat e todas as provas de permissões e reviewers; esta revisão não concede controle de permissões ao agente.
++- 5.1–5.8 seguem pendentes. Provas históricas e a ausência isolada de sentinela não encerram os aceites.
++- O adapter integrado continua exigindo o critério antigo. O pai informou que o dry-run canônico de pedir_review recusa no preflight antes da avaliação de digest/I4; não houve mudança de Status.
++- Novo digest exige revalidação pelo processo canônico e aprovação humana pertinente; a escolha da opção 2 não vale como T7 de um digest novo nem autoriza código nesta revisão.
++
++Pin-base v1.1.22 e publicação pendente são preservados. Esta continuação alterou somente Design/spec/tasks/evidence; não alterou código, adapter, manifesto, conta, trust, permissões, FSM ou snapshots de crítica.
+--- a/openspec/changes/card-1098-codex-agentes-nativos/evidence.md
++++ b/openspec/changes/card-1098-codex-agentes-nativos/evidence.md
+@@ -1,5 +1,23 @@
+ # Apply preparado — #1098
+ 
++## Revisão documental do critério de contexto — opção 2 escolhida por Alan
++
++Em 17/10/2026, Alan escolheu explicitamente substituir a exigência de um sinal interno completo de isolamento pelo conjunto **contrato documentado aplicável ao runtime + chamada nativa registrada `fork_turns=none` + ensaio complementar não secreto de herança indevida**. O conjunto é evidência contratual e empírica de escopo limitado; não atesta o contexto interno completo entregue ao modelo. Essa atestação continua `unavailable`, separada e não exigida somente para o critério de contexto escolhido. Guard, seleção observada, permissões efetivas, leitura/deny/readback por reviewer, dois reviewers/mesmo diff, lifecycle e gates humanos continuam exigidos.
++
++Esta continuação mudou exclusivamente `design.md`, `specs/codex-harness/spec.md`, `tasks.md` e este registro. Não executou o ensaio, não implementou o critério novo, não alterou o adapter integrado ou seu manifesto e não mudou trust/conta/permissões/Status. O briefing de `proposal.md` e o bloco histórico de crítica foram preservados. O pai havia revalidado a continuação pela captura/receipt originais com `model_proxy.verify_continuation`, lifecycle successful e `gpt-6.1-sol/high`; isso não constitui o novo ensaio de contexto.
++
++O ensaio definido no Design exige C entregue ao filho e S exclusiva do contexto anterior do pai, sem disponibilizá-la por prompt, steering, arquivos compartilhados, fixtures, nomes, ambiente ou outros canais. Não foram criados valores C/S nesta continuação. Controle exato, completed/payload, chamada/filiação/proveniência válidos e ensaio não contaminado são condições obrigatórias; ausência de S sozinha é insuficiente. S devolvida sem entrega autorizada ou chamada divergente bloqueia. Controle ou origem incompletos, silêncio/interrupção e contaminação não contam como positivos. O resumo futuro separa as três evidências e a atestação interna unavailable, sem publicar os marcadores.
++
++As referências oficiais consultadas descrevem contextos próprios de subagentes no âmbito de [Responses Multi-agent](https://developers.openai.com/api/docs/guides/responses-multi-agent) e os contratos de threads/histórico do [app-server](https://learn.chatgpt.com/docs/app-server). Não se inferiu que uma documentação de outro produto qualifica automaticamente TUI/exec/App/IDE. Em especial, `excludeTurns` em respostas/paginação do app-server não equivale a `fork_turns=none` nem atesta não herança.
++
++A integração 4.4 permanece concluída; a baseline correta é 17/27. Foram acrescentadas quatro tasks pendentes para o novo critério (1.7–1.9 e 4.5), resultando em **17/31** no plano revisto. 3.2, 3.3 e os aceites vivos continuam pendentes. O novo contrato não foi atribuído retroativamente aos testes ou proxies históricos.
++
++**Digest e estado:** o Design mudou, portanto a crítica/aprovação anteriores não cobrem automaticamente o novo digest. O pai informou que o dry-run canônico `process_event.py pedir_review --card 1098 --change card-1098-codex-agentes-nativos --client codex --dry-run` rejeitou `codex_evidence:stage_capability_missing` (context_isolation, parent_read_only, review_diff_read, review_write_denial_readback) **antes** de avaliar digest/I4. Nenhuma transição foi executada. Essa limitação existente é registrada; não foi contornada, não se inventou aresta e a escolha de wording não foi tratada como T7. O pai conduzirá publicação/revalidação pelo processo canônico.
++
++Validação desta revisão documental: `openspec validate card-1098-codex-agentes-nativos --strict` PASS; `git diff --check` no escopo da change PASS; parser de tasks confirmou 17 concluídas de 31. Não foram executados novos testes de código ou ensaios de herança, pois nenhum código foi alterado e a execução do ensaio continua pendente.
++
++As seções abaixo preservam a cronologia da entrega e integração anteriores. As afirmações históricas sobre o critério antigo não descrevem uma implementação do critério revisto.
++
+ ## Atualização de integração pelo orquestrador — 17/10/2026
+ 
+ Esta atualização substitui somente o estado de cópia pendente e a contagem registrados historicamente abaixo. O pai coletou o retorno Apply antes da cópia: tentativa `40bcdd55-f3a0-4f83-a62a-3039ad9df906`, filho `01a14a28-2482-7580-9090-d1ebb2dd8890`, modelo/esforço observados `gpt-6.1-sol/high`, bound_card `1098`, completed com payload e proxy lifecycle successful. Isso não comprova isolamento de contexto.

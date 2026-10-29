@@ -9,6 +9,7 @@ import itertools
 import logging
 import math
 import pickle
+import re
 import sqlite3
 import tempfile
 import uuid
@@ -23,6 +24,84 @@ from app.services.discovery_resources import (
 )
 
 PROGRESS_CALLBACK = None
+
+MAX_REASON_CHARS = 300
+MAX_REASONS = 10
+_LOGIC_PREFIX = re.compile(r"^Error evaluating vectorized logic '.*?': ", re.DOTALL)
+_UNKNOWN_COLUMNS = re.compile(
+    r"^Logic references unknown columns/functions: (.*?)\.?(?: Available.*)?$"
+)
+
+
+def failure_reason(error):
+    """Short, groupable reason of one failed combination (never the whole rule or column list)."""
+    text = " ".join(str(error or "").split())
+    text = _LOGIC_PREFIX.sub("", text)
+    unknown = _UNKNOWN_COLUMNS.match(text)
+    if unknown:
+        text = f"a regra usa coluna que a combinação não tem ({unknown.group(1)})"
+    return (text or "erro sem mensagem")[:MAX_REASON_CHARS]
+
+
+class FailureLog:
+    """Combinations skipped by a tolerant stream, grouped by reason (bounded).
+
+    The Combo/Optimization callers pass one to ``execute_stream``; Discovery does not,
+    so Discovery keeps the strict #1093 rule (the first failed combination aborts it).
+    """
+
+    def __init__(self):
+        self.executed = 0
+        self.succeeded = 0
+        self.failed = 0
+        self.reasons = {}
+
+    def add(self, error):
+        self.failed += 1
+        reason = failure_reason(error)
+        if reason in self.reasons or len(self.reasons) < MAX_REASONS:
+            self.reasons[reason] = self.reasons.get(reason, 0) + 1
+        else:
+            self.reasons["outros motivos"] = self.reasons.get("outros motivos", 0) + 1
+
+    def merge(self, other):
+        self.executed += other.executed
+        self.succeeded += other.succeeded
+        for reason, count in other.reasons.items():
+            if reason in self.reasons or len(self.reasons) < MAX_REASONS:
+                self.reasons[reason] = self.reasons.get(reason, 0) + count
+            else:
+                self.reasons["outros motivos"] = self.reasons.get("outros motivos", 0) + count
+        self.failed += other.failed
+
+    def text(self):
+        return "; ".join(f"{reason} (x{count})" for reason, count in self.reasons.items())
+
+    def summary(self):
+        """``None`` when nothing failed; otherwise the count and the grouped reasons."""
+        if not self.failed:
+            return None
+        return {
+            "failed": self.failed,
+            "executed": self.executed,
+            "reasons": [
+                {"reason": reason, "count": count}
+                for reason, count in sorted(self.reasons.items(), key=lambda item: -item[1])
+            ],
+            "message": f"{self.failed} combinações com erro: {self.text()}",
+        }
+
+
+class NoValidCombination(CalculationFailure):
+    """A tolerant optimization in which no combination worked; carries the real reason."""
+
+    def __init__(self, failures, counters=None):
+        super().__init__("no_valid_combination", counters)
+        self.failures = failures
+        self.reason = failures.text()
+
+    def __str__(self):
+        return f"nenhuma combinação válida; {self.failures.failed} com erro: {self.reason}"
 
 
 def report(event):
@@ -237,10 +316,19 @@ def batches(arguments, profile):
         yield from measured(batch)
 
 
-def execute_stream(executor, worker, arguments_factory, planned, spool, profile=None):
-    """Consume at most 2W futures/64MiB; every row has one confirmed outcome."""
+def execute_stream(
+    executor, worker, arguments_factory, planned, spool, profile=None, failures=None
+):
+    """Consume at most 2W futures/64MiB; every row has one confirmed outcome.
+
+    Strict by default: the first failed combination raises ``CalculationFailure``
+    (Discovery, #1093). With a ``FailureLog`` the stream is tolerant: a failed combination
+    is skipped and recorded; the caller decides what a stage without any working combination
+    means (the optimizer fails the asset only when nothing worked at all).
+    """
     profile = profile or ResourceProfile.configured()
     counters = Counters(planned)
+    stage_log = FailureLog() if failures is not None else None
     stage_id = uuid.uuid4().hex
     submitted = 0
     pending = {}
@@ -298,6 +386,8 @@ def execute_stream(executor, worker, arguments_factory, planned, spool, profile=
                         spool.add(domain, row)
                     else:
                         counters.failed += 1
+                        if stage_log is not None:
+                            stage_log.add(row.get("error"))
                 event = {
                     "stage_id": stage_id,
                     "counters": counters.snapshot(submitted),
@@ -308,16 +398,27 @@ def execute_stream(executor, worker, arguments_factory, planned, spool, profile=
                 if rows and rows[0].get("worker_telemetry"):
                     event["worker_telemetry"] = rows[0]["worker_telemetry"]
                 report(event)
-                if counters.failed:
+                if counters.failed and failures is None:
                     raise CalculationFailure("calculation_error", counters.snapshot(submitted))
         final = counters.snapshot(submitted)
         if (
             counters.executed != planned
-            or counters.failed
+            or (counters.failed and failures is None)
             or counters.unknown
             or counters.remaining
         ):
             raise OperationalFailure("incomplete_stage", final)
+        if stage_log is not None:
+            stage_log.executed = counters.executed
+            stage_log.succeeded = counters.succeeded
+            if counters.failed:
+                logging.getLogger(__name__).warning(
+                    "%s of %s combinations of the stage failed and were skipped: %s",
+                    counters.failed,
+                    counters.executed,
+                    stage_log.text(),
+                )
+            failures.merge(stage_log)
         return final
     except BaseException as exc:
         for future in pending:

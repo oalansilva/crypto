@@ -29,7 +29,7 @@ permissions:
 
 jobs:
   changes:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     outputs:
       backend_app_python: ${{ steps.filter.outputs.backend_app_python }}
     steps:
@@ -47,7 +47,7 @@ jobs:
               - 'backend/app/**/*.py'
 
   openspec-validate:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -61,7 +61,7 @@ jobs:
         run: npx --yes @fission-ai/openspec@1.5.0 validate --all
 
   qa-policy:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     if: github.event_name == 'pull_request'
     outputs:
       visual_skip: ${{ steps.policy.outputs.visual_skip }}
@@ -127,7 +127,7 @@ jobs:
 
   new-route-playwright-coverage:
     name: new-route-playwright-coverage
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     needs:
       - qa-policy
     if: >-
@@ -150,7 +150,7 @@ jobs:
           python3 scripts/check_new_route_playwright_coverage.py --self-test
 
   backend-format:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -171,7 +171,7 @@ jobs:
         run: python -m black --check backend
 
   frontend-lint:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -190,7 +190,7 @@ jobs:
         run: npm --prefix frontend run lint
 
   frontend-tests:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -209,7 +209,7 @@ jobs:
         run: npm --prefix frontend run test:unit
 
   frontend-build:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -237,8 +237,8 @@ jobs:
 
   process-fsm:
     name: process-fsm
-    runs-on: ubuntu-latest
-    timeout-minutes: 5
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10  # #1152: a máquina do GitHub varia de velocidade e com 5 min o job era cancelado com os testes passando; 10 min ≈ 2x a rodada mais lenta medida.
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -262,7 +262,7 @@ jobs:
           python scripts/secret-remediation/rehearsal.py --filter-repo "$(command -v git-filter-repo)" --restricted-root "$RUNNER_TEMP/card-1071-rehearsal"
 
   backend-unit-tests:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 30
     env:
       PYTHONPATH: ${{ github.workspace }}
@@ -325,7 +325,7 @@ jobs:
               --output test-artifacts/backend-unit/timing.json \
               --markdown-output test-artifacts/backend-unit/timing.md \
               --revision "${GITHUB_SHA}" \
-              --environment "github-actions/ubuntu-latest" \
+              --environment "github-actions/ubuntu-24.04" \
               --started-at "${started_at}" \
               --finished-at "${finished_at}"
             report_status="$?"
@@ -368,7 +368,7 @@ jobs:
           path: test-artifacts/backend-unit
 
   backend-tests:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     env:
       PYTHONPATH: ${{ github.workspace }}
       DATABASE_URL: postgresql+psycopg2://postgres:postgres@127.0.0.1:5432/postgres
@@ -417,7 +417,7 @@ jobs:
           path: .coverage.*
 
   backend-coverage-gate:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     needs:
       - changes
       - backend-unit-tests
@@ -468,7 +468,7 @@ jobs:
             --include "backend/app/**/*.py"
 
   e2e-playwright:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 30
     needs:
       - qa-policy
@@ -517,7 +517,7 @@ jobs:
 
   qa-gate:
     name: qa-gate
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     if: >-
       always() && github.event_name == 'pull_request' &&
       github.base_ref == 'develop'
@@ -560,7 +560,7 @@ jobs:
           done
 
   deploy-staging:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     needs:
       - openspec-validate
       - backend-format

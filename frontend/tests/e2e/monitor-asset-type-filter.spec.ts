@@ -153,11 +153,11 @@ async function setupApiMocks(page: any) {
   )
 }
 
-test('monitor hides stock opportunities in crypto-only MVP', async ({ page }) => {
+test('card #1122: monitor lists crypto and stock opportunities together, without a class filter', async ({ page }) => {
   await setupApiMocks(page)
   await page.goto('/monitor')
 
   await expect(page.getByTestId('monitor-row-btc-usdt')).toBeVisible()
-  await expect(page.getByText('AAPL', { exact: true })).toHaveCount(0)
+  await expect(page.getByTestId('monitor-row-aapl')).toBeVisible()
   await expect(page.getByTestId('monitor-filter-asset-type')).toHaveCount(0)
 })

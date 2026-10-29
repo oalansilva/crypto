@@ -1,31 +1,117 @@
-import { useState, useEffect } from 'react'
-import { useNavigate, useSearchParams } from 'react-router-dom'
+import { useState, useEffect, useMemo, useRef } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import {
-    Settings, Play, TrendingUp, Activity,
-    ArrowLeft, Search, CheckCircle, BarChart3,
-    Sliders
+    Settings, Play, Activity,
+    Search, CheckCircle,
 } from 'lucide-react'
 import { API_BASE_URL } from '../lib/apiBase'
+import { authFetch } from '../lib/authFetch'
+import { AssetPicker } from '../components/AssetPicker'
+import { DataExecutionBlock } from '../components/results/DataExecutionBlock'
+import {
+    BatchConfirm,
+    BatchConfirmError,
+    BatchConfirmLoading,
+    BatchPanel,
+    BatchPausedBlock,
+    type BatchPanelHandle,
+} from '../components/batch/BatchLote'
+import { useBatchJob } from '../hooks/useBatchJob'
+import { lookupCatalogAssets } from '../lib/assetCatalogApi'
+import {
+    CLASS_NOTE,
+    ON_DEMAND_TEXT_BACKTEST,
+    OPTIMIZE_FIXED_WINDOW,
+    OPTIMIZE_FIXED_WINDOW_LABEL,
+    blockedNotice,
+    collectingCopy,
+    cryptoOnlyTimeframes,
+    equityTimeframeBlock,
+    historyUnavailableNotice,
+    normalizeSymbol,
+    planRun,
+    refusalMessage,
+    runCopy,
+    timeframeDisabled,
+    urlSymbolNotice,
+    type RunNotice,
+} from '../lib/assetSelection'
+import { rememberAssets, useSelectionView } from '../lib/assetStore'
 
 // Mock Data (Replace with API fetch)
 const TIMEFRAMES = ["1m", "5m", "15m", "30m", "1h", "4h", "1d"]
 
+const DEFAULT_SYMBOL = 'BTC/USDT'
+
 export function ComboOptimizePage() {
-    const navigate = useNavigate()
     const [searchParams] = useSearchParams()
+    const urlSymbol = normalizeSymbol(searchParams.get('symbol') || '')
 
     // State
     const [templates, setTemplates] = useState<any[]>([])
     const [selectedTemplate, setSelectedTemplate] = useState<string>(searchParams.get('template') || '')
-    const [symbol, setSymbol] = useState(searchParams.get('symbol') || 'BTC/USDT')
+    // Ativos: o seletor do catálogo (sem texto livre). `?symbol=` só marca se existir no catálogo.
+    const [selectedSymbols, setSelectedSymbols] = useState<string[]>(urlSymbol ? [] : [DEFAULT_SYMBOL])
+    const [symbolNotice, setSymbolNotice] = useState<{ title: string; body: string } | null>(null)
+    const [runNotice, setRunNotice] = useState<RunNotice | null>(null)
     const [timeframe, setTimeframe] = useState(searchParams.get('timeframe') || '1h')
     const [isOptimizing, setIsOptimizing] = useState(false)
     const [params, setParams] = useState<any[]>([])
     const [results, setResults] = useState<any>(null)
 
+    // Lote multiclasse (card #1120): plano, progresso por ativo, Pausar, Retomar e Encerrar
+    const batch = useBatchJob()
+    const runButton = useRef<HTMLButtonElement>(null)
+    const panelRef = useRef<BatchPanelHandle>(null)
+
+    // O que roda e o que fica fora, por classe e tempo (ação, ETF e ativo marcado pela Binance).
+    const { entries: selectionEntries, loading: selectionLoading } = useSelectionView(selectedSymbols)
+    const plan = useMemo(
+        () => planRun(selectionEntries, { timeframe, page: 'optimize' }),
+        [selectionEntries, timeframe],
+    )
+    // Ação/ETF sozinha (card #1119): roda com `run_scope: "single"` na janela fixa da tela; 1m/5m/30m
+    // ficam indisponíveis e 15m/1h/4h avisam antes de rodar quando o 5m não cobre a janela fixa.
+    const equityRun = plan.equityRun
+    const tfBlock = equityTimeframeBlock(plan, timeframe, 'optimize')
+    const copy = runCopy(plan, 'optimize')
+    const [collecting, setCollecting] = useState<string | null>(null)
+    const cryptoOnlyTfs = cryptoOnlyTimeframes(plan)
+    const batchRunning = batch.active && batch.job?.status !== 'paused'
+    const templateLabel = (): string => {
+        const found = templates.find((t) => t.name === selectedTemplate)
+        const display = found?.display_name
+        return display && display !== selectedTemplate ? `${display} (${selectedTemplate})` : selectedTemplate
+    }
+    const configText = (): string =>
+        `${templateLabel()} · ${timeframe} · ${OPTIMIZE_FIXED_WINDOW_LABEL} (fixo nesta tela) · Long · intrabar 15m`
+
+    // `?symbol=`: marca só se existir no catálogo; ativo marcado entra como "fica de fora".
+    useEffect(() => {
+        if (!urlSymbol) return
+        let cancelled = false
+        void (async () => {
+            try {
+                const data = await lookupCatalogAssets([urlSymbol])
+                if (cancelled) return
+                rememberAssets(data.items, { fresh: data.freshness })
+                const found = data.items.some((item) => normalizeSymbol(item.symbol) === urlSymbol)
+                const listUnavailable =
+                    data.freshness[urlSymbol.includes('/') ? 'crypto' : 'stock'].status === 'unavailable'
+                if (found || listUnavailable) setSelectedSymbols([urlSymbol])
+                else setSymbolNotice(urlSymbolNotice(urlSymbol))
+            } catch {
+                if (!cancelled) setSelectedSymbols([urlSymbol])
+            }
+        })()
+        return () => {
+            cancelled = true
+        }
+    }, [urlSymbol])
+
     // Fetch templates on load
     useEffect(() => {
-        fetch(`${API_BASE_URL}/combos/templates`)
+        authFetch(`${API_BASE_URL}/combos/templates`)
             .then(res => res.json())
             .then(data => {
                 const all = [
@@ -41,7 +127,7 @@ export function ComboOptimizePage() {
     useEffect(() => {
         if (!selectedTemplate) return
 
-        fetch(`${API_BASE_URL}/combos/templates/${selectedTemplate}/metadata`)
+        authFetch(`${API_BASE_URL}/combos/templates/${selectedTemplate}/metadata`)
             .then(res => res.json())
             .then(data => {
                 // Extract params for optimization
@@ -72,9 +158,29 @@ export function ComboOptimizePage() {
             })
     }, [selectedTemplate])
 
+    const changeSymbols = (next: string[]) => {
+        setSelectedSymbols(next)
+        setSymbolNotice(null)
+        setRunNotice(null)
+    }
+
     const handleRunOptimization = async () => {
-        setIsOptimizing(true)
-        setResults(null)
+        setRunNotice(null)
+        if (tfBlock) {
+            // Nada é iniciado; o tempo escolhido fica como está.
+            setRunNotice(tfBlock.notice)
+            return
+        }
+        if (plan.mode === 'none') {
+            setRunNotice({ tone: 'warn', title: 'Escolha ao menos 1 ativo', body: 'Pesquise e marque os ativos a otimizar.' })
+            return
+        }
+        if (plan.mode === 'blocked') {
+            // Nada é iniciado; a seleção fica como está.
+            setRunNotice(blockedNotice(plan, 'optimize'))
+            return
+        }
+        const symbolsToRun = plan.runnable
 
         // Build custom ranges
         const custom_ranges: Record<string, any> = {}
@@ -86,29 +192,72 @@ export function ComboOptimizePage() {
             }
         })
 
-        try {
-            const res = await fetch(`${API_BASE_URL}/combos/optimize`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    template_name: selectedTemplate,
-                    symbol,
-                    timeframe,
-                    start_date: "2024-01-01", // TODO: Date picker
-                    end_date: "2024-01-31",
-                    custom_ranges
+        if (plan.mode === 'single') {
+            batch.dismissFinished()
+            setIsOptimizing(true)
+            setResults(null)
+            const isEquityRun = !!equityRun
+            if (isEquityRun) setCollecting(collectingCopy(symbolsToRun[0], 'optimize', timeframe))
+            try {
+                const res = await authFetch(`${API_BASE_URL}/combos/optimize`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        template_name: selectedTemplate,
+                        symbol: symbolsToRun[0],
+                        timeframe,
+                        start_date: OPTIMIZE_FIXED_WINDOW.start, // período fixo desta tela (#1119); sem seletor nesta história
+                        end_date: OPTIMIZE_FIXED_WINDOW.end,
+                        custom_ranges,
+                        run_scope: 'single',
+                    })
                 })
-            })
 
-            const data = await res.json()
-            setResults(data)
+                const data = await res.json()
+                if (!res.ok) {
+                    const unavailable = isEquityRun ? historyUnavailableNotice(data?.detail) : null
+                    setRunNotice(
+                        unavailable ?? {
+                            tone: 'alert',
+                            title: 'Otimização recusada',
+                            body: refusalMessage(data?.detail, 'Falha na otimização'),
+                        },
+                    )
+                    return
+                }
+                setResults(data)
 
-        } catch (err) {
-            console.error(err)
-            alert("Optimization failed")
-        } finally {
-            setIsOptimizing(false)
+            } catch (err) {
+                console.error(err)
+                alert("Optimization failed")
+            } finally {
+                setIsOptimizing(false)
+                setCollecting(null)
+            }
+            return
         }
+
+        // Mais de 1 ativo é sempre lote (decisão 2): o servidor monta o plano e o Confirmar abre na coluna larga.
+        setResults(null)
+        await batch.requestPreview({
+            template_name: selectedTemplate,
+            symbols: plan.selected,
+            timeframe,
+            start_date: OPTIMIZE_FIXED_WINDOW.start, // mesmas datas do caminho de 1 ativo
+            end_date: OPTIMIZE_FIXED_WINDOW.end,
+            custom_ranges,
+            page: 'optimize',
+        })
+    }
+
+    const confirmBatch = async (body: Record<string, unknown>) => {
+        const started = await batch.confirmAndRun(body)
+        if (started) requestAnimationFrame(() => panelRef.current?.focusTitle())
+    }
+
+    const backFromConfirm = () => {
+        batch.closeConfirm()
+        runButton.current?.focus()
     }
 
     return (
@@ -139,27 +288,42 @@ export function ComboOptimizePage() {
                                     </select>
                                 </div>
 
-                                {/* Symbol & Timeframe */}
-                                <div className="grid grid-cols-2 gap-4">
-                                    <div>
-                                        <label className="block text-sm text-zinc-400 mb-1">Symbol</label>
-                                        <input
-                                            type="text"
-                                            value={symbol}
-                                            onChange={(e) => setSymbol(e.target.value)}
-                                            className="w-full bg-white0 border border-zinc-200 rounded-xl px-4 py-3 outline-none focus:border-purple-500"
-                                        />
-                                    </div>
-                                    <div>
-                                        <label className="block text-sm text-zinc-400 mb-1">Timeframe</label>
-                                        <select
-                                            value={timeframe}
-                                            onChange={(e) => setTimeframe(e.target.value)}
-                                            className="w-full bg-white0 border border-zinc-200 rounded-xl px-4 py-3 outline-none focus:border-purple-500"
-                                        >
-                                            {TIMEFRAMES.map(tf => <option key={tf} value={tf}>{tf}</option>)}
-                                        </select>
-                                    </div>
+                                {/* Ativos: o seletor do catálogo substitui o texto livre */}
+                                <div>
+                                    <span className="block text-sm text-zinc-400 mb-1">Ativos</span>
+                                    <AssetPicker
+                                        value={selectedSymbols}
+                                        onChange={changeSymbols}
+                                        ariaLabel="Seletor de ativos para otimizar"
+                                        variant="narrow"
+                                        notice={symbolNotice}
+                                        onDemandTexts={ON_DEMAND_TEXT_BACKTEST}
+                                        classNote={CLASS_NOTE.optimize}
+                                    />
+                                </div>
+
+                                {/* Timeframe */}
+                                <div>
+                                    <label className="block text-sm text-zinc-400 mb-1">Timeframe</label>
+                                    <select
+                                        value={timeframe}
+                                        onChange={(e) => setTimeframe(e.target.value)}
+                                        className="w-full bg-white0 border border-zinc-200 rounded-xl px-4 py-3 outline-none focus:border-purple-500"
+                                    >
+                                        {TIMEFRAMES.map(tf => (
+                                            <option key={tf} value={tf} disabled={timeframeDisabled(plan, tf)}>
+                                                {cryptoOnlyTfs.includes(tf) ? `${tf} (só cripto)` : tf}
+                                            </option>
+                                        ))}
+                                    </select>
+                                    <p className="r19-hint" data-testid="opt-period">
+                                        <b>Período:</b> {OPTIMIZE_FIXED_WINDOW_LABEL}, fixo nesta tela.
+                                    </p>
+                                    {equityRun ? (
+                                        <p className="r19-hint" data-testid="opt-timeframe-hint">
+                                            <b>Ação e ETF:</b> 15m, 1h, 4h ou 1d no pregão regular de Nova York. 15m, 1h e 4h são montados do 5m da Binance, que pode não cobrir jan. 2024; para outro período, use o Combo.
+                                        </p>
+                                    ) : null}
                                 </div>
 
                                 {/* Parameters Ranges */}
@@ -220,11 +384,13 @@ export function ComboOptimizePage() {
                                 )}
 
                                 <button
+                                    ref={runButton}
                                     onClick={handleRunOptimization}
-                                    disabled={isOptimizing || !selectedTemplate}
+                                    disabled={isOptimizing || batchRunning || !selectedTemplate || selectionLoading || batch.starting}
+                                    data-testid="run-optimization"
                                     className="w-full bg-gradient-to-r from-purple-500 to-pink-600 hover:from-purple-400 hover:to-pink-500 text-zinc-900 font-bold py-4 rounded-xl shadow-lg shadow-purple-500/25 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 mt-4"
                                 >
-                                    {isOptimizing ? (
+                                    {isOptimizing || batchRunning ? (
                                         <>
                                             <Activity className="w-5 h-5 animate-spin" /> Optimizing...
                                         </>
@@ -235,13 +401,80 @@ export function ComboOptimizePage() {
                                     )}
                                 </button>
 
+                                <p className="lote-runcopy" data-testid="opt-run-copy">
+                                    {copy.parts ? (
+                                        <>
+                                            <b>{copy.parts.lead}</b> {copy.parts.runs}{' '}
+                                            <span className="lote-out">{copy.parts.out}</span>
+                                        </>
+                                    ) : copy.blocked ? (
+                                        <span className="lote-out">{copy.text}</span>
+                                    ) : (
+                                        copy.text
+                                    )}
+                                </p>
+                                {collecting ? (
+                                    <p className="r19-collect" role="status" data-testid="run-collecting">
+                                        {collecting}
+                                    </p>
+                                ) : null}
+                                {runNotice ? (
+                                    <div
+                                        className={runNotice.tone === 'alert' ? 'ap-alert' : 'ap-warn'}
+                                        role={runNotice.tone === 'alert' ? 'alert' : 'status'}
+                                        data-testid="run-warning"
+                                    >
+                                        <strong>{runNotice.title}</strong>
+                                        {runNotice.body}
+                                    </div>
+                                ) : null}
                             </div>
                         </div>
                     </div>
 
                     {/* RESULTS PANEL */}
                     <div className="lg:col-span-2 space-y-6">
-                        {!results ? (
+                        {batch.confirm.phase === 'loading' ? <BatchConfirmLoading /> : null}
+                        {batch.confirm.phase === 'ready' ? (
+                            <BatchConfirm
+                                preview={batch.confirm.preview}
+                                config={{ text: configText() }}
+                                busy={batch.starting}
+                                onConfirm={() => void confirmBatch((batch.confirm as { body: Record<string, unknown> }).body)}
+                                onBack={backFromConfirm}
+                            />
+                        ) : null}
+                        {batch.confirm.phase === 'error' ? (
+                            <BatchConfirmError message={batch.confirm.message} onBack={backFromConfirm} />
+                        ) : null}
+                        {batch.confirm.phase === 'paused' ? (
+                            <BatchPausedBlock
+                                job={batch.job}
+                                jobId={batch.confirm.jobId}
+                                onResume={() => {
+                                    batch.closeConfirm()
+                                    void batch.resumeById((batch.confirm as { jobId: string }).jobId)
+                                }}
+                                onCancel={() => {
+                                    batch.closeConfirm()
+                                    void batch.cancelById((batch.confirm as { jobId: string }).jobId)
+                                    requestAnimationFrame(() => panelRef.current?.focusTitle())
+                                }}
+                                onBack={backFromConfirm}
+                            />
+                        ) : null}
+                        {batch.job ? (
+                            <BatchPanel
+                                ref={panelRef}
+                                job={batch.job}
+                                pending={batch.pending}
+                                actionError={batch.actionError}
+                                onPause={() => void batch.pause()}
+                                onResume={() => void batch.resume()}
+                                onCancel={() => void batch.cancel()}
+                            />
+                        ) : null}
+                        {!results && batch.confirm.phase === 'closed' && !batch.job ? (
                             <div className="h-full min-h-[400px] glass-strong rounded-2xl border border-zinc-200 flex flex-col items-center justify-center text-center p-8">
                                 <div className="bg-zinc-50 p-4 rounded-full mb-4">
                                     <Search className="w-12 h-12 text-zinc-600" />
@@ -251,7 +484,7 @@ export function ComboOptimizePage() {
                                     Select a strategy template and configure parameter ranges to find the best performing combination.
                                 </p>
                             </div>
-                        ) : (
+                        ) : !results ? null : (
                             <div className="space-y-6 animate-fade-in">
 
                                 {/* Best Result Card */}
@@ -305,6 +538,19 @@ export function ComboOptimizePage() {
                                         </div>
                                     </div>
                                 </div>
+
+                                <DataExecutionBlock
+                                    asset={results.asset}
+                                    provenance={results.data_provenance}
+                                    execution={results.execution}
+                                    conventions={results.conventions}
+                                    combinationErrors={results.combination_errors}
+                                    timeframe={results.timeframe ?? timeframe}
+                                    trades={results.trades}
+                                    page="optimize"
+                                    requestedFallback={OPTIMIZE_FIXED_WINDOW}
+                                    requestedNote="Período fixo desta tela"
+                                />
 
                                 {/* Stages Log (Simplificado) */}
                                 <div className="glass-strong rounded-2xl p-6 border border-zinc-200">

@@ -1,6 +1,8 @@
 import { Activity, DollarSign, Download, Target, TrendingDown, TrendingUp } from 'lucide-react'
 import type { TradeExplanation } from '@/types/tradeExplanation'
 import { formatBoundedRatioPercent, formatCompoundReturn } from '@/lib/compoundReturn'
+import { nyStamp } from '@/lib/equityExecution'
+import '../results/DataExecution.css'
 
 export interface StrategyTrade {
     entry_time: string
@@ -14,6 +16,9 @@ export interface StrategyTrade {
     type?: string
     signal_type?: string
     exit_reason?: string
+    /** Saída com gap (card #1119): preço do stop que a abertura passou. */
+    stop_price?: number
+    gap_pct?: number
     entry_signal_type?: string
     entry_explanation?: TradeExplanation | null
     exit_explanation?: TradeExplanation | null
@@ -42,8 +47,14 @@ interface StrategyTradesTableProps {
     loading?: boolean
     error?: string | null
     onExport?: () => void
+    /** Card #1123: status do download da planilha (região `polite`). */
+    exportStatus?: string
     testId?: string
     showMetrics?: boolean
+    /** Moeda da classe em todas as colunas de dinheiro: USDT (cripto, padrão) ou USD (ação e ETF). */
+    currency?: string
+    /** Intradiário de ação/ETF (15m, 1h, 4h): data e hora de Nova York com o fuso (decisão 18). */
+    newYorkClock?: boolean
 }
 
 const INITIAL_CAPITAL = 100
@@ -55,23 +66,64 @@ function formatDate(dateStr?: string) {
     return `${months[date.getUTCMonth()]} ${date.getUTCDate()}, ${date.getUTCFullYear()}`
 }
 
-function formatPrice(price?: number | null) {
+function num(value: number) {
+    return value.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+}
+
+function formatPrice(price: number | null | undefined, currency: string) {
     if (price === null || price === undefined || Number.isNaN(price)) return '-'
-    return `${price.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} USDT`
+    return `${num(price)} ${currency}`
 }
 
-function formatUsd(value?: number | null) {
+function formatMoney(value: number | null | undefined, currency: string) {
     if (value === null || value === undefined || Number.isNaN(value)) return '-'
-    return `${value.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} USD`
+    return `${num(value)} ${currency}`
 }
 
-function formatPnl(usd: number, pct: number, isPositive: boolean) {
+function formatPnl(amount: number, pct: number, isPositive: boolean, currency: string) {
     const color = isPositive ? 'text-[#0ecb81]' : 'text-[#f6465d]'
     return (
         <div>
-            <span className={color}>{isPositive ? '+' : ''}{usd.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} USD</span>
+            <span className={color}>{isPositive ? '+' : ''}{num(amount)} {currency}</span>
             <span className={`ml-2 ${color}`}>, {isPositive ? '+' : ''}{pct.toFixed(2)}%</span>
         </div>
+    )
+}
+
+function isGapExit(trade: StrategyTrade) {
+    return trade.exit_reason === 'stop_loss_gap' || trade.signal_type === 'Stop com gap'
+}
+
+/** Data (e hora de Nova York no intradiário de ação/ETF) de uma entrada ou saída. */
+function DateCell({ iso, newYork }: { iso?: string; newYork: boolean }) {
+    if (newYork) {
+        const stamp = nyStamp(iso)
+        if (stamp) {
+            return (
+                <>
+                    {stamp.date}
+                    <span className="r19-time">{stamp.time}</span>
+                </>
+            )
+        }
+    }
+    return <>{formatDate(iso)}</>
+}
+
+/** Intervalo do cartão móvel: "Oct 7, 2026, 11:30 -> Oct 9, 2026, 15:30" com o fuso numa linha. */
+function mobileRange(entry: string | undefined, exit: string | undefined, newYork: boolean) {
+    if (!newYork) return <>{formatDate(entry)} → {formatDate(exit)}</>
+    const a = nyStamp(entry)
+    const b = nyStamp(exit)
+    if (!a || !b) return <>{formatDate(entry)} → {formatDate(exit)}</>
+    const zoneA = a.time.split(' ')[1]
+    const zoneB = b.time.split(' ')[1]
+    const zone = zoneA === zoneB ? zoneA : `${zoneA} → ${zoneB}`
+    return (
+        <>
+            {a.date}, {a.time.split(' ')[0]} → {b.date}, {b.time.split(' ')[0]}
+            <span className="r19-time">Horário de Nova York ({zone})</span>
+        </>
     )
 }
 
@@ -166,8 +218,11 @@ export function StrategyTradesTable({
     loading,
     error,
     onExport,
+    exportStatus,
     testId = 'strategy-trades-table',
     showMetrics = true,
+    currency = 'USDT',
+    newYorkClock = false,
 }: StrategyTradesTableProps) {
     const isShort = direction.toLowerCase() === 'short'
     const rows = buildClosedTradeRows(trades, candles, isShort)
@@ -235,6 +290,11 @@ export function StrategyTradesTable({
                                 Exportar para Excel
                             </button>
                         ) : null}
+                        {onExport ? (
+                            <span className="b23-export-status" role="status" aria-live="polite" data-testid="trades-export-status">
+                                {exportStatus ?? ''}
+                            </span>
+                        ) : null}
                     </div>
                 </div>
                 <div className="space-y-3 bg-[#1e2329] p-3 md:hidden">
@@ -243,9 +303,9 @@ export function StrategyTradesTable({
                             <div className="flex items-start justify-between gap-3">
                                 <div>
                                     <p className="text-xs font-semibold uppercase text-[#0ecb81]">Posição aberta</p>
-                                    <p className="mt-1 text-sm font-semibold text-[#eaecef]">{isShort ? 'Venda/Short' : 'Compra'} · {formatDate(trade.entry_time)}</p>
+                                    <p className="mt-1 text-sm font-semibold text-[#eaecef]">{isShort ? 'Venda/Short' : 'Compra'} · <DateCell iso={trade.entry_time} newYork={newYorkClock} /></p>
                                 </div>
-                                <span className="font-mono text-sm text-[#eaecef]">{formatPrice(trade.entry_price)}</span>
+                                <span className="font-mono text-sm text-[#eaecef]">{formatPrice(trade.entry_price, currency)}</span>
                             </div>
                         </article>
                     ))}
@@ -254,14 +314,19 @@ export function StrategyTradesTable({
                             <div className="flex items-start justify-between gap-3">
                                 <div>
                                     <p className="text-xs font-semibold uppercase text-[#929aa5]">Trade {trade.tradeNum} · encerrado</p>
-                                    <p className="mt-1 text-sm text-[#eaecef]">{formatDate(trade.entry_time)} → {formatDate(trade.exit_time)}</p>
+                                    <p className="mt-1 text-sm text-[#eaecef]">{mobileRange(trade.entry_time, trade.exit_time, newYorkClock)}</p>
                                 </div>
                                 <span className={trade.netPnlUSD >= 0 ? 'text-[#0ecb81]' : 'text-[#f6465d]'}>{trade.netPnlPct >= 0 ? '+' : ''}{trade.netPnlPct.toFixed(2)}%</span>
                             </div>
                             <dl className="mt-3 grid grid-cols-2 gap-2 text-xs">
-                                <div><dt className="text-[#929aa5]">Entrada</dt><dd className="mt-1 text-[#eaecef]">{formatPrice(trade.entry_price)}</dd></div>
-                                <div><dt className="text-[#929aa5]">Saída</dt><dd className="mt-1 text-[#eaecef]">{formatPrice(trade.exit_price)}</dd></div>
+                                <div><dt className="text-[#929aa5]">Entrada</dt><dd className="mt-1 text-[#eaecef]">{formatPrice(trade.entry_price, currency)}</dd></div>
+                                <div><dt className="text-[#929aa5]">Saída</dt><dd className="mt-1 text-[#eaecef]">{formatPrice(trade.exit_price, currency)}</dd></div>
                             </dl>
+                            {isGapExit(trade) && trade.stop_price != null ? (
+                                <p className="r19-gap-card" data-testid="trade-gap-card">
+                                    <b>Stop com gap</b> · stop {num(trade.stop_price)}, abriu {num(Number(trade.exit_price))}
+                                </p>
+                            ) : null}
                         </article>
                     ))}
                     {rows.length === 0 && openTrades.length === 0 ? <p className="p-3 text-center text-sm text-[#929aa5]">Nenhuma operação disponível.</p> : null}
@@ -272,7 +337,7 @@ export function StrategyTradesTable({
                             <tr>
                                 <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-normal text-[#929aa5]">Operação <span className="text-[#707a8a]">↓</span></th>
                                 <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-normal text-[#929aa5]">Tipo</th>
-                                <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-normal text-[#929aa5]">Data e hora</th>
+                                <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-normal text-[#929aa5]">{newYorkClock ? 'Data e hora (Nova York)' : 'Data e hora'}</th>
                                 <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-normal text-[#929aa5]">Sinal</th>
                                 <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-normal text-[#929aa5]">Preço</th>
                                 <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-normal text-[#929aa5]">Valor da posição</th>
@@ -290,9 +355,9 @@ export function StrategyTradesTable({
                                         <div className={`text-xs ${isShort ? 'text-[#f0b90b]' : 'text-[#929aa5]'}`}>{isShort ? 'Venda' : 'Compra'}</div>
                                     </td>
                                     <td className="px-4 py-2 text-[#eaecef]">Entrada</td>
-                                    <td className="px-4 py-2 text-[#eaecef]">{formatDate(trade.entry_time)}</td>
+                                    <td className="px-4 py-2 text-[#eaecef]"><DateCell iso={trade.entry_time} newYork={newYorkClock} /></td>
                                     <td className="px-4 py-2 text-[#eaecef]">{isShort ? 'Vender' : 'Comprar'}</td>
-                                    <td className="px-4 py-2 font-medium text-[#eaecef]">{formatPrice(trade.entry_price)}</td>
+                                    <td className="px-4 py-2 font-medium text-[#eaecef]">{formatPrice(trade.entry_price, currency)}</td>
                                     <td className="px-4 py-2 text-[#eaecef]">-</td>
                                     <td colSpan={4} className="px-4 py-2 align-top">
                                         <div className="mb-2 font-medium text-[#0ecb81]">Posição aberta</div>
@@ -306,31 +371,38 @@ export function StrategyTradesTable({
                                         <div className={`text-xs ${isShort ? 'text-[#f0b90b]' : 'text-[#929aa5]'}`}>{isShort ? 'Venda' : 'Compra'}</div>
                                     </td>
                                     <td className="px-4 py-2 text-[#eaecef]">Entrada</td>
-                                    <td className="px-4 py-2 text-[#eaecef]">{formatDate(trade.entry_time)}</td>
+                                    <td className="px-4 py-2 text-[#eaecef]"><DateCell iso={trade.entry_time} newYork={newYorkClock} /></td>
                                     <td className="px-4 py-2 text-[#eaecef]">{isShort ? 'Vender' : 'Comprar'}</td>
-                                    <td className="px-4 py-2 font-medium text-[#eaecef]">{formatPrice(trade.entry_price)}</td>
+                                    <td className="px-4 py-2 font-medium text-[#eaecef]">{formatPrice(trade.entry_price, currency)}</td>
                                     <td className="px-4 py-2 text-[#eaecef]">
-                                        <div>{formatUsd(trade.positionValueUSD)}</div>
+                                        <div>{formatMoney(trade.positionValueUSD, currency)}</div>
                                     </td>
                                     <td colSpan={4} className="px-4 py-2 align-top" />
                                 </tr>,
                                 <tr key={`${trade.tradeNum}-exit`} className="border-b border-[#2b3139] bg-[#1e2329] transition-colors hover:bg-[#2b3139]">
                                     <td className="px-4 py-2 text-[#eaecef]">Saida</td>
-                                    <td className="px-4 py-2 text-[#eaecef]">{formatDate(trade.exit_time)}</td>
-                                    <td className="px-4 py-2 text-[#eaecef]">{trade.signalType}</td>
-                                    <td className="px-4 py-2 font-medium text-[#eaecef]">{formatPrice(trade.exit_price)}</td>
-                                    <td className="px-4 py-2" />
-                                    <td className="px-4 py-2">{formatPnl(trade.netPnlUSD, trade.netPnlPct, trade.netPnlUSD >= 0)}</td>
+                                    <td className="px-4 py-2 text-[#eaecef]"><DateCell iso={trade.exit_time} newYork={newYorkClock} /></td>
                                     <td className="px-4 py-2 text-[#eaecef]">
-                                        <div>{trade.favorableExcursionUSD.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} USD</div>
+                                        {isGapExit(trade) && trade.stop_price != null ? (
+                                            <>
+                                                <span className="r19-gap">Stop com gap</span>
+                                                <span className="r19-gap-note">stop {num(trade.stop_price)} · abriu {num(Number(trade.exit_price))}</span>
+                                            </>
+                                        ) : trade.signalType}
+                                    </td>
+                                    <td className="px-4 py-2 font-medium text-[#eaecef]">{formatPrice(trade.exit_price, currency)}</td>
+                                    <td className="px-4 py-2" />
+                                    <td className="px-4 py-2">{formatPnl(trade.netPnlUSD, trade.netPnlPct, trade.netPnlUSD >= 0, currency)}</td>
+                                    <td className="px-4 py-2 text-[#eaecef]">
+                                        <div>{num(trade.favorableExcursionUSD)} {currency}</div>
                                         <div className="text-xs text-[#929aa5]">, {trade.favorableExcursionPct.toFixed(2)}%</div>
                                     </td>
                                     <td className="px-4 py-2 text-[#f6465d]">
-                                        <div>-{trade.adverseExcursionUSD.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} USD</div>
+                                        <div>-{num(trade.adverseExcursionUSD)} {currency}</div>
                                         <div className="text-xs">, -{trade.adverseExcursionPct.toFixed(2)}%</div>
                                     </td>
                                     <td className="px-4 py-2 text-[#eaecef]">
-                                        <div>{trade.cumulativePnlUSD.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} USD</div>
+                                        <div>{num(trade.cumulativePnlUSD)} {currency}</div>
                                         <div className="text-xs text-[#929aa5]">, {trade.cumulativePnlPct.toFixed(2)}%</div>
                                     </td>
                                 </tr>,

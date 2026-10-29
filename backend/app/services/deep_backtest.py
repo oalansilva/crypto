@@ -17,9 +17,13 @@ from app.services.combo_acceleration import enabled, deep_execution
 from app.services.combo_cache import Cache, index_identity
 
 from app.metrics.backtest_execution_costs import (
+    STOP_EXIT_GAP_REASON,
+    STOP_EXIT_GAP_SIGNAL,
     TRADING_FEE,
+    gap_pct,
     long_trade_profit_frac,
     short_trade_profit_frac,
+    stop_gap_enabled,
 )
 
 
@@ -29,18 +33,51 @@ def simulate_execution_with_15m(
     stop_loss: float,
     direction: str = "long",
     slippage: float = 0.0,
+    fee: float = TRADING_FEE,
 ) -> List[Dict]:
     if os.environ.get("COMBO_OPTIMIZER_LEGACY") == "1":
         return _legacy_simulate_execution_with_15m(
-            df_daily_signals, df_15m, stop_loss, direction, slippage
+            df_daily_signals, df_15m, stop_loss, direction, slippage, fee
         )
     if enabled():
         return _compiled_simulate_execution_with_15m(
-            df_daily_signals, df_15m, stop_loss, direction, slippage
+            df_daily_signals, df_15m, stop_loss, direction, slippage, fee
         )
     return _fast_simulate_execution_with_15m(
-        df_daily_signals, df_15m, stop_loss, direction, slippage
+        df_daily_signals, df_15m, stop_loss, direction, slippage, fee
     )
+
+
+def _trade_row(
+    entry_iso,
+    entry_price,
+    is_short,
+    exit_iso,
+    exit_price,
+    profit,
+    exit_reason,
+    stop_price,
+) -> Dict:
+    """Linha de trade do 15m. ``exit_reason``: stop_loss, stop_loss_gap ou o fim por sinal."""
+    row = {
+        "entry_time": entry_iso,
+        "entry_price": entry_price,
+        "type": "short" if is_short else "long",
+        "exit_time": exit_iso,
+        "exit_price": float(exit_price),
+        "profit": profit,
+    }
+    if exit_reason == "stop_loss_gap":
+        row["exit_reason"] = STOP_EXIT_GAP_REASON
+        row["signal_type"] = STOP_EXIT_GAP_SIGNAL
+        row["entry_signal_type"] = "Vender" if is_short else "Comprar"
+        row["stop_price"] = float(stop_price)
+        row["gap_pct"] = gap_pct(stop_price, exit_price)
+        return row
+    row["exit_reason"] = "stop_loss_15m" if exit_reason == "stop_loss" else "signal_15m"
+    row["signal_type"] = "Stop" if exit_reason == "stop_loss" else "Close entry(s) order..."
+    row["entry_signal_type"] = "Vender" if is_short else "Comprar"
+    return row
 
 
 def _legacy_simulate_execution_with_15m(
@@ -49,6 +86,7 @@ def _legacy_simulate_execution_with_15m(
     stop_loss: float,
     direction: str = "long",
     slippage: float = 0.0,
+    fee: float = TRADING_FEE,
 ) -> List[Dict]:
     """
     Simulate trade execution using 15-minute candles for realistic stop/target validation.
@@ -72,14 +110,18 @@ def _legacy_simulate_execution_with_15m(
     stop_loss_pct = float(stop_loss) if stop_loss is not None else 0.0
     is_short = (direction or "long").lower() == "short"
 
+    gap_on = stop_gap_enabled()
     if df_15m.empty:
         times_15m = np.array([])
         lows_15m = np.array([])
         highs_15m = np.array([])
+        opens_15m = None
     else:
         times_15m = df_15m.index
         lows_15m = df_15m["low"].values
         highs_15m = df_15m["high"].values
+        # Sem a coluna de abertura não há como detectar o gap: segue no preço do stop.
+        opens_15m = df_15m["open"].values if "open" in df_15m.columns else None
 
     # Pre-calculate entry signals
     entry_signals = df_daily_signals[df_daily_signals["signal"] == 1]
@@ -145,6 +187,20 @@ def _legacy_simulate_execution_with_15m(
                         final_exit_time = final_exit_time.tz_localize(entry_time.tz)
                     final_exit_price = exact_stop_price
                     exit_reason = "stop_loss"
+                    # Card #1119: 15m que abre além do stop sai na abertura desse 15m.
+                    open_hit = (
+                        float(opens_15m[start_idx + hit_offset]) if opens_15m is not None else None
+                    )
+                    if (
+                        gap_on
+                        and open_hit is not None
+                        and (
+                            (is_short and open_hit >= exact_stop_price)
+                            or (not is_short and open_hit <= exact_stop_price)
+                        )
+                    ):
+                        final_exit_price = open_hit
+                        exit_reason = "stop_loss_gap"
                 else:
                     final_exit_time = signal_exit_time
                     final_exit_price = signal_exit_price
@@ -167,25 +223,24 @@ def _legacy_simulate_execution_with_15m(
         last_exit_time = final_exit_time
         if is_short:
             profit = short_trade_profit_frac(
-                entry_price, float(final_exit_price), slippage=slippage
+                entry_price, float(final_exit_price), slippage=slippage, fee=fee
             )
         else:
-            profit = long_trade_profit_frac(entry_price, float(final_exit_price), slippage=slippage)
+            profit = long_trade_profit_frac(
+                entry_price, float(final_exit_price), slippage=slippage, fee=fee
+            )
 
-        signal_type = "Stop" if exit_reason == "stop_loss" else "Close entry(s) order..."
-        trades.append(
-            {
-                "entry_time": entry_time.isoformat(),
-                "entry_price": entry_price,
-                "type": "short" if is_short else "long",
-                "exit_time": final_exit_time.isoformat(),
-                "exit_price": float(final_exit_price),
-                "profit": profit,
-                "exit_reason": "stop_loss_15m" if exit_reason == "stop_loss" else "signal_15m",
-                "signal_type": signal_type,
-                "entry_signal_type": "Vender" if is_short else "Comprar",
-            }
+        trade = _trade_row(
+            entry_time.isoformat(),
+            entry_price,
+            is_short,
+            final_exit_time.isoformat(),
+            float(final_exit_price),
+            profit,
+            exit_reason,
+            exact_stop_price,
         )
+        trades.append(trade)
 
     # logger.info(f"Deep Backtest complete: {len(trades)} trades extracted")
     return trades
@@ -226,6 +281,7 @@ def _fast_simulate_execution_with_15m(
     stop_loss: float,
     direction: str = "long",
     slippage: float = 0.0,
+    fee: float = TRADING_FEE,
 ) -> List[Dict]:
     trades = []
     stop_loss_pct = float(stop_loss) if stop_loss is not None else 0.0
@@ -242,15 +298,22 @@ def _fast_simulate_execution_with_15m(
     exit_asi8 = daily_asi8[exit_pos] if exit_pos.size else np.array([], dtype=np.int64)
     exit_opens = opens[exit_pos] if exit_pos.size else np.array([], dtype=np.float64)
 
+    gap_on = stop_gap_enabled()
     if df_15m.empty:
         times_15_asi8 = np.array([], dtype=np.int64)
         lows_15m = np.array([], dtype=np.float64)
         highs_15m = np.array([], dtype=np.float64)
+        opens_15m = None
         iso_15 = np.array([], dtype=object)
     else:
         times_15_asi8 = _asi8(df_15m.index)
         lows_15m = df_15m["low"].to_numpy(dtype=np.float64, copy=False)
         highs_15m = df_15m["high"].to_numpy(dtype=np.float64, copy=False)
+        opens_15m = (
+            df_15m["open"].to_numpy(dtype=np.float64, copy=False)
+            if "open" in df_15m.columns
+            else None
+        )
         iso_15 = _iso_array(df_15m.index)
 
     last_exit_asi8 = None
@@ -316,6 +379,19 @@ def _fast_simulate_execution_with_15m(
                     final_exit_price = exact_stop_price
                     final_exit_asi8 = int(times_15_asi8[start_idx + hit_offset])
                     exit_reason = "stop_loss"
+                    open_hit = (
+                        float(opens_15m[start_idx + hit_offset]) if opens_15m is not None else None
+                    )
+                    if (
+                        gap_on
+                        and open_hit is not None
+                        and (
+                            (is_short and open_hit >= exact_stop_price)
+                            or (not is_short and open_hit <= exact_stop_price)
+                        )
+                    ):
+                        final_exit_price = open_hit
+                        exit_reason = "stop_loss_gap"
 
         if exit_reason == "end_of_period":
             continue
@@ -323,33 +399,33 @@ def _fast_simulate_execution_with_15m(
         last_exit_asi8 = final_exit_asi8
         if is_short:
             profit = short_trade_profit_frac(
-                entry_price, float(final_exit_price), slippage=slippage
+                entry_price, float(final_exit_price), slippage=slippage, fee=fee
             )
         else:
-            profit = long_trade_profit_frac(entry_price, float(final_exit_price), slippage=slippage)
+            profit = long_trade_profit_frac(
+                entry_price, float(final_exit_price), slippage=slippage, fee=fee
+            )
 
-        signal_type = "Stop" if exit_reason == "stop_loss" else "Close entry(s) order..."
         if final_exit_iso is None:
             final_exit_iso = pd.Timestamp(final_exit_asi8).isoformat()
         trades.append(
-            {
-                "entry_time": daily_iso[eidx],
-                "entry_price": entry_price,
-                "type": "short" if is_short else "long",
-                "exit_time": final_exit_iso,
-                "exit_price": float(final_exit_price),
-                "profit": profit,
-                "exit_reason": "stop_loss_15m" if exit_reason == "stop_loss" else "signal_15m",
-                "signal_type": signal_type,
-                "entry_signal_type": "Vender" if is_short else "Comprar",
-            }
+            _trade_row(
+                daily_iso[eidx],
+                entry_price,
+                is_short,
+                final_exit_iso,
+                float(final_exit_price),
+                profit,
+                exit_reason,
+                exact_stop_price,
+            )
         )
 
     return trades
 
 
 def _compiled_simulate_execution_with_15m(
-    df_daily_signals, df_15m, stop_loss, direction="long", slippage=0.0
+    df_daily_signals, df_15m, stop_loss, direction="long", slippage=0.0, fee=TRADING_FEE
 ):
     df = df_daily_signals
     short = (direction or "long").lower() == "short"
@@ -359,6 +435,11 @@ def _compiled_simulate_execution_with_15m(
     low = df_15m["low"].to_numpy(dtype=np.float64) if not df_15m.empty else np.array([], np.float64)
     high = (
         df_15m["high"].to_numpy(dtype=np.float64) if not df_15m.empty else np.array([], np.float64)
+    )
+    intra_open = (
+        df_15m["open"].to_numpy(dtype=np.float64)
+        if not df_15m.empty and "open" in df_15m.columns
+        else None
     )
     rows, prices = deep_execution(
         np.ascontiguousarray(_asi8(df.index)),
@@ -371,22 +452,36 @@ def _compiled_simulate_execution_with_15m(
         stop,
         short,
     )
+    gap_on = stop_gap_enabled()
     daily_iso, intra_iso = _iso_array(df.index), _iso_array(df_15m.index)
     profit_fn = short_trade_profit_frac if short else long_trade_profit_frac
     trades = []
     for (e, x, hit), xp in zip(rows, prices):
         ep, xp = float(opens[e]), float(xp)
+        stop_price = ep * (1 + stop) if short else ep * (1 - stop)
+        if hit >= 0:
+            # Card #1119: o kernel devolve o stop; o 15m que abre além dele sai na abertura.
+            open_hit = float(intra_open[hit]) if intra_open is not None else None
+            gapped = (
+                gap_on
+                and open_hit is not None
+                and ((short and open_hit >= stop_price) or (not short and open_hit <= stop_price))
+            )
+            if gapped:
+                xp = open_hit
+            reason = "stop_loss_gap" if gapped else "stop_loss"
+        else:
+            reason = "signal"
         trades.append(
-            dict(
-                entry_time=daily_iso[e],
-                entry_price=ep,
-                type="short" if short else "long",
-                exit_time=intra_iso[hit] if hit >= 0 else daily_iso[x],
-                exit_price=xp,
-                profit=profit_fn(ep, xp, slippage=slippage),
-                exit_reason="stop_loss_15m" if hit >= 0 else "signal_15m",
-                signal_type="Stop" if hit >= 0 else "Close entry(s) order...",
-                entry_signal_type="Vender" if short else "Comprar",
+            _trade_row(
+                daily_iso[e],
+                ep,
+                short,
+                intra_iso[hit] if hit >= 0 else daily_iso[x],
+                xp,
+                profit_fn(ep, xp, slippage=slippage, fee=fee),
+                reason,
+                stop_price,
             )
         )
     return trades

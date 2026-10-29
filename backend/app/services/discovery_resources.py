@@ -29,12 +29,34 @@ class CalculationFailure(OperationalFailure):
     pass
 
 
+# Per-environment resource profiles (#1110). Expected cgroup limits come from
+# this table, selected by DISCOVERY_RESOURCE_PROFILE; an unknown name blocks work.
+PROFILE_TABLE = {
+    "dev": {
+        "memory_high": 3 * GiB,
+        "memory_max": 4 * GiB,
+        "swap_max": 512 * MiB,
+        "requested_workers": 1,
+    },
+    "prod": {
+        "memory_high": 4 * GiB,
+        "memory_max": 5 * GiB,
+        "swap_max": 512 * MiB,
+        "requested_workers": 1,
+    },
+}
+# Host MemTotal must cover every Discovery envelope on the host plus 13 GiB for
+# the other services and 1 GiB of host margin.
+HOST_RESERVE = 14 * GiB
+ENVELOPE_TOTAL = sum(item["memory_max"] for item in PROFILE_TABLE.values())
+
+
 @dataclass(frozen=True)
 class ResourceProfile:
     name: str = "dev"
-    memory_high: int = 5 * GiB
-    memory_max: int = 6 * GiB
-    swap_max: int = 512 * MiB
+    memory_high: int = PROFILE_TABLE["dev"]["memory_high"]
+    memory_max: int = PROFILE_TABLE["dev"]["memory_max"]
+    swap_max: int = PROFILE_TABLE["dev"]["swap_max"]
     requested_workers: int = 1
     cache_bytes: int = 64 * MiB
     pending_bytes: int = 64 * MiB
@@ -49,19 +71,31 @@ class ResourceProfile:
             if self.name != "unprofiled" or self.unprofiled_workers < 1:
                 raise OperationalFailure("resource_budget_unavailable")
             return self.unprofiled_workers
-        capacity = (self.memory_max - 2 * GiB) // (3 * GiB)
+        # floor((MemoryMax - 1 GiB) / 3 GiB); measured full tree peak is 1.70 GiB.
+        capacity = (self.memory_max - GiB) // (3 * GiB)
         if capacity < 1 or self.requested_workers < 1 or self.batch_size not in range(1, 201):
             raise OperationalFailure("resource_budget_unavailable")
-        if self.name == "dev" and self.requested_workers != 1:
+        if self.name in PROFILE_TABLE and self.requested_workers != 1:
             raise OperationalFailure("resource_budget_unavailable")
         return min(self.requested_workers, capacity)
 
     @classmethod
+    def named(cls, name, requested_workers=None):
+        entry = PROFILE_TABLE.get(name)
+        if entry is None:
+            raise OperationalFailure("resource_budget_unavailable")
+        values = dict(entry)
+        if requested_workers is not None:
+            values["requested_workers"] = requested_workers
+        return cls(name=name, **values)
+
+    @classmethod
     def configured(cls):
-        return cls(
-            name=os.getenv("DISCOVERY_RESOURCE_PROFILE", "dev"),
-            requested_workers=int(os.getenv("DISCOVERY_INTERNAL_WORKERS", "1")),
-        )
+        try:
+            workers = int(os.getenv("DISCOVERY_INTERNAL_WORKERS", "1"))
+        except ValueError as exc:
+            raise OperationalFailure("resource_budget_unavailable") from exc
+        return cls.named(os.getenv("DISCOVERY_RESOURCE_PROFILE", "dev"), workers)
 
     @classmethod
     def optimizer(cls, default_workers=None):
@@ -87,6 +121,17 @@ def cgroup_path():
     return Path("/sys/fs/cgroup") / entry.lstrip("/")
 
 
+def discovery_unit(env):
+    """systemd unit that runs Discovery for `dev` or `prod`."""
+    if env not in PROFILE_TABLE:
+        raise OperationalFailure("resource_budget_unavailable")
+    return f"criptofarol-{env}-discovery-worker.service"
+
+
+def unit_cgroup(env):
+    return Path("/sys/fs/cgroup/system.slice") / discovery_unit(env)
+
+
 def host_memory():
     return {
         k: int(v.split()[0]) * 1024
@@ -96,6 +141,8 @@ def host_memory():
 
 def admission(profile=None, spool_root=None, group=None, memory=None):
     profile = profile or ResourceProfile.configured()
+    if profile.name not in PROFILE_TABLE:
+        raise OperationalFailure("resource_budget_unavailable")
     group = group or cgroup_path()
     memory = memory or host_memory()
     try:
@@ -108,7 +155,7 @@ def admission(profile=None, spool_root=None, group=None, memory=None):
             or limits["memory.max"] != profile.memory_max
             or limits["memory.swap.max"] != profile.swap_max
             or limits["memory.oom.group"] != 1
-            or memory["MemTotal"] < profile.memory_max + 17 * GiB
+            or memory["MemTotal"] < ENVELOPE_TOTAL + HOST_RESERVE
             or memory["MemAvailable"] < 8 * GiB
             or memory["SwapFree"] < GiB
             or shutil.disk_usage(spool_root or spool_directory()).free < 4 * GiB
@@ -141,13 +188,29 @@ def spool_directory():
     return root
 
 
+def _cgroup_environment():
+    """`dev`/`prod` from a `criptofarol-{dev,prod}-*` cgroup name, else None."""
+    try:
+        parts = reversed(cgroup_path().parts)
+    except (OperationalFailure, OSError):
+        return None
+    for part in parts:
+        for name in ("prod", "dev"):
+            if part.startswith(f"criptofarol-{name}-"):
+                return name
+    return None
+
+
 def discovery_environment():
-    explicit = os.getenv("DISCOVERY_RESOURCE_PROFILE") or os.getenv("APP_ENV")
-    if explicit:
-        return explicit
     # Dispatcher/backend and Discovery must select the same environment even
-    # when only the Discovery service opted into the resource profile.
-    return "prod" if cgroup_path().name.startswith("criptofarol-prod-") else "dev"
+    # when only the Discovery service opted into the resource profile, and even
+    # if an APP_ENV value disagrees (#1110): the unit name wins when present.
+    return (
+        _cgroup_environment()
+        or os.getenv("DISCOVERY_RESOURCE_PROFILE")
+        or os.getenv("APP_ENV")
+        or "dev"
+    )
 
 
 def _semaphore_record(queues):

@@ -8,7 +8,13 @@ import json
 from datetime import datetime, timedelta, timezone
 
 from app.database import get_db
-from app.models import ComboTemplate, FavoriteStrategy, MonitorStrategyPreference, User
+from app.models import (
+    ComboTemplate,
+    FavoriteStrategy,
+    MonitorFavoriteAlertState,
+    MonitorStrategyPreference,
+    User,
+)
 from app.middleware.authMiddleware import (
     ADMIN_EMAILS,
     get_current_admin,
@@ -47,6 +53,10 @@ from app.services.walk_forward_revalidation import (
     revalidate_favorite,
 )
 from app.services.oos_promotion_proof import promotion_payload, verify_oos_promotion_proof
+from app.services.favorite_configuration import (
+    configuration_from_request,
+    configuration_of_row,
+)
 from app.services.favorite_uniqueness import lock_and_find_duplicate
 from app.services.discovery_favorite_metrics import (
     flatten_discovery_grid_metrics,
@@ -54,6 +64,9 @@ from app.services.discovery_favorite_metrics import (
 )
 
 router = APIRouter(prefix="/api/favorites", tags=["favorites"])
+
+DUPLICATE_CONFIGURATION_MESSAGE = "Estratégia já existe nos favoritos com esta configuração"
+
 
 _FAVORITE_CHART_CANDLE_LIMIT = 5000
 _FAVORITE_OHLCV_REPO = MarketOhlcvRepository()
@@ -101,6 +114,83 @@ def _normalize_favorite_json_fields(row: FavoriteStrategy) -> FavoriteStrategy:
 _TIER_UNSET = object()
 
 
+def _favorite_asset(
+    row: FavoriteStrategy, asset_by_symbol: dict[str, dict[str, Any]] | None
+) -> dict[str, Any] | None:
+    """Identidade do ativo do favorito (card #1120, decisão 14): ``metrics.analysis_asset`` (ou o legado ``metrics.asset``) quando existe;
+    senão, o par com ``/`` é cripto e o ticker vem do catálogo (favorito antigo sem ``metrics.asset``).
+    """
+
+    metrics = row.metrics if isinstance(row.metrics, dict) else {}
+    stored = metrics.get("analysis_asset") or metrics.get("asset")
+    if isinstance(stored, dict) and stored.get("asset_class"):
+        return stored
+    symbol = str(row.symbol or "").strip().upper()
+    if "/" in symbol:
+        from app.services.equity_backtest import crypto_identity
+
+        return crypto_identity(symbol)
+    return (asset_by_symbol or {}).get(symbol)
+
+
+def _assets_for_rows(db: Session, rows: list[FavoriteStrategy]) -> dict[str, dict[str, Any]]:
+    """Ticker -> identidade pelo catálogo, só para linhas de ação/ETF sem ``metrics.asset``."""
+
+    tickers = {
+        str(r.symbol or "").strip().upper()
+        for r in rows
+        if "/" not in str(r.symbol or "")
+        and not (
+            isinstance(r.metrics, dict)
+            and any(
+                isinstance(r.metrics.get(key), dict) and r.metrics[key].get("asset_class")
+                for key in ("analysis_asset", "asset")
+            )
+        )
+    }
+    if not tickers:
+        return {}
+    try:
+        from app.models_asset_catalog import AssetCatalog
+        from app.services.equity_backtest import CURRENCY_BY_CLASS
+
+        catalog = (
+            db.query(AssetCatalog)
+            .filter(
+                AssetCatalog.symbol.in_(sorted(tickers)),
+                AssetCatalog.asset_class.in_(["stock", "etf"]),
+            )
+            .order_by(AssetCatalog.removed_at.isnot(None), AssetCatalog.asset_id)
+            .all()
+        )
+    except Exception:  # catálogo fora do ar: o favorito segue sem a classe
+        return {}
+    out: dict[str, dict[str, Any]] = {}
+    for entry in catalog:
+        out.setdefault(
+            entry.symbol,
+            {
+                "symbol": entry.symbol,
+                "asset_id": entry.asset_id,
+                "asset_class": entry.asset_class,
+                "name": entry.name or entry.symbol,
+                "currency": CURRENCY_BY_CLASS.get(entry.asset_class, "USD"),
+            },
+        )
+    return out
+
+
+def _comparisons_for_rows(db: Session, rows: list[FavoriteStrategy]) -> dict[str, dict[str, Any]]:
+    """Comparações gravadas das linhas, de uma vez (card #1123)."""
+
+    from app.services.benchmark_comparison import get_comparisons
+
+    try:
+        return get_comparisons(db, [getattr(r, "benchmark_comparison_id", None) for r in rows])
+    except Exception:  # tabela ausente num banco antigo: a lista segue sem "Ref."
+        return {}
+
+
 def _favorite_response(
     row: FavoriteStrategy,
     *,
@@ -111,6 +201,9 @@ def _favorite_response(
     description_by_strategy: dict[str, str] | None = None,
     display_name_by_strategy: dict[str, str] | None = None,
     template_by_strategy: dict[str, dict[str, Any]] | None = None,
+    asset_by_symbol: dict[str, dict[str, Any]] | None = None,
+    is_curated_fallback: bool = False,
+    comparisons: dict[str, dict[str, Any]] | None = None,
 ) -> FavoriteStrategyResponse:
     normalized = _normalize_favorite_json_fields(row)
     payload = FavoriteStrategyResponse.model_validate(normalized).model_dump()
@@ -129,6 +222,17 @@ def _favorite_response(
         strategy_key,
         payload.get("strategy_display_name"),
     )
+    payload["asset"] = _favorite_asset(row, asset_by_symbol)
+    # Card #1122 (decisão 11): fonte, sessão, ajuste e os rótulos da configuração.
+    payload["configuration"] = configuration_of_row(row).payload()
+    payload["is_curated_fallback"] = bool(is_curated_fallback)
+    # Card #1123: comparação gravada resumida (lida, nunca calculada).
+    if comparisons is not None and row.benchmark_comparison_id:
+        from app.services.benchmark_comparison import summary as comparison_summary
+
+        payload["benchmark_comparison"] = comparison_summary(
+            comparisons.get(str(row.benchmark_comparison_id))
+        )
     template_data = (template_by_strategy or {}).get(str(row.strategy_name))
     payload["strategy_transparency"] = build_strategy_transparency(
         row.strategy_name,
@@ -590,6 +694,199 @@ async def _run_favorite_optimization(favorite: FavoriteStrategy) -> Dict[str, An
     )
 
 
+def _fmt_pct(value: Any) -> str:
+    number = _numeric_metric(value)
+    if number is None:
+        return "-"
+    return f"{number:.2f}%" if number > 1 or number < -1 else f"{number * 100:.2f}%"
+
+
+def _fmt_num(value: Any, decimals: int = 2) -> str:
+    number = _numeric_metric(value)
+    return "-" if number is None else f"{number:.{decimals}f}"
+
+
+def _fmt_currency(value: Any) -> str:
+    number = _numeric_metric(value)
+    return "-" if number is None else f"${number:.2f}"
+
+
+def _fmt_br_date(value: Any) -> str:
+    text = str(value or "").strip()
+    if len(text) >= 10 and text[4] == "-" and text[7] == "-":
+        return f"{text[8:10]}/{text[5:7]}/{text[0:4]}"
+    return ""
+
+
+def _fmt_period(row: FavoriteStrategy) -> str:
+    start, end = _fmt_br_date(row.start_date), _fmt_br_date(row.end_date)
+    if start and end:
+        return f"{start} → {end}"
+    if start:
+        return f"≥ {start}"
+    if end:
+        return f"≤ {end}"
+    return "Todo"
+
+
+def _compound_points(metrics: dict[str, Any]) -> float | None:
+    points = _numeric_metric(metrics.get("total_return_pct"))
+    if points is not None:
+        return points
+    ratio = _numeric_metric(metrics.get("total_return"))
+    return None if ratio is None else ratio * 100
+
+
+FAVORITES_TODAY_COLUMNS = (
+    "Name",
+    "Symbol",
+    "Strategy",
+    "Direção",
+    "Timeframe",
+    "Período",
+    "Parameters",
+    "Stop Loss",
+    "Sharpe",
+    "Trades",
+    "Win Rate",
+    "Total Return",
+    "Ret/T %",
+    "Exp/Trade",
+    "Max DD",
+    "Profit Factor",
+    "Sortino",
+    "Max Loss",
+    "Avg ATR",
+    "WR Bull",
+    "WR Bear",
+    "Avg ADX",
+    "Notes",
+    "Created At",
+)
+
+
+def _favorite_today_columns(row: FavoriteStrategy, label: str, protected: bool) -> list[Any]:
+    """Colunas de hoje da planilha de Favoritos, com os mesmos nomes e regras da tela."""
+
+    from app.services.discovery_favorite_metrics import is_discovery_origin
+
+    raw = row.metrics if isinstance(row.metrics, dict) else {}
+    m = flatten_discovery_grid_metrics(raw) if raw else {}
+    m = m if isinstance(m, dict) else {}
+    if is_discovery_origin(raw) or not isinstance(m.get("trades"), list):
+        n = m.get(
+            "total_trades", m.get("trades") if isinstance(m.get("trades"), (int, float)) else None
+        )
+        trades = max(0, int(_numeric_metric(n) or 0))
+    else:
+        trades = len(m["trades"])
+    points = _compound_points(m)
+    per_trade = points / max(1, trades) if points is not None else None
+    total_pnl = _numeric_metric(m.get("total_pnl"))
+    expectancy = _numeric_metric(m.get("expectancy"))
+    if expectancy is None and total_pnl is not None and trades:
+        expectancy = total_pnl / max(1, trades)
+    parameters = row.parameters if isinstance(row.parameters, dict) else {}
+    if protected:
+        params_text = "Detalhes indisponíveis"
+    elif not parameters:
+        params_text = "Sem parametros"
+    else:
+        params_text = "&".join(f"{k}={v}" for k, v in parameters.items())
+    direction = str(parameters.get("direction") or "long").lower()
+    created = row.created_at.strftime("%d/%m/%Y %H:%M:%S") if row.created_at else ""
+    return [
+        row.name,
+        row.symbol,
+        label,
+        "Short" if direction == "short" else "Long",
+        row.timeframe,
+        _fmt_period(row),
+        params_text,
+        _fmt_pct(parameters.get("stop_loss") or None),
+        _fmt_num(m.get("sharpe_ratio")),
+        trades,
+        _fmt_pct(m.get("win_rate")),
+        "-" if points is None else f"{'+' if points >= 0 else ''}{points:.2f}%",
+        _fmt_pct(per_trade) if per_trade is not None else "-",
+        _fmt_currency(expectancy),
+        _fmt_pct(m.get("max_drawdown")),
+        _fmt_num(m.get("profit_factor")),
+        _fmt_num(m.get("sortino")),
+        m.get("max_consecutive_losses") or m.get("stop_loss_count") or 0,
+        _fmt_num(m.get("avg_atr")),
+        _fmt_pct(m.get("win_rate_bull")),
+        _fmt_pct(m.get("win_rate_bear")),
+        _fmt_num(m.get("avg_adx")),
+        row.notes or "",
+        created,
+    ]
+
+
+@router.get("/export")
+def export_favorites(
+    ids: str = Query("", description="Ids da lista filtrada, na ordem da tela"),
+    current_user_id: str = Depends(get_current_admin),
+    db: Session = Depends(get_db),
+):
+    """Planilha de Favoritos pelo servidor (card #1123): colunas de hoje + 22 de contexto + Legenda.
+
+    Lê o favorito e a comparação gravada; nunca coleta nem recalcula.
+    """
+
+    import io
+
+    from fastapi.responses import StreamingResponse
+
+    from app.services import export_context as xc
+
+    wanted: list[int] = []
+    for part in str(ids or "").split(","):
+        part = part.strip()
+        if part.isdigit() and int(part) not in wanted:
+            wanted.append(int(part))
+    if wanted:
+        rows = db.query(FavoriteStrategy).filter(FavoriteStrategy.id.in_(wanted)).all()
+    else:
+        rows = db.query(FavoriteStrategy).filter(FavoriteStrategy.user_id == current_user_id).all()
+        wanted = [int(r.id) for r in sorted(rows, key=lambda r: r.id)]
+    visible = {str(current_user_id)} | set(
+        _admin_catalog_user_ids(db, exclude_user_id=current_user_id)
+    )
+    by_id = {
+        int(r.id): _normalize_favorite_json_fields(r) for r in rows if str(r.user_id) in visible
+    }
+    ordered = [by_id[i] for i in wanted if i in by_id]
+    _, display_names = _strategy_identities_for_rows(db, ordered)
+    assets = _assets_for_rows(db, ordered)
+    comparisons = _comparisons_for_rows(db, ordered)
+    header = list(FAVORITES_TODAY_COLUMNS) + list(xc.CONTEXT_FIELDS)
+    body: list[list[Any]] = []
+    for row in ordered:
+        label = display_names.get(str(row.strategy_name)) or str(row.strategy_name).replace(
+            "_", " "
+        )
+        cells = xc.favorite_context(
+            row,
+            _favorite_asset(row, assets),
+            (
+                comparisons.get(str(row.benchmark_comparison_id))
+                if row.benchmark_comparison_id
+                else None
+            ),
+        )
+        body.append(_favorite_today_columns(row, label, protected=False) + cells)
+    content = xc.write_workbook(
+        [("Favoritos", header, body), xc.legend_sheet(favorite=True, favorites_screen=True)]
+    )
+    filename = f"Crypto_Backtest_Favorites_{xc.today_iso()}.xlsx"
+    return StreamingResponse(
+        io.BytesIO(content),
+        media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+    )
+
+
 @router.get("/exists", response_model=ExistsResponse)
 def favorite_exists(
     strategy_name: str = Query(..., description="Template name"),
@@ -601,10 +898,27 @@ def favorite_exists(
     direction: Optional[str] = Query(
         None, description="'long' | 'short'; if omitted, any direction matches"
     ),
+    data_source: Optional[str] = Query(
+        None, description="ccxt | binance_equity | stooq; default by asset class"
+    ),
+    session: Optional[str] = Query(None, description="24x7 | regular_ny | eod"),
+    adjustment: Optional[str] = Query(None, description="none | split | legacy"),
     current_user_id: str = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    """Check if a favorite already exists for (strategy, symbol, timeframe, period_type, direction). Used to skip single optimize."""
+    """Check if a favorite already exists for (strategy, symbol, timeframe, period_type, direction,
+    data source, session, adjustment). Used to skip single optimize.
+
+    Card #1122 (decisão 11): sem fonte/sessão/ajuste, vale a configuração padrão do símbolo pela
+    classe (cripto ``ccxt``; ação/ETF ``binance_equity``).
+    """
+    # Chamada direta (sem FastAPI) recebe os ``Query`` padrão: só texto vale como campo.
+    wanted = configuration_from_request(
+        symbol,
+        data_source=data_source if isinstance(data_source, str) else None,
+        session=session if isinstance(session, str) else None,
+        adjustment=adjustment if isinstance(adjustment, str) else None,
+    )
     q = db.query(FavoriteStrategy).filter(
         FavoriteStrategy.user_id == current_user_id,
         FavoriteStrategy.strategy_name == strategy_name,
@@ -632,6 +946,7 @@ def favorite_exists(
         rows = [
             r for r in rows if ((r.parameters or {}).get("direction") or "long").lower() == want
         ]
+    rows = [r for r in rows if configuration_of_row(r).as_tuple() == wanted.as_tuple()]
     return ExistsResponse(exists=len(rows) > 0)
 
 
@@ -649,6 +964,8 @@ def list_favorites(
         rows = db.query(FavoriteStrategy).filter(FavoriteStrategy.user_id == current_user_id).all()
         descriptions, display_names = _strategy_identities_for_rows(db, rows)
         templates = _strategy_templates_for_rows(db, rows)
+        assets = _assets_for_rows(db, rows)
+        comparisons = _comparisons_for_rows(db, rows)
         return [
             _favorite_response(
                 row,
@@ -658,6 +975,8 @@ def list_favorites(
                 description_by_strategy=descriptions,
                 display_name_by_strategy=display_names,
                 template_by_strategy=templates,
+                asset_by_symbol=assets,
+                comparisons=comparisons,
             )
             for row in rows
         ]
@@ -666,6 +985,8 @@ def list_favorites(
         rows = db.query(FavoriteStrategy).filter(FavoriteStrategy.user_id == current_user_id).all()
         descriptions, display_names = _strategy_identities_for_rows(db, rows)
         templates = _strategy_templates_for_rows(db, rows)
+        assets = _assets_for_rows(db, rows)
+        comparisons = _comparisons_for_rows(db, rows)
         return [
             _favorite_response(
                 row,
@@ -675,6 +996,8 @@ def list_favorites(
                 description_by_strategy=descriptions,
                 display_name_by_strategy=display_names,
                 template_by_strategy=templates,
+                asset_by_symbol=assets,
+                comparisons=comparisons,
             )
             for row in rows
         ]
@@ -689,10 +1012,13 @@ def list_favorites(
         )
         .all()
     )
-    has_user_rows = any(row.symbol and "/" in str(row.symbol) for row in user_rows)
+    # Card #1122: a vitrine do catálogo vale só para quem não tem favorito próprio de nenhuma classe.
+    has_user_rows = bool(user_rows)
     if has_user_rows:
         descriptions, display_names = _strategy_identities_for_rows(db, user_rows)
         templates = _strategy_templates_for_rows(db, user_rows)
+        assets = _assets_for_rows(db, user_rows)
+        comparisons = _comparisons_for_rows(db, user_rows)
         return [
             _favorite_response(
                 row,
@@ -702,6 +1028,8 @@ def list_favorites(
                 description_by_strategy=descriptions,
                 display_name_by_strategy=display_names,
                 template_by_strategy=templates,
+                asset_by_symbol=assets,
+                comparisons=comparisons,
             )
             for row in user_rows
         ]
@@ -710,6 +1038,8 @@ def list_favorites(
     if not admin_user_ids:
         descriptions, display_names = _strategy_identities_for_rows(db, user_rows)
         templates = _strategy_templates_for_rows(db, user_rows)
+        assets = _assets_for_rows(db, user_rows)
+        comparisons = _comparisons_for_rows(db, user_rows)
         return [
             _favorite_response(
                 row,
@@ -719,6 +1049,8 @@ def list_favorites(
                 description_by_strategy=descriptions,
                 display_name_by_strategy=display_names,
                 template_by_strategy=templates,
+                asset_by_symbol=assets,
+                comparisons=comparisons,
             )
             for row in user_rows
         ]
@@ -736,6 +1068,8 @@ def list_favorites(
     )
     descriptions, display_names = _strategy_identities_for_rows(db, rows)
     templates = _strategy_templates_for_rows(db, rows)
+    assets = _assets_for_rows(db, rows)
+    comparisons = _comparisons_for_rows(db, rows)
     return [
         _favorite_response(
             row,
@@ -746,6 +1080,9 @@ def list_favorites(
             description_by_strategy=descriptions,
             display_name_by_strategy=display_names,
             template_by_strategy=templates,
+            asset_by_symbol=assets,
+            comparisons=comparisons,
+            is_curated_fallback=True,
         )
         for row in rows
     ]
@@ -969,6 +1306,19 @@ def create_favorite(
         payload = favorite.model_dump(
             exclude={"oos_metrics", "oos_verdict", "oos_proof", "override_oos"}
         )
+        # Card #1123 (decisão 5): a comparação escolhida no resultado vai junto ao salvar.
+        inherited_comparison = None
+        comparison_id = payload.pop("benchmark_comparison_id", None)
+        if comparison_id:
+            from app.services.benchmark_comparison import get_comparison
+
+            inherited_comparison = get_comparison(db, comparison_id)
+            if inherited_comparison is None or str(
+                inherited_comparison.get("user_id") or ""
+            ) not in ("", str(current_user_id)):
+                raise HTTPException(
+                    status_code=422, detail="Comparação com referência não encontrada"
+                )
         metrics = payload.get("metrics") or {}
         if isinstance(favorite.oos_metrics, dict):
             metrics = {**metrics, "oos_metrics": favorite.oos_metrics}
@@ -987,8 +1337,32 @@ def create_favorite(
                 end_date=favorite.end_date,
                 symbol=favorite.symbol,
                 timeframe=favorite.timeframe,
+                data_source=(favorite.parameters or {}).get("data_source")
+                or (None if "/" in str(favorite.symbol) else "binance_equity"),
             )
 
+        # Card #1122 (decisão 11): a configuração vem do resultado (fonte nos parâmetros e
+        # ``analysis_conventions``) ou dos campos explícitos; entra na gravação e na duplicata.
+        conventions = (
+            metrics.get("analysis_conventions") or metrics.get("conventions")
+            if isinstance(metrics, dict)
+            else None
+        )
+        params_source = (
+            (favorite.parameters or {}).get("data_source")
+            if isinstance(favorite.parameters, dict)
+            else None
+        )
+        configuration = configuration_from_request(
+            favorite.symbol,
+            data_source=favorite.data_source or params_source,
+            session=favorite.session,
+            adjustment=favorite.adjustment,
+            conventions=conventions,
+        )
+        if not configuration.is_crypto and isinstance(favorite.parameters, dict):
+            # A fonte do favorito também fica nos parâmetros (Monitor, atualização, Revalidar).
+            favorite.parameters = {**favorite.parameters, "data_source": configuration.data_source}
         if lock_and_find_duplicate(
             db,
             user_id=current_user_id,
@@ -999,8 +1373,9 @@ def create_favorite(
             start_date=dedup_start_date,
             end_date=dedup_end_date,
             parameters=favorite.parameters,
+            configuration=configuration,
         ):
-            raise HTTPException(status_code=409, detail="Estratégia já existe nos favoritos")
+            raise HTTPException(status_code=409, detail=DUPLICATE_CONFIGURATION_MESSAGE)
 
         if has_oos_payload:
             from app.services.favorite_operational_period import enrich_walk_forward_favorite_create
@@ -1024,9 +1399,30 @@ def create_favorite(
             payload["end_date"] = op_end
 
         payload["metrics"] = metrics
+        payload["parameters"] = favorite.parameters
+        payload["data_source"] = configuration.data_source
+        payload["session"] = configuration.session
+        payload["adjustment"] = configuration.adjustment
+        # Card #1122 (d2, decisão 3): o favorito nasce sem estrela e com o alerta ligado (só vale
+        # depois que o dono der a estrela).
+        payload["notify_telegram"] = True
 
         db_favorite = FavoriteStrategy(user_id=current_user_id, **payload)
         db.add(db_favorite)
+        if inherited_comparison is not None:
+            from app.models_benchmark import BenchmarkComparison
+            from app.services.benchmark_comparison import pin_reference
+
+            db.flush()
+            db_favorite.benchmark_comparison_id = inherited_comparison["id"]
+            row = (
+                db.query(BenchmarkComparison)
+                .filter(BenchmarkComparison.id == inherited_comparison["id"])
+                .first()
+            )
+            if row is not None and row.favorite_id is None:
+                row.favorite_id = db_favorite.id
+            pin_reference(db, inherited_comparison)
         db.commit()
         db.refresh(db_favorite)
         include_details = can_view_strategy_details(db, current_user_id)
@@ -1038,6 +1434,8 @@ def create_favorite(
             description_by_strategy=descriptions,
             display_name_by_strategy=display_names,
             template_by_strategy=_strategy_templates_for_rows(db, [db_favorite]),
+            asset_by_symbol=_assets_for_rows(db, [db_favorite]),
+            comparisons=_comparisons_for_rows(db, [db_favorite]),
         )
     except HTTPException:
         raise
@@ -1049,6 +1447,12 @@ def create_favorite(
         logger.error(f"Error creating favorite: {e}")
         logger.error(traceback.format_exc())
         raise HTTPException(status_code=500, detail=f"Internal Server Error: {str(e)}")
+
+
+def _alerts_from_monitor(favorite: FavoriteStrategy) -> bool:
+    """Estratégia no Monitor (com estrela) e com o alerta ligado: a que a varredura avalia."""
+
+    return favorite.tier in (1, 2, 3) and bool(favorite.notify_telegram)
 
 
 @router.patch("/{favorite_id}", response_model=FavoriteStrategyResponse)
@@ -1074,22 +1478,29 @@ def update_favorite(
     if not owns_favorite:
         if str(favorite.user_id) not in admin_catalog_ids or include_secrets:
             raise HTTPException(status_code=404, detail="Favorite not found")
+        # Card #1122 (decisão 3): "Alertar" é só do dono, inclusive na vitrine do catálogo.
+        # Vem depois da visibilidade para o 403 não revelar favorito que daria 404.
+        if "notify_telegram" in updates:
+            raise HTTPException(
+                status_code=403,
+                detail="Only the owner can update Telegram alert eligibility",
+            )
         if set(updates.keys()) - {"tier"}:
             raise HTTPException(
                 status_code=403,
                 detail="Common users can update only their own star tier for admin favorites",
             )
-    if "notify_telegram" in updates and not include_secrets:
-        raise HTTPException(
-            status_code=403,
-            detail="Only admins can update Telegram notification eligibility",
-        )
 
+    alerting_before = _alerts_from_monitor(favorite)
     if "tier" in updates:
         tier_val = updates["tier"]
         if tier_val is not None and tier_val not in (1, 2, 3):
             raise HTTPException(status_code=400, detail="Tier must be 1, 2, 3 or null (Sem tier)")
         if owns_favorite:
+            # Card #1122 (d2, decisão 3): dar a primeira estrela põe no Monitor com o alerta
+            # ligado, na mesma gravação; trocar entre 1, 2 e 3 estrelas não mexe no alerta.
+            if favorite.tier not in (1, 2, 3) and tier_val is not None:
+                favorite.notify_telegram = True
             favorite.tier = tier_val
         else:
             _upsert_strategy_tier_preference(
@@ -1105,9 +1516,24 @@ def update_favorite(
         favorite.notes = update_data.notes
     if update_data.notify_telegram is not None:
         favorite.notify_telegram = bool(update_data.notify_telegram)
+    if owns_favorite and _alerts_from_monitor(favorite) != alerting_before:
+        # A primeira leitura depois de a estratégia passar a alertar (estrela dada, alerta
+        # religado) é só base: o estado antigo não gera alerta de uma mudança de antes.
+        db.query(MonitorFavoriteAlertState).filter(
+            MonitorFavoriteAlertState.favorite_id == favorite.id
+        ).delete(synchronize_session=False)
 
     db.commit()
     db.refresh(favorite)
+    if "tier" in updates or "notify_telegram" in updates:
+        from app.routes.opportunity_routes import apply_favorite_update_to_cache
+
+        apply_favorite_update_to_cache(
+            current_user_id,
+            favorite.id,
+            notify_telegram=favorite.notify_telegram if owns_favorite else None,
+            tier_changed="tier" in updates,
+        )
     descriptions, display_names = _strategy_identities_for_rows(db, [favorite])
     return _favorite_response(
         favorite,
@@ -1141,6 +1567,56 @@ def revalidate_all_favorites_endpoint(
     except Exception as exc:
         raise HTTPException(status_code=500, detail=f"Backfill revalidation failed: {exc}")
     return summary
+
+
+def _owned_favorite(db: Session, favorite_id: int, user_id: str) -> FavoriteStrategy:
+    favorite = (
+        db.query(FavoriteStrategy)
+        .filter(FavoriteStrategy.id == favorite_id, FavoriteStrategy.user_id == user_id)
+        .first()
+    )
+    if not favorite:
+        raise HTTPException(status_code=404, detail="Favorite not found")
+    return favorite
+
+
+@router.get("/{favorite_id}/sample")
+def get_favorite_sample(
+    favorite_id: int,
+    current_user_id: str = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Estado da amostra do último refresh (card #1118): guardada, expirada ou inexistente."""
+    from app.database import engine as history_engine
+    from app.services.market_history.reproduction import sample_status
+
+    favorite = _owned_favorite(db, favorite_id, current_user_id)
+    return sample_status(history_engine, favorite.snapshot_id)
+
+
+@router.post("/{favorite_id}/reproduce")
+def reproduce_favorite_endpoint(
+    favorite_id: int,
+    current_user_id: str = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Refaz o último refresh só com a amostra guardada e compara com o número de Favoritos.
+
+    Favorito antigo (sem amostra) ou amostra vencida responde "não reproduzível exatamente".
+    """
+    from app.services.market_history.reproduction import reproduce_favorite
+
+    favorite = _owned_favorite(db, favorite_id, current_user_id)
+    try:
+        return reproduce_favorite(favorite)
+    except Exception as exc:
+        code = getattr(exc, "code", None)
+        if code in {"frozen_input_invalid", "frozen_input_corrupt"}:
+            raise HTTPException(
+                status_code=409,
+                detail={"code": code, "message": "A amostra guardada não pôde ser conferida."},
+            )
+        raise
 
 
 @router.post("/{favorite_id}/revalidate")
@@ -1186,6 +1662,11 @@ def delete_favorite(
     from app.services.discovery_service import DiscoveryService
 
     DiscoveryService().reclassify_discovery_results_for_deleted_favorite(favorite_id, db)
+    if favorite.snapshot_id:
+        # Card #1118: deixou de ser a amostra de um favorito; 30 dias a partir de agora.
+        from app.services.market_history import snapshots as history_snapshots
+
+        history_snapshots.release(db, favorite.snapshot_id)
     db.delete(favorite)
     db.commit()
     return {"message": "Favorite deleted"}

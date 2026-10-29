@@ -1,9 +1,10 @@
+import type { ReactNode } from 'react'
 import { HelpCircle } from 'lucide-react'
 import { Link } from 'react-router-dom'
 
 type ScreenHelpPanelProps = {
   title: string
-  children: string
+  children: ReactNode
 }
 
 export function ScreenHelpPanel({ title, children }: ScreenHelpPanelProps) {

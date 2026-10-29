@@ -3,7 +3,7 @@
 Varredura sistemática de estratégias swing: preflight server-side, criação
 idempotente com snapshot imutável, máquina de estados completa, claim com
 lease, outbox at-least-once, leaderboard determinístico, deduplicação por
-identidade de estratégia e promoção exclusivamente tier 3.
+identidade de estratégia e promoção a favorito sem estrela (card #1122).
 """
 
 from __future__ import annotations
@@ -88,6 +88,10 @@ LIVE_SWEEP_GUIDANCE = (
 INVALID_SELECTION_GUIDANCE = (
     "A seleção não é válida para iniciar. " "Ajuste a seleção, refaça o preflight e inicie de novo."
 )
+
+# Detalhe por combinação do que o catálogo deixa fora (ação, ETF e ativo marcado). O total
+# (`excluded_count`) e a contagem por ativo (`excluded_assets`) seguem exatos além do limite.
+CATALOG_EXCLUSION_DETAIL_LIMIT = 200
 
 STRUCTURE_VERSION = "discovery-structure-v1"
 QUANTUM_VERSION = "discovery-quantum-v1"
@@ -401,7 +405,15 @@ class DiscoveryService:
             except Exception:
                 template_meta[template] = {}
 
+        from app.services.asset_analysis_guard import discovery_catalog
+
+        # Card #1121 (decisão 2): cripto, ação e ETF rodam na mesma varredura; só ativo marcado,
+        # fora do catálogo ou ticker sem catálogo de ações ficam fora, com o motivo.
+        catalog_reasons, symbol_classes = discovery_catalog(normalized_symbols)
+
         exclusions: dict[str, dict[str, Any]] = {}
+        catalog_combinations: dict[str, int] = {}
+        catalog_detail = 0
         valid: list[dict[str, Any]] = []
         raw_total = (
             len(normalized_templates)
@@ -415,9 +427,24 @@ class DiscoveryService:
                     for direction in normalized_directions:
                         key = f"{template} × {symbol} × {timeframe} × {direction}"
                         reason = self._combination_reason(
-                            template, symbol, timeframe, direction, template_meta
+                            template,
+                            symbol,
+                            timeframe,
+                            direction,
+                            template_meta,
+                            catalog_reasons,
                         )
                         if reason:
+                            catalog_info = catalog_reasons.get(symbol)
+                            if catalog_info and reason == catalog_info["reason"]:
+                                # Milhares de ações e ETFs viram milhares de combinações
+                                # fora: o total é exato, o detalhe por combinação é limitado.
+                                catalog_combinations[symbol] = (
+                                    catalog_combinations.get(symbol, 0) + 1
+                                )
+                                catalog_detail += 1
+                                if catalog_detail > CATALOG_EXCLUSION_DETAIL_LIMIT:
+                                    continue
                             exclusions.setdefault(
                                 key,
                                 {
@@ -441,8 +468,55 @@ class DiscoveryService:
                         )
 
         valid_total = len(valid)
+        excluded_assets = self._excluded_assets(
+            normalized_symbols, catalog_reasons, catalog_combinations
+        )
+        if valid_total == 0 and excluded_assets and not axis_errors:
+            # Nada sobra para rodar por causa do catálogo: o Preflight bloqueia
+            # com o motivo, sem criar varredura (decisão 6 do #1117; #1121 decisão 2).
+            axis_errors["symbols"] = (
+                "Nenhuma combinação válida: os ativos escolhidos estão fora da análise "
+                "(marcados pela Binance ou fora do catálogo). "
+                "Inclua ao menos 1 ativo negociável: par cripto em USDT, ação ou ETF."
+            )
+        from app.services import discovery_multiclass as multiclass
+
+        run_classes = multiclass.by_class(valid, symbol_classes)
         if valid_total > DEFAULT_MAX_TOTAL:
-            axis_errors["total"] = f"total válido {valid_total} excede o limite {DEFAULT_MAX_TOTAL}"
+            # Card #1121 (decisão 8): o teto conta ação e ETF; a recusa diz o total e as classes.
+            run_assets = sum(int(item["assets"]) for item in run_classes.values())
+            axis_errors["total"] = (
+                f"{multiclass.fmt_int(valid_total)} combinações válidas passam do limite de "
+                f"{multiclass.fmt_int(DEFAULT_MAX_TOTAL)}: {multiclass.fmt_int(run_assets)} ativos "
+                f"({multiclass.by_class_text(run_classes)}). Estreite a seleção: menos ativos, "
+                "menos templates ou menos timeframes. Nenhuma varredura foi criada."
+            )
+        run_symbols = list(dict.fromkeys(c["symbol"] for c in valid))
+        # Classe do catálogo de cada ativo que roda (``None`` quando o catálogo não a conhece: a
+        # combinação segue o caminho de antes, sem inventar classe).
+        asset_classes = {symbol: symbol_classes.get(symbol) for symbol in run_symbols}
+        if "total" in axis_errors or not run_symbols:
+            # Acima do teto (ou sem nada a rodar) a previsão não é mostrada nem calculada.
+            extras = {
+                "collection": None,
+                "precision_forecast": None,
+                "survivorship": multiclass.survivorship(start_date, end_date),
+            }
+        else:
+            try:
+                extras = multiclass.forecast(
+                    run_symbols,
+                    normalized_timeframes,
+                    start_date=start_date,
+                    end_date=end_date,
+                )
+            except Exception:  # a previsão nunca bloqueia o Preflight
+                logger.warning("Previsão de coleta/precisão indisponível", exc_info=True)
+                extras = {
+                    "collection": None,
+                    "precision_forecast": None,
+                    "survivorship": multiclass.survivorship(start_date, end_date),
+                }
 
         snapshot: dict[str, Any] = {
             "templates": normalized_templates,
@@ -477,6 +551,7 @@ class DiscoveryService:
             },
             "raw_total": raw_total,
             "exclusions": exclusions,
+            "excluded_assets": excluded_assets,
             "excluded_count": raw_total - valid_total,
             "valid_total": valid_total,
             "limits": {
@@ -493,6 +568,11 @@ class DiscoveryService:
             "end_date": end_date,
             "period_type": period_type,
             "combinations": valid,
+            # Card #1121: o que vai rodar por classe e moeda, a classe de cada ativo, quem precisa
+            # de coleta, a precisão diária prevista e o viés de sobrevivência.
+            "by_class": run_classes,
+            "asset_classes": asset_classes,
+            **extras,
         }
 
     def _combination_reason(
@@ -502,6 +582,7 @@ class DiscoveryService:
         timeframe: str,
         direction: str,
         template_meta: dict[str, dict[str, Any]],
+        catalog_reasons: dict[str, dict[str, Any]] | None = None,
     ) -> str | None:
         from app.services.opportunity_service import is_excluded_symbol
 
@@ -509,11 +590,38 @@ class DiscoveryService:
             return "template não suportado"
         if is_excluded_symbol(symbol):
             return "símbolo excluído"
+        catalog_reason = (catalog_reasons or {}).get(symbol)
+        if catalog_reason:
+            return catalog_reason["reason"]
         meta = template_meta[template]
         template_direction = str(meta.get("direction") or "long")
         if direction == "short" and template_direction == "long":
             return "template não suporta short"
         return None
+
+    @staticmethod
+    def _excluded_assets(
+        symbols: list[str],
+        catalog_reasons: dict[str, dict[str, Any]],
+        combos_by_symbol: dict[str, int],
+    ) -> list[dict[str, Any]]:
+        """Ativos que o catálogo deixa fora da varredura, com motivo e combinações."""
+        assets = []
+        for symbol in symbols:
+            info = catalog_reasons.get(symbol)
+            if not info:
+                continue
+            assets.append(
+                {
+                    "symbol": symbol,
+                    "asset_class": info["asset_class"],
+                    "state": info["state"],
+                    "kind": info["kind"],
+                    "reason": info["reason"],
+                    "combinations": combos_by_symbol.get(symbol, 0),
+                }
+            )
+        return assets
 
     # --- Criação idempotente ----------------------------------------------
 
@@ -809,8 +917,13 @@ class DiscoveryService:
         combinations: list[dict[str, Any]] = []
         axes = preflight["axes"]
         exclusions = preflight.get("exclusions") or {}
+        # O detalhe de ``exclusions`` para em 200 combinações; o ativo que o catálogo deixa fora
+        # (``excluded_assets``, completo) nunca vira combinação (card #1121, P3).
+        out_symbols = {a.get("symbol") for a in preflight.get("excluded_assets") or []}
         for template in axes["templates"]:
             for symbol in axes["symbols"]:
+                if symbol in out_symbols:
+                    continue
                 for timeframe in axes["timeframes"]:
                     for direction in axes["directions"]:
                         key = f"{template} × {symbol} × {timeframe} × {direction}"
@@ -910,7 +1023,13 @@ class DiscoveryService:
             "terminal_reason": sweep.terminal_reason,
             "terminal_code": sweep.terminal_code,
             "draft_key": sweep.idempotency_key,
-            "snapshot": sweep.snapshot,
+            # As amostras únicas da varredura (card #1121, decisão 4) ficam no servidor: o manifesto
+            # não interessa à tela e cresceria a cada ativo.
+            "snapshot": (
+                {k: v for k, v in sweep.snapshot.items() if k != "samples"}
+                if isinstance(sweep.snapshot, dict)
+                else sweep.snapshot
+            ),
             "started_at": _utc_iso(sweep.started_at),
             "completed_at": _utc_iso(sweep.completed_at),
             "created_at": _utc_iso(sweep.created_at),
@@ -918,14 +1037,30 @@ class DiscoveryService:
         }
 
     def get_sweep(
-        self, sweep_id: str, db: Session, actor: str | None = None
+        self,
+        sweep_id: str,
+        db: Session,
+        actor: str | None = None,
+        *,
+        with_assets: bool = False,
     ) -> dict[str, Any] | None:
         sweep = db.query(DiscoverySweep).filter(DiscoverySweep.id == sweep_id).first()
         if not sweep:
             return None
         if actor is not None and sweep.actor != actor:
             return None
-        return self._serialize_sweep(sweep, db)
+        payload = self._serialize_sweep(sweep, db)
+        if not with_assets:
+            return payload
+        # Card #1121 (decisão 7): estado de cada ativo para o quadro "Por ativo".
+        from app.services.discovery_multiclass import sweep_assets
+
+        try:
+            payload["assets"] = sweep_assets(db, sweep)
+        except Exception:  # o progresso agregado segue mesmo sem o quadro
+            logger.warning("Estado por ativo indisponível para %s", sweep_id, exc_info=True)
+            db.rollback()
+        return payload
 
     def list_active_sweeps(self, actor: str, db: Session) -> list[dict[str, Any]]:
         rows = (
@@ -1821,8 +1956,60 @@ class DiscoveryService:
             "observed_valid_candles": row.observed_valid_candles,
             "fees_slippage": row.fees_slippage,
             "oos_verdict": _row_oos_verdict(row),
+            # Card #1118: proveniência da série e amostra da varredura (estado entra em
+            # ``_attach_sample_state``; sem snapshot_id o resultado é "sem amostra guardada").
+            "provenance": {
+                "data_source": row.data_source,
+                "asset_class": row.asset_class,
+                "session": row.session,
+                "adjustment": row.adjustment,
+                "timeframe_origin": row.timeframe_origin,
+                "period_requested": row.period_requested,
+                "period_covered": row.period_covered,
+                "data_version": row.data_version,
+            },
+            "snapshot_id": row.snapshot_id,
+            "sample": {"state": "none", "retain_until": None},
         }
+        # Card #1121 (decisões 6 e 11): classe, moeda, convenções e precisão em cada linha.
+        from app.services import discovery_multiclass as multiclass
+
+        metrics = row.metrics if isinstance(row.metrics, dict) else {}
+        stored_asset = metrics.get("asset") if isinstance(metrics.get("asset"), dict) else None
+        asset_class = multiclass.class_of(
+            row.symbol, row.asset_class or (stored_asset or {}).get("asset_class")
+        )
+        payload["asset"] = {
+            **(stored_asset or {}),
+            "symbol": row.symbol,
+            "asset_class": asset_class,
+            "currency": (stored_asset or {}).get("currency")
+            or multiclass.currency_of(row.symbol, asset_class),
+        }
+        payload["execution"] = (
+            metrics.get("execution") if isinstance(metrics.get("execution"), dict) else None
+        )
+        payload["conventions"] = (
+            metrics.get("conventions") if isinstance(metrics.get("conventions"), dict) else None
+        )
+        payload["precision"] = multiclass.precision_of(payload["execution"])
         return payload
+
+    @staticmethod
+    def _attach_sample_state(session: Session, payloads: list[dict[str, Any]]) -> None:
+        """Estado da amostra de cada resultado, lido de uma vez do manifesto."""
+
+        from app.services.market_history import snapshots as history_snapshots
+
+        try:
+            states = history_snapshots.states_for(session, [p.get("snapshot_id") for p in payloads])
+        except Exception:
+            logger.warning("Estado da amostra indisponível", exc_info=True)
+            return
+        for payload in payloads:
+            sid = payload.get("snapshot_id")
+            if sid and sid in states:
+                payload["sample"] = states[sid]
 
     def rank_eligible(
         self, sweep_id: str, metric: str = "calmar_ratio", db: Session | None = None
@@ -1872,13 +2059,15 @@ class DiscoveryService:
 
             template_names = [str(row.template_id) for row in rows if row.template_id]
             identity_map = ComboService.identity_map_for_template_names(session, template_names)
-            return [
+            payloads = [
                 self._result_row(row, idx + 1, identity_map=identity_map, db=session)
                 for idx, row in enumerate(ranked)
             ] + [
                 self._result_row(row, None, identity_map=identity_map, db=session)
                 for row in ineligible
             ]
+            self._attach_sample_state(session, payloads)
+            return payloads
         finally:
             if db is None:
                 session.close()
@@ -1897,18 +2086,33 @@ class DiscoveryService:
         direction: str | None = None,
         eligibility: str | None = None,
         exclude_eligibility: str | None = None,
+        asset_class: str | None = None,
         offset: int = 0,
         limit: int | None = None,
         db: Session | None = None,
+        counts: dict[str, int] | None = None,
     ) -> tuple[list[dict[str, Any]], int, int]:
         """Leaderboard com rank global preservado sob filtros e paginação.
 
         Filtros e paginação não re-numeram posições: o rank é calculado sobre
         todos os resultados elegíveis do sweep antes do recorte (spec 3.5).
+        Card #1121 (decisão 11): ``asset_class`` filtra por classe; ``counts`` (quando passado)
+        recebe ``class_counts`` sobre todos os resultados da varredura, antes dos filtros.
         """
         ranked = self.rank_eligible(sweep_id, metric=metric, db=db)
         unfiltered_total = len(ranked)
+        if counts is not None:
+            counts.update({"all": 0, "crypto": 0, "stock": 0, "etf": 0})
+            for item in ranked:
+                counts["all"] += 1
+                key = (item.get("asset") or {}).get("asset_class")
+                if key in counts:
+                    counts[key] += 1
         matched = ranked
+        if asset_class:
+            matched = [
+                r for r in matched if (r.get("asset") or {}).get("asset_class") == asset_class
+            ]
         if symbol:
             norm = self._norm_symbol(symbol)
             matched = [r for r in matched if self._norm_symbol(r["symbol"]) == norm]
@@ -1925,7 +2129,7 @@ class DiscoveryService:
             matched = matched[offset : offset + limit]
         return matched, total, unfiltered_total
 
-    # --- Promoção tier 3 (spec discovery-promotion) -------------------------
+    # --- Promoção a favorito sem estrela (spec discovery-promotion) ----------
 
     def promote_result(
         self,
@@ -1938,6 +2142,14 @@ class DiscoveryService:
     ) -> tuple[dict[str, Any], int]:
         from app.models_discovery import DiscoveryIdempotency
         from app.services.favorite_uniqueness import lock_and_find_duplicate
+
+        # Card #1122 (d2, decisão 12): a promoção cria o favorito sem estrela; pedido com
+        # qualquer tier é recusado e nada muda.
+        if "tier" in payload:
+            return {
+                "error": "tier not allowed",
+                "detail": "promoção sem estrela",
+            }, 422
 
         payload_hash = _payload_hash(payload)
         existing_idem = (
@@ -1987,13 +2199,6 @@ class DiscoveryService:
             )
         if effective_state == "already_promoted":
             return {"favorite_id": effective_ref, "result_id": result.id}, 200
-
-        tier = payload.get("tier")
-        if tier != 3:
-            return {
-                "error": "tier must be 3",
-                "detail": "promoção exclusivamente tier 3",
-            }, 422
 
         # Lock transacional por identidade de estratégia (spec discovery-deduplication).
         lock_key = int(hashlib.sha256(result.strategy_identity_key.encode()).hexdigest()[:16], 16)
@@ -2054,13 +2259,21 @@ class DiscoveryService:
 
         sweep = db.query(DiscoverySweep).filter(DiscoverySweep.id == result.sweep_id).first()
         sweep_snapshot = sweep.snapshot if sweep and isinstance(sweep.snapshot, dict) else {}
+        # Card #1121 (decisão 10): identidade da execução no favorito, como o lote do #1120.
+        identity = self._promotion_identity(result, sweep_snapshot)
+        op_start_hint = sweep_snapshot.get("start_date")
+        if identity["equity"] and not op_start_hint:
+            # "Todo o histórico" de ação/ETF começa no primeiro candle da amostra (nunca no Stooq).
+            op_start_hint = identity["window_start"]
         op_period_type, op_start, op_end = resolve_chosen_period(
             period_type=sweep_snapshot.get("period_type"),
-            start_date=sweep_snapshot.get("start_date"),
+            start_date=op_start_hint,
             end_date=sweep_snapshot.get("end_date"),
             symbol=result.symbol,
             timeframe=result.timeframe,
+            data_source=identity["data_source"],
         )
+        favorite_parameters = identity["parameters"]
 
         if duplicate is None:
             duplicate = lock_and_find_duplicate(
@@ -2072,7 +2285,10 @@ class DiscoveryService:
                 period_type=op_period_type,
                 start_date=op_start,
                 end_date=op_end,
-                parameters=result.parameters,
+                parameters=favorite_parameters,
+                data_source=identity["data_source"],
+                asset=identity["asset"],
+                configuration=identity["configuration"],
             )
         if duplicate is not None:
             result.dedup_state = "duplicate_favorite"
@@ -2100,7 +2316,7 @@ class DiscoveryService:
             strategy_name=result.template_id,
             symbol=result.symbol,
             timeframe=result.timeframe,
-            parameters=result.parameters if isinstance(result.parameters, dict) else {},
+            parameters=favorite_parameters,
             period_type=op_period_type,
             start_date=op_start,
             end_date=op_end,
@@ -2108,26 +2324,62 @@ class DiscoveryService:
             portrait_metrics=result.metrics if isinstance(result.metrics, dict) else {},
         )
 
+        favorite_metrics = build_promoted_favorite_metrics(
+            result,
+            promoted_at=_utc_iso(_utcnow()),
+            operational_metrics=operational_metrics,
+        )
+        # Mesmas chaves que Favoritos já lê (#1120): classe, fonte, sessão, ajuste, moeda,
+        # convenções, precisão, janela efetiva e versão da amostra.
+        favorite_metrics.update(
+            analysis_asset=identity["asset"],
+            analysis_execution=identity["execution"],
+            analysis_conventions=identity["conventions"],
+            data_provenance=identity["provenance"],
+        )
         favorite = FavoriteStrategy(
             user_id=actor,
             name=f"{result.template_id} · {result.symbol} · {result.timeframe} · {result.direction}",
             symbol=result.symbol,
             timeframe=result.timeframe,
             strategy_name=result.template_id,
-            parameters=result.parameters,
-            tier=3,
+            parameters=favorite_parameters,
+            # Card #1122 (d2, decisão 12): sem estrela em qualquer classe (fora do Monitor e sem
+            # alerta até o dono dar a estrela); o alerta nasce ligado.
+            tier=None,
+            notify_telegram=True,
+            data_source=identity["configuration"].data_source,
+            session=identity["configuration"].session,
+            adjustment=identity["configuration"].adjustment,
             notes=f"descoberta via sweep {result.sweep_id} (result {result.id})",
             start_date=op_start,
             end_date=op_end,
             period_type=op_period_type or "all",
-            metrics=build_promoted_favorite_metrics(
-                result,
-                promoted_at=_utc_iso(_utcnow()),
-                operational_metrics=operational_metrics,
-            ),
+            metrics=favorite_metrics,
+            # Card #1118: o favorito começa com a amostra do resultado promovido (vale até o
+            # primeiro refresh, que a troca).
+            snapshot_id=getattr(result, "snapshot_id", None),
         )
         db.add(favorite)
         db.flush()
+        if favorite.snapshot_id:
+            from app.services.market_history import snapshots as history_snapshots
+
+            history_snapshots.pin(db, favorite.snapshot_id)
+        # Card #1123 (P2 da crítica): com a coluna extra ativa, o favorito promovido herda a
+        # comparação gravada da célula (mesma referência, mesma amostra, sem recálculo). Candidato
+        # "Sem comparação" vai com a referência padrão (próprio ativo, gravada no 1º refresh).
+        inherited_comparison = None
+        try:
+            from app.services import benchmark_comparison as bench
+            from app.services.discovery_reference_column import inherited_for_promotion
+
+            inherited_comparison = inherited_for_promotion(db, result.sweep_id, actor, result.id)
+            if inherited_comparison is not None:
+                favorite.benchmark_comparison_id = inherited_comparison["id"]
+                bench.pin_reference(db, inherited_comparison)
+        except Exception:
+            logger.warning("Comparação da coluna extra não herdada na promoção", exc_info=True)
         result.dedup_state = "already_promoted"
         result.dedup_reference = str(favorite.id)
         result.updated_at = _utcnow()
@@ -2161,7 +2413,71 @@ class DiscoveryService:
                     "result_id": result_id,
                 }, 200
             raise
-        return {"favorite_id": str(favorite.id), "result_id": result.id}, 201
+        body = {"favorite_id": str(favorite.id), "result_id": result.id}
+        if inherited_comparison is not None:
+            body["benchmark_comparison_id"] = inherited_comparison["id"]
+        return body, 201
+
+    @staticmethod
+    def _promotion_identity(
+        result: DiscoveryResult, sweep_snapshot: dict[str, Any]
+    ) -> dict[str, Any]:
+        """Identidade da execução que o favorito guarda (card #1121, decisão 10)."""
+
+        from app.services import discovery_multiclass as multiclass
+        from app.services.market_data_providers import BINANCE_EQUITY_SOURCE, CCXT_SOURCE
+
+        metrics = result.metrics if isinstance(result.metrics, dict) else {}
+        stored_asset = metrics.get("asset") if isinstance(metrics.get("asset"), dict) else {}
+        classes = sweep_snapshot.get("asset_classes") or {}
+        asset_class = multiclass.class_of(
+            result.symbol,
+            result.asset_class or stored_asset.get("asset_class") or classes.get(result.symbol),
+        )
+        equity = asset_class in multiclass.EQUITY_CLASSES
+        data_source = BINANCE_EQUITY_SOURCE if equity else CCXT_SOURCE
+        asset = {
+            **stored_asset,
+            "symbol": result.symbol,
+            "asset_class": asset_class,
+            "currency": stored_asset.get("currency")
+            or multiclass.currency_of(result.symbol, asset_class),
+        }
+        parameters = dict(result.parameters) if isinstance(result.parameters, dict) else {}
+        parameters["direction"] = str(result.direction or parameters.get("direction") or "long")
+        parameters["data_source"] = data_source
+        covered = result.period_covered if isinstance(result.period_covered, dict) else {}
+        provenance = {
+            "data_source": result.data_source,
+            "asset_class": result.asset_class or asset_class,
+            "session": result.session,
+            "adjustment": result.adjustment,
+            "timeframe_origin": result.timeframe_origin,
+            "period_requested": result.period_requested,
+            "period_covered": result.period_covered,
+            "data_version": result.data_version,
+            "version_label": result.candle_version,
+            "snapshot_id": result.snapshot_id,
+        }
+        execution = metrics.get("execution") if isinstance(metrics.get("execution"), dict) else None
+        conventions = (
+            metrics.get("conventions") if isinstance(metrics.get("conventions"), dict) else None
+        )
+        from app.services.favorite_configuration import derive_configuration
+
+        return {
+            "equity": equity,
+            "data_source": data_source,
+            "configuration": derive_configuration(
+                result.symbol, data_source=data_source, conventions=conventions
+            ),
+            "asset": asset,
+            "parameters": parameters,
+            "execution": execution,
+            "conventions": conventions,
+            "provenance": provenance,
+            "window_start": multiclass.iso_day(covered.get("start") or result.start_at),
+        }
 
     def discard_result(self, *, result_id: str, db: Session) -> tuple[dict[str, Any], int]:
         from sqlalchemy import text

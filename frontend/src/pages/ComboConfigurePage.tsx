@@ -1,10 +1,37 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useMemo, useRef } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
-import { useQuery } from '@tanstack/react-query'
-import { Settings, TrendingUp, Calendar, DollarSign, Sliders, HelpCircle, ExternalLink, ChevronRight, ChevronLeft, ChevronsRight, ChevronsLeft, Search, Pause, Square } from 'lucide-react'
+import { Settings, TrendingUp, Calendar, DollarSign, Sliders, HelpCircle } from 'lucide-react'
 import { API_BASE_URL, apiUrl } from '../lib/apiBase'
 import { BackendLogViewer } from '../components/BackendLogViewer'
+import { AssetPicker } from '../components/AssetPicker'
+import {
+    BatchConfirm,
+    BatchConfirmError,
+    BatchConfirmLoading,
+    BatchPanel,
+    BatchPausedBlock,
+    type BatchPanelHandle,
+} from '../components/batch/BatchLote'
+import { useBatchJob } from '../hooks/useBatchJob'
 import { authFetch } from '@/lib/authFetch'
+import {
+    CLASS_NOTE,
+    ON_DEMAND_TEXT_BACKTEST,
+    TOP10_SYMBOLS,
+    blockedNotice,
+    collectingCopy,
+    cryptoOnlyTimeframes,
+    equityTimeframeBlock,
+    historyUnavailableNotice,
+    marketDataText,
+    planRun,
+    refusalMessage,
+    runCopy,
+    timeframeDisabled,
+    type RunNotice,
+} from '../lib/assetSelection'
+import '../components/results/DataExecution.css'
+import { tradableCrypto, useSelectionView } from '../lib/assetStore'
 import {
     comboPeriodHint,
     customPeriodImpediments,
@@ -16,6 +43,7 @@ import {
 
 interface TemplateMetadata {
     name: string
+    display_name?: string
     description: string
     indicators: Array<{
         type: string
@@ -50,52 +78,30 @@ export function ComboConfigurePage() {
     const [customStartDate, setCustomStartDate] = useState('')
     const [customEndDate, setCustomEndDate] = useState('')
 
-    // Escopo: Todos (seleciona todos, desabilita caixa) ou Seleciona (usuário escolhe).
-    type BatchScope = 'all' | 'selected'
-    const [batchScope, setBatchScope] = useState<BatchScope>('selected')
-    const [selectedSymbols, setSelectedSymbols] = useState<string[]>(['BTC/USDT'])
-    const [leftHighlighted, setLeftHighlighted] = useState<string[]>([])
-    const [rightHighlighted, setRightHighlighted] = useState<string[]>([])
-    const [leftFilter, setLeftFilter] = useState('')
-
-    // Batch backtest
-    const [batchRunning, setBatchRunning] = useState(false)
-    const [batchJobId, setBatchJobId] = useState<string | null>(null)
-    const [batchPauseCancelRequested, setBatchPauseCancelRequested] = useState(false)
-    const [batchProgress, setBatchProgress] = useState<{
-        status: string
-        processed: number
-        total: number
-        succeeded: number
-        failed: number
-        skipped?: number
-        errors: Array<{ symbol: string; error: string }>
-        started_at: string | null
-        elapsed_sec: number
-        estimated_remaining_sec: number | null
-        current_symbol?: string | null
-    } | null>(null)
-    const [batchTotal, setBatchTotal] = useState(0)
-    const pollRef = useRef<ReturnType<typeof setInterval> | null>(null)
-    const batchStartTimeRef = useRef<number | null>(null)
-    const [clientElapsedSec, setClientElapsedSec] = useState(0)
-
-    // Fetch available symbols from Binance (crypto market)
-    const { data: cryptoSymbolsData } = useQuery({
-        queryKey: ['binance-symbols'],
-        queryFn: async () => {
-            const response = await fetch(`${API_BASE_URL}/exchanges/binance/symbols`);
-            if (!response.ok) {
-                throw new Error('Failed to fetch symbols');
-            }
-            const data = await response.json();
-            return data.symbols as string[];
-        },
-        staleTime: 1000 * 60 * 60 * 24, // Cache for 24 hours
-    });
-
-    const activeSymbols = cryptoSymbolsData ?? []
+    // Ativos: o seletor do catálogo (cripto, ações e ETFs). Padrão BTC/USDT, como no incumbente.
     const defaultSymbol = 'BTC/USDT'
+    const [selectedSymbols, setSelectedSymbols] = useState<string[]>([defaultSymbol])
+    const [runNotice, setRunNotice] = useState<RunNotice | null>(null)
+
+    // Lote multiclasse (card #1120): plano, progresso por ativo, Pausar, Retomar e Encerrar (compartilhados com a Otimização)
+    const batch = useBatchJob()
+    const runButton = useRef<HTMLButtonElement>(null)
+    const panelRef = useRef<BatchPanelHandle>(null)
+
+    // O que roda e o que fica fora, por classe e tempo (ação, ETF e ativo marcado pela Binance).
+    const { entries: selectionEntries, loading: selectionLoading } = useSelectionView(selectedSymbols)
+    const plan = useMemo(
+        () => planRun(selectionEntries, { timeframe, page: 'combo' }),
+        [selectionEntries, timeframe],
+    )
+    // Ação/ETF sozinha (card #1119): roda o backtest de 1 ativo. 1m e 5m ficam indisponíveis e, se o
+    // tempo já era 5m (seleção mista antes), a tela avisa antes de rodar sem trocar o valor.
+    const equityRun = plan.equityRun
+    const tfBlock = equityTimeframeBlock(plan, timeframe, 'combo')
+    const copy = runCopy(plan, 'combo')
+    const [collecting, setCollecting] = useState<string | null>(null)
+    const cryptoOnlyTfs = cryptoOnlyTimeframes(plan)
+    const batchRunning = batch.active && batch.job?.status !== 'paused'
 
     useEffect(() => {
         if (templateName) {
@@ -106,24 +112,6 @@ export function ComboConfigurePage() {
             }
         }
     }, [templateName])
-
-    useEffect(() => {
-        if (batchScope === 'all' && activeSymbols.length > 0) {
-            setSelectedSymbols([...activeSymbols])
-            return
-        }
-        if (batchScope === 'selected' && selectedSymbols.length === 0) {
-            setSelectedSymbols([defaultSymbol])
-        }
-    }, [activeSymbols, batchScope, defaultSymbol, selectedSymbols.length])
-
-    useEffect(() => {
-        setBatchScope('selected')
-        setSelectedSymbols([defaultSymbol])
-        setLeftHighlighted([])
-        setRightHighlighted([])
-        setLeftFilter('')
-    }, [defaultSymbol])
 
     const fetchMetadata = async () => {
         try {
@@ -195,41 +183,26 @@ export function ComboConfigurePage() {
         }
     }
 
-    const getBatchSymbols = (): string[] => {
-        if (batchScope === 'all') return activeSymbols
-        return selectedSymbols
+    // Aviso antes de rodar quando nada roda; devolve o aviso ou null (a seleção é mantida).
+    const getRunBlock = (): RunNotice | null => {
+        if (tfBlock) return tfBlock.notice
+        if (plan.mode === 'none') {
+            return { tone: 'warn', title: 'Escolha ao menos 1 ativo', body: 'Pesquise e marque um par cripto em USDT.' }
+        }
+        if (plan.mode === 'blocked') return blockedNotice(plan, 'combo')
+        return null
     }
+
+    const periodText = (): string => {
+        if (period === 'custom') return `${customStartDate || '—'} a ${customEndDate || '—'}`
+        return (PERIOD_OPTIONS.find((o) => o.value === period)?.label ?? 'todo o histórico').toLowerCase()
+    }
+    const configText = (): string =>
+        `${metadata?.display_name || metadata?.name || templateName} · ${timeframe} · ${periodText()} · ` +
+        `${direction === 'short' ? 'Short' : 'Long'} · ${deepBacktest ? 'Deep Backtest (15m)' : 'candle do tempo gráfico'}`
 
     function getPeriodDates(): { start_date: string | null; end_date: string | null } {
         return resolvePeriodDates(period, customStartDate, customEndDate)
-    }
-
-    function formatElapsed(sec: number): string {
-        const m = Math.floor(sec / 60)
-        const s = Math.floor(sec % 60)
-        return `${m}m ${s}s`
-    }
-
-    const handlePauseBatch = async () => {
-        if (!batchJobId || batchPauseCancelRequested) return
-        setBatchPauseCancelRequested(true)
-        try {
-            const res = await authFetch(`${API_BASE_URL}/combos/backtest/batch/${batchJobId}/pause`, { method: 'POST' })
-            if (!res.ok) setBatchPauseCancelRequested(false)
-        } catch {
-            setBatchPauseCancelRequested(false)
-        }
-    }
-
-    const handleCancelBatch = async () => {
-        if (!batchJobId || batchPauseCancelRequested) return
-        setBatchPauseCancelRequested(true)
-        try {
-            const res = await authFetch(`${API_BASE_URL}/combos/backtest/batch/${batchJobId}/cancel`, { method: 'POST' })
-            if (!res.ok) setBatchPauseCancelRequested(false)
-        } catch {
-            setBatchPauseCancelRequested(false)
-        }
     }
 
     const handleRun = async () => {
@@ -238,11 +211,14 @@ export function ComboConfigurePage() {
             alert(periodIssues[0])
             return
         }
-        const symbolsToRun = getBatchSymbols()
-        if (batchScope === 'selected' && symbolsToRun.length === 0) {
-            alert('Selecione ao menos um símbolo na lista acima.')
+        setRunNotice(null)
+        const blocked = getRunBlock()
+        if (blocked) {
+            // Nada é executado nem salvo; a seleção fica como está.
+            setRunNotice(blocked)
             return
         }
+        const symbolsToRun = plan.runnable
         if (symbolsToRun.length === 0) {
             alert('Nenhum símbolo disponível.')
             return
@@ -253,26 +229,32 @@ export function ComboConfigurePage() {
             custom_ranges[p.name] = { min: p.min, max: p.max, step: p.step ?? 1 }
         })
         const { start_date, end_date } = getPeriodDates()
-        if (symbolsToRun.length === 1) {
+        if (plan.mode === 'single') {
+            batch.dismissFinished()
             setRunning(true)
+            const isEquityRun = !!equityRun
+            if (isEquityRun) setCollecting(collectingCopy(symbolsToRun[0], 'combo', timeframe, deepBacktest))
             try {
-                const existsUrl = apiUrl('/favorites/exists')
-                existsUrl.searchParams.set('strategy_name', templateName)
-                existsUrl.searchParams.set('symbol', symbolsToRun[0])
-                existsUrl.searchParams.set('timeframe', timeframe)
-                existsUrl.searchParams.set('period_type', period)
-                existsUrl.searchParams.set('direction', direction)
-                if (period === 'custom') {
-                    if (start_date) existsUrl.searchParams.set('start_date', start_date)
-                    if (end_date) existsUrl.searchParams.set('end_date', end_date)
-                }
-                const existsRes = await authFetch(existsUrl.toString())
-                if (existsRes.ok) {
-                    const { exists } = await existsRes.json()
-                    if (exists) {
-                        alert('Estratégia já existe nos favoritos (mesmo template, ativo, timeframe, período e direção). Redirecionando.')
-                        navigate('/favorites')
-                        return
+                if (!isEquityRun) {
+                    // Ação/ETF não vira favorito (#1122): nem checa /favorites/exists.
+                    const existsUrl = apiUrl('/favorites/exists')
+                    existsUrl.searchParams.set('strategy_name', templateName)
+                    existsUrl.searchParams.set('symbol', symbolsToRun[0])
+                    existsUrl.searchParams.set('timeframe', timeframe)
+                    existsUrl.searchParams.set('period_type', period)
+                    existsUrl.searchParams.set('direction', direction)
+                    if (period === 'custom') {
+                        if (start_date) existsUrl.searchParams.set('start_date', start_date)
+                        if (end_date) existsUrl.searchParams.set('end_date', end_date)
+                    }
+                    const existsRes = await authFetch(existsUrl.toString())
+                    if (existsRes.ok) {
+                        const { exists } = await existsRes.json()
+                        if (exists) {
+                            alert('Estratégia já existe nos favoritos (mesmo template, ativo, timeframe, período e direção). Redirecionando.')
+                            navigate('/favorites')
+                            return
+                        }
                     }
                 }
                 const res = await authFetch(`${API_BASE_URL}/combos/optimize`, {
@@ -289,10 +271,24 @@ export function ComboConfigurePage() {
                         custom_ranges,
                         split_train_ratio: walkForwardEnabled ? walkForwardTrainRatio : null,
                         period_type: period,
+                        run_scope: 'single',
                     })
                 })
                 if (!res.ok) {
-                    alert('Falha na otimização')
+                    const err = await res.json().catch(() => ({}))
+                    if (isEquityRun) {
+                        // Coleta falhou sem nada guardado, tempo recusado ou ativo marcado: alerta com o motivo.
+                        const unavailable = historyUnavailableNotice(err?.detail)
+                        setRunNotice(
+                            unavailable ?? {
+                                tone: 'alert',
+                                title: 'Não foi possível rodar o backtest',
+                                body: refusalMessage(err?.detail, 'Falha na otimização'),
+                            },
+                        )
+                        return
+                    }
+                    alert(refusalMessage(err?.detail, 'Falha na otimização'))
                     return
                 }
                 const result = await res.json()
@@ -306,7 +302,7 @@ export function ComboConfigurePage() {
                 const oosVerdict = result.oos_verdict ?? null
                 // Walk-forward ativo: mostra a tela de resultados com o comparativo
                 // Treino vs Holdout e o veredito (GO/NO-GO) para o usuário decidir.
-                if (walkForwardEnabled || oosVerdict) {
+                if (isEquityRun || walkForwardEnabled || oosVerdict) {
                     navigate('/combo/results', {
                         state: {
                             result: {
@@ -317,6 +313,11 @@ export function ComboConfigurePage() {
                                 end_date: end_date ?? null,
                                 period_type: period,
                                 execution_mode: result.execution_mode ?? 'fast_1d',
+                                asset: result.asset ?? null,
+                                data_provenance: result.data_provenance ?? null,
+                                execution: result.execution ?? null,
+                                conventions: result.conventions ?? null,
+                                combination_errors: result.combination_errors ?? null,
                                 parameters,
                                 metrics,
                                 promotion_metrics: result.promotion_metrics ?? metrics,
@@ -365,130 +366,52 @@ export function ComboConfigurePage() {
                 alert(e instanceof Error ? e.message : 'Falha na otimização')
             } finally {
                 setRunning(false)
+                setCollecting(null)
             }
             return
         }
 
-        setBatchRunning(true)
-        setBatchJobId(null)
-        setBatchProgress(null)
-        setBatchTotal(symbolsToRun.length)
-        setBatchPauseCancelRequested(false)
-        setClientElapsedSec(0)
-        batchStartTimeRef.current = Date.now()
-        try {
-            const res = await authFetch(`${API_BASE_URL}/combos/backtest/batch`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    template_name: templateName,
-                    symbols: symbolsToRun,
-                    timeframe,
-                    start_date,
-                    end_date,
-                    period_type: period,
-                    deep_backtest: deepBacktest,
-                    direction,
-                    custom_ranges,
-                    split_train_ratio: walkForwardEnabled ? walkForwardTrainRatio : null,
-                })
-            })
-            if (!res.ok) {
-                const err = await res.json().catch(() => ({}))
-                throw new Error(err.detail ?? 'Falha ao iniciar batch')
-            }
-            const data = await res.json()
-            setBatchJobId(data.job_id)
-        } catch (e) {
-            console.error('Batch start error:', e)
-            alert(e instanceof Error ? e.message : 'Falha ao iniciar batch')
-            setBatchRunning(false)
-        }
+        // Mais de 1 ativo é sempre lote (decisão 2): o servidor monta o plano e o Confirmar abre no fluxo.
+        await batch.requestPreview({
+            template_name: templateName,
+            symbols: plan.selected,
+            timeframe,
+            start_date,
+            end_date,
+            period_type: period,
+            deep_backtest: deepBacktest,
+            direction,
+            custom_ranges,
+            split_train_ratio: walkForwardEnabled ? walkForwardTrainRatio : null,
+            page: 'combo',
+        })
     }
 
-    useEffect(() => {
-        if (!batchJobId) return
-        const poll = async () => {
-            try {
-                const res = await authFetch(`${API_BASE_URL}/combos/backtest/batch/${batchJobId}`)
-                if (!res.ok) return
-                const data = await res.json()
-                setBatchProgress(data)
-                if (['completed', 'failed', 'paused', 'cancelled'].includes(data.status)) {
-                    if (pollRef.current) {
-                        clearInterval(pollRef.current)
-                        pollRef.current = null
-                    }
-                    setBatchRunning(false)
-                    setBatchJobId(null)
-                    setBatchPauseCancelRequested(false)
-                    batchStartTimeRef.current = null
-                }
-            } catch {
-                /* ignore */
-            }
-        }
-        poll()
-        pollRef.current = setInterval(poll, 2000)
-        return () => {
-            if (pollRef.current) clearInterval(pollRef.current)
-        }
-    }, [batchJobId])
+    const confirmBatch = async (body: Record<string, unknown>) => {
+        const started = await batch.confirmAndRun(body)
+        if (started) requestAnimationFrame(() => panelRef.current?.focusTitle())
+    }
 
-    useEffect(() => {
-        if (!batchRunning) return
-        const t = setInterval(() => {
-            const start = batchStartTimeRef.current
-            if (start != null) setClientElapsedSec(Math.floor((Date.now() - start) / 1000))
-        }, 1000)
-        return () => clearInterval(t)
-    }, [batchRunning])
+    const backFromConfirm = () => {
+        batch.closeConfirm()
+        runButton.current?.focus()
+    }
 
-    const selectTopSymbols = () => {
-        const list = activeSymbols
-        const top = list.filter(s => /^(BTC|ETH|BNB|SOL|XRP|ADA|DOGE|AVAX|MATIC|LINK)\/USDT$/i.test(s))
+    // Top 10: soma só os negociáveis da lista atual do catálogo (marcados e fora do catálogo ficam de fora).
+    const selectTopSymbols = async () => {
+        const tradable = await tradableCrypto(TOP10_SYMBOLS)
+        if (!tradable.length) return
         setSelectedSymbols(prev => {
             const next = new Set(prev)
-            top.forEach(x => next.add(x))
+            tradable.forEach(x => next.add(x))
             return [...next]
         })
-        setLeftHighlighted([])
-        setRightHighlighted([])
     }
 
-    const availableSymbols = activeSymbols.filter(s => !selectedSymbols.includes(s))
-    const leftFilterLower = leftFilter.trim().toLowerCase()
-    const availableFiltered = leftFilterLower
-        ? availableSymbols.filter(s => s.toLowerCase().includes(leftFilterLower))
-        : availableSymbols
-    const toggleLeft = (s: string) => {
-        setLeftHighlighted(prev => prev.includes(s) ? prev.filter(x => x !== s) : [...prev, s])
-    }
-    const toggleRight = (s: string) => {
-        setRightHighlighted(prev => prev.includes(s) ? prev.filter(x => x !== s) : [...prev, s])
-    }
-    const addSelected = () => {
-        if (leftHighlighted.length === 0) return
-        setSelectedSymbols(prev => [...prev, ...leftHighlighted])
-        setLeftHighlighted([])
-    }
-    const removeSelected = () => {
-        if (rightHighlighted.length === 0) return
-        setSelectedSymbols(prev => {
-            const next = prev.filter(s => !rightHighlighted.includes(s))
-            return next.length ? next : [defaultSymbol]
-        })
-        setRightHighlighted([])
-    }
-    const addAll = () => {
-        if (availableFiltered.length === 0) return
-        setSelectedSymbols(prev => [...prev, ...availableFiltered])
-        setLeftHighlighted([])
-    }
-    const clearToDefault = () => {
-        setSelectedSymbols([defaultSymbol])
-        setLeftHighlighted([])
-        setRightHighlighted([])
+    // Seleção vazia (último chip removido) volta ao padrão, como no incumbente.
+    const changeSymbols = (next: string[]) => {
+        setSelectedSymbols(next.length ? next : [defaultSymbol])
+        setRunNotice(null)
     }
 
     if (loading) {
@@ -563,166 +486,40 @@ export function ComboConfigurePage() {
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                             <div>
                                 <label className="block text-sm font-semibold text-zinc-500 mb-2">Market Data</label>
-                                <div className="glass px-4 py-3 rounded-[16px] border border-zinc-200 text-sm text-zinc-600">
-                                    CCXT (crypto exchange data)
+                                <div
+                                    className="glass px-4 py-3 rounded-[16px] border border-zinc-200 text-sm text-zinc-600 r19-md"
+                                    data-testid="combo-market-data"
+                                >
+                                    {marketDataText(plan)}
                                 </div>
                             </div>
                             <div className="md:col-span-2">
-                                <label className="block text-sm font-semibold text-zinc-500 mb-2">Escopo</label>
-                                <div className="flex flex-wrap gap-4 mb-4">
-                                    <label className="flex items-center gap-2 cursor-pointer">
-                                        <input
-                                            type="radio"
-                                            name="scope"
-                                            checked={batchScope === 'all'}
-                                            onChange={() => {
-                                                setBatchScope('all')
-                                                setSelectedSymbols([...activeSymbols])
-                                                setLeftHighlighted([])
-                                                setRightHighlighted([])
-                                                setLeftFilter('')
-                                            }}
-                                            className="rounded-full border-zinc-300"
-                                        />
-                                        <span className="text-sm text-zinc-900">Todos</span>
-                                    </label>
-                                    <label className="flex items-center gap-2 cursor-pointer">
-                                        <input
-                                            type="radio"
-                                            name="scope"
-                                            checked={batchScope === 'selected'}
-                                            onChange={() => {
-                                                setBatchScope('selected')
-                                                setSelectedSymbols(prev => (prev.length ? prev : [defaultSymbol]))
-                                                setLeftHighlighted([])
-                                                setRightHighlighted([])
-                                                setLeftFilter('')
-                                            }}
-                                            className="rounded-full border-zinc-300"
-                                        />
-                                        <span className="text-sm text-zinc-900">Seleciona</span>
-                                    </label>
-                                </div>
                                 <label className="block text-sm font-semibold text-zinc-500 mb-2">
                                     <DollarSign className="w-4 h-4 inline mr-1" />
                                     Ativos
                                 </label>
-                                <p className="text-xs text-zinc-400 mb-2">
-                                    {batchScope === 'all'
-                                        ? 'Todos selecionados. Otimizar 1: usa o primeiro; N: batch em todos.'
-                                        : <>1 ativo: otimiza o <strong>primeiro</strong>. N ativos: <strong>batch</strong> nos selecionados.</>}
+                                <p className="text-xs text-zinc-400 mb-2" data-testid="combo-scope-hint">
+                                    1 ativo: otimiza o <strong>primeiro</strong>. N ativos: <strong>batch</strong> nos selecionados.
                                 </p>
-                                {batchScope === 'all' ? (
-                                    <div className="py-6 rounded-[16px] bg-zinc-50 border border-zinc-200 text-center text-zinc-400 text-sm">
-                                        Modo Todos — todos os ativos do mercado selecionado serão usados. Altere para &quot;Seleciona&quot; para escolher ativos.
-                                    </div>
-                                ) : (
-                                    <>
-                                        <div className="flex gap-2 mb-2">
-                                            <button
-                                                type="button"
-                                                onClick={selectTopSymbols}
-                                                className="text-xs px-3 py-1.5 bg-purple-500/20 text-purple-300 rounded-[16px] hover:bg-purple-500/30 transition-colors"
-                                            >
-                                                Top 10
-                                            </button>
-                                            <button
-                                                type="button"
-                                                onClick={clearToDefault}
-                                                className="text-xs px-3 py-1.5 bg-zinc-100 text-zinc-500 rounded-[16px] hover:bg-zinc-100 transition-colors"
-                                            >
-                                                Limpar (1 ativo)
-                                            </button>
-                                        </div>
-                                        <div className="grid grid-cols-[1fr_auto_1fr] gap-3 items-stretch">
-                                            <div className="flex flex-col min-h-0">
-                                                <div className="text-xs text-zinc-400 mb-1 font-medium">Selecione</div>
-                                                <div className="relative mb-1.5">
-                                                    <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-500" />
-                                                    <input
-                                                        type="text"
-                                                        value={leftFilter}
-                                                        onChange={(e) => setLeftFilter(e.target.value)}
-                                                        placeholder="Filtrar ativo…"
-                                                        className="w-full pl-8 pr-3 py-1.5 rounded-[14px] border border-zinc-200 bg-white0 text-sm text-zinc-900 placeholder-gray-500 focus:border-blue-500 focus:outline-none"
-                                                    />
-                                                </div>
-                                                <div className="flex-1 min-h-[160px] max-h-48 overflow-y-auto rounded-[16px] border border-zinc-200 bg-white0 p-1 space-y-0.5">
-                                                    {availableFiltered.map(s => (
-                                                        <div
-                                                            key={s}
-                                                            onClick={() => toggleLeft(s)}
-                                                            onDoubleClick={() => { setSelectedSymbols(prev => [...prev, s]); setLeftHighlighted(prev => prev.filter(x => x !== s)) }}
-                                                            className={`px-3 py-1.5 rounded-[12px] text-sm cursor-pointer truncate ${leftHighlighted.includes(s) ? 'bg-blue-500/30 text-zinc-900' : 'text-zinc-500 hover:bg-zinc-100'}`}
-                                                        >
-                                                            {s}
-                                                        </div>
-                                                    ))}
-                                                    {availableFiltered.length === 0 && (
-                                                        <div className="text-zinc-500 text-sm italic py-4 text-center">
-                                                            {availableSymbols.length === 0 ? 'Nenhum disponível' : 'Nenhum resultado para o filtro'}
-                                                        </div>
-                                                    )}
-                                                </div>
-                                            </div>
-                                            <div className="flex flex-col justify-center gap-1 py-6">
-                                                <button
-                                                    type="button"
-                                                    onClick={addSelected}
-                                                    disabled={leftHighlighted.length === 0}
-                                                    className="p-1.5 rounded-[12px] bg-zinc-100 text-zinc-500 hover:bg-blue-500/30 hover:text-zinc-900 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
-                                                    title="Adicionar selecionados"
-                                                >
-                                                    <ChevronRight className="w-4 h-4" />
-                                                </button>
-                                                <button
-                                                    type="button"
-                                                    onClick={removeSelected}
-                                                    disabled={rightHighlighted.length === 0}
-                                                    className="p-1.5 rounded-[12px] bg-zinc-100 text-zinc-500 hover:bg-blue-500/30 hover:text-zinc-900 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
-                                                    title="Remover selecionados"
-                                                >
-                                                    <ChevronLeft className="w-4 h-4" />
-                                                </button>
-                                                <button
-                                                    type="button"
-                                                    onClick={addAll}
-                                                    disabled={availableFiltered.length === 0}
-                                                    className="p-1.5 rounded-[12px] bg-zinc-100 text-zinc-500 hover:bg-blue-500/30 hover:text-zinc-900 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
-                                                    title={leftFilter.trim() ? 'Adicionar todos (filtrados)' : 'Adicionar todos'}
-                                                >
-                                                    <ChevronsRight className="w-4 h-4" />
-                                                </button>
-                                                <button
-                                                    type="button"
-                                                    onClick={clearToDefault}
-                                                    className="p-1.5 rounded-[12px] bg-zinc-100 text-zinc-500 hover:bg-blue-500/30 hover:text-zinc-900 transition-colors"
-                                                    title="Limpar seleção"
-                                                >
-                                                    <ChevronsLeft className="w-4 h-4" />
-                                                </button>
-                                            </div>
-                                            <div className="flex flex-col min-h-0">
-                                                <div className="text-xs text-zinc-400 mb-1 font-medium">Selecionados</div>
-                                                <div className="flex-1 min-h-[160px] max-h-48 overflow-y-auto rounded-[16px] border border-zinc-200 bg-white0 p-1 space-y-0.5">
-                                                    {selectedSymbols.map(s => (
-                                                        <div
-                                                            key={s}
-                                                            onClick={() => toggleRight(s)}
-                                                            onDoubleClick={() => setSelectedSymbols(prev => (prev.filter(x => x !== s).length ? prev.filter(x => x !== s) : [defaultSymbol]))}
-                                                            className={`px-3 py-1.5 rounded-[12px] text-sm cursor-pointer truncate ${rightHighlighted.includes(s) ? 'bg-blue-500/30 text-zinc-900' : 'text-zinc-500 hover:bg-zinc-100'}`}
-                                                        >
-                                                            {s}
-                                                        </div>
-                                                    ))}
-                                                </div>
-                                            </div>
-                                        </div>
-                                        <p className="text-xs text-zinc-500 mt-1">
-                                            Clique para marcar; duplo clique para mover. Use os botões entre as listas para adicionar/remover.
-                                        </p>
-                                    </>
-                                )}
+                                <AssetPicker
+                                    value={selectedSymbols}
+                                    onChange={changeSymbols}
+                                    ariaLabel="Seletor de ativos"
+                                    clearTo={[defaultSymbol]}
+                                    clearLabel="Limpar (1 ativo)"
+                                    onDemandTexts={ON_DEMAND_TEXT_BACKTEST}
+                                    classNote={CLASS_NOTE.combo}
+                                    extraActions={(
+                                        <button
+                                            type="button"
+                                            className="ap-btn"
+                                            data-testid="combo-top10"
+                                            onClick={() => void selectTopSymbols()}
+                                        >
+                                            Top 10
+                                        </button>
+                                    )}
+                                />
                             </div>
 
                             <div>
@@ -734,13 +531,22 @@ export function ComboConfigurePage() {
                                     onChange={(e) => setTimeframe(e.target.value)}
                                     className="w-full glass px-4 py-3 rounded-[16px] border border-zinc-200 text-zinc-900 focus:border-blue-500 focus:outline-none"
                                 >
-                                    <option value="1m" className="bg-zinc-900 text-zinc-900">1 minute</option>
-                                    <option value="5m" className="bg-zinc-900 text-zinc-900">5 minutes</option>
-                                    <option value="15m" className="bg-zinc-900 text-zinc-900">15 minutes</option>
-                                    <option value="1h" className="bg-zinc-900 text-zinc-900">1 hour</option>
-                                    <option value="4h" className="bg-zinc-900 text-zinc-900">4 hours</option>
-                                    <option value="1d" className="bg-zinc-900 text-zinc-900">1 day</option>
+                                    {([['1m', '1 minute'], ['5m', '5 minutes'], ['15m', '15 minutes'], ['1h', '1 hour'], ['4h', '4 hours'], ['1d', '1 day']] as const).map(([value, label]) => (
+                                        <option
+                                            key={value}
+                                            value={value}
+                                            className="bg-zinc-900 text-zinc-900"
+                                            disabled={timeframeDisabled(plan, value)}
+                                        >
+                                            {label}{cryptoOnlyTfs.includes(value) ? ' (só cripto)' : ''}
+                                        </option>
+                                    ))}
                                 </select>
+                                {equityRun ? (
+                                    <p className="r19-hint" data-testid="combo-timeframe-hint">
+                                        <b>Ação e ETF:</b> 15m, 1h, 4h ou 1d, montados no pregão regular de Nova York, sem candle que atravesse o fechamento.
+                                    </p>
+                                ) : null}
                             </div>
                             <div>
                                 <label className="block text-sm font-semibold text-zinc-500 mb-2">
@@ -821,6 +627,11 @@ export function ComboConfigurePage() {
                                     <p className="text-xs text-zinc-400 mt-1">
                                         Simulates execution using 15-minute candles for realistic stop/target validation
                                     </p>
+                                    {equityRun ? (
+                                        <p className="r19-hint" data-testid="combo-deep-hint">
+                                            <b>Ação e ETF:</b> usa o 15m montado do 5m. Se o intradiário não cobrir a janela, o backtest roda em precisão diária e o resultado mostra o trecho que faltou.
+                                        </p>
+                                    ) : null}
                                 </div>
                             </label>
                         </div>
@@ -937,23 +748,33 @@ export function ComboConfigurePage() {
                         <h2 className="text-xl font-bold text-zinc-900 mb-4 flex items-center gap-2">
                             <Sliders className="w-5 h-5" />
                             Otimizar
-                            <span className="text-xs font-normal text-zinc-400 flex items-center gap-1" title='1 ativo: otimiza, salva em favoritos e redireciona. N ativos: batch, salva cada um em favoritos (nota "gerado em lote", tier 3).'>
+                            <span className="text-xs font-normal text-zinc-400 flex items-center gap-1" title='1 ativo: otimiza, salva em favoritos e redireciona. N ativos: batch, salva cada um em favoritos (nota "gerado em lote", sem estrela).'>
                                 <HelpCircle className="w-4 h-4" />
                                 ajuda
                             </span>
                         </h2>
-                        <p className="text-sm text-zinc-400 mb-4">
-                            {getBatchSymbols().length === 1
-                                ? '1 ativo selecionado: otimiza, salva em favoritos e abre a página de favoritos.'
-                                : batchScope === 'all'
-                                    ? 'Todos os pares: batch (pode demorar). Cada resultado é salvo em favoritos.'
-                                    : `${selectedSymbols.length} ativos: batch. Cada resultado é salvo em favoritos.`}
+                        <p
+                            className="lote-runcopy"
+                            data-testid="combo-run-copy"
+                        >
+                            {copy.parts ? (
+                                <>
+                                    <b>{copy.parts.lead}</b> {copy.parts.runs}{' '}
+                                    <span className="lote-out">{copy.parts.out}</span>
+                                </>
+                            ) : copy.blocked ? (
+                                <span className="lote-out">{copy.text}</span>
+                            ) : (
+                                copy.text
+                            )}
                         </p>
 
                         <div className="flex flex-wrap items-center gap-4">
                             <button
+                                ref={runButton}
                                 onClick={handleRun}
-                                disabled={batchRunning || running}
+                                disabled={batchRunning || running || selectionLoading || batch.starting}
+                                data-testid="combo-run"
                                 className="bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-500 hover:to-pink-500 disabled:from-gray-600 disabled:to-gray-700 text-zinc-900 font-bold py-4 px-10 rounded-[16px] transition-all flex items-center justify-center gap-2 shadow-lg shadow-purple-500/50 hover:scale-105 disabled:scale-100 disabled:cursor-not-allowed"
                             >
                                 {batchRunning || running ? (
@@ -979,85 +800,64 @@ export function ComboConfigurePage() {
                             </button>
                         </div>
 
-                        {batchRunning && (
-                            <div className="mt-4 p-4 bg-blue-500/10 border border-blue-500/30 rounded-[16px]">
-                                <div className="flex items-center gap-2 text-blue-300 font-medium mb-2">
-                                    <Settings className="w-4 h-4 animate-spin" />
-                                    {(batchProgress?.processed ?? 0)} de {batchProgress?.total ?? batchTotal} ativos
-                                </div>
-                                {batchProgress?.current_symbol && (
-                                    <p className="text-sm text-cyan-700/90 mb-2">
-                                        Ativo atual: <span className="font-medium">{batchProgress.current_symbol}</span>
-                                    </p>
-                                )}
-                                <div className="text-sm text-zinc-500 space-y-1">
-                                    <p>Tempo decorrido: {formatElapsed(clientElapsedSec)}</p>
-                                    {(() => {
-                                        const p = batchProgress?.processed ?? 0
-                                        const t = batchProgress?.total ?? batchTotal
-                                        const eta = batchProgress?.estimated_remaining_sec
-                                        if (p > 0 && p < t && eta != null) return <p>Tempo restante: ~{formatElapsed(Math.ceil(eta))}</p>
-                                        if (p > 0 && p < t) return <p>Tempo restante: calculando…</p>
-                                        return null
-                                    })()}
-                                </div>
-                                <div className="flex gap-2 mt-3">
-                                    <button
-                                        type="button"
-                                        onClick={handlePauseBatch}
-                                        disabled={batchPauseCancelRequested}
-                                        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-[16px] bg-amber-500/20 text-amber-700 border border-amber-500/40 hover:bg-amber-500/30 disabled:opacity-50 disabled:cursor-not-allowed text-sm font-medium transition-colors"
-                                    >
-                                        <Pause className="w-4 h-4" />
-                                        Pausar
-                                    </button>
-                                    <button
-                                        type="button"
-                                        onClick={handleCancelBatch}
-                                        disabled={batchPauseCancelRequested}
-                                        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-[16px] bg-red-500/20 text-red-300 border border-red-500/40 hover:bg-red-500/30 disabled:opacity-50 disabled:cursor-not-allowed text-sm font-medium transition-colors"
-                                    >
-                                        <Square className="w-4 h-4" />
-                                        Encerrar
-                                    </button>
-                                </div>
-                            </div>
-                        )}
+                        {collecting ? (
+                            <p className="r19-collect" role="status" data-testid="run-collecting">
+                                {collecting}
+                            </p>
+                        ) : null}
 
-                        {!batchRunning && batchProgress && ['completed', 'failed', 'paused', 'cancelled'].includes(batchProgress.status) && (
-                            <div className="mt-4 p-4 bg-zinc-50 border border-zinc-200 rounded-[16px] space-y-2">
-                                <p className="text-sm font-medium text-zinc-900">
-                                    {batchProgress.status === 'cancelled' && 'Encerrado pelo usuário. '}
-                                    {batchProgress.status === 'paused' && 'Pausado pelo usuário. '}
-                                    {batchProgress.succeeded} sucesso, {batchProgress.failed} falha
-                                    {(batchProgress.skipped ?? 0) > 0 && `, ${batchProgress.skipped} ignorado(s) (já em favoritos ou não suportados)`}.
-                                </p>
-                                {batchProgress.errors.length > 0 && (
-                                    <details className="text-xs text-zinc-400">
-                                        <summary>Erros por ativo</summary>
-                                        <ul className="mt-1 list-disc list-inside">
-                                            {batchProgress.errors.map((e, i) => (
-                                                <li key={i}>{e.symbol}: {e.error}</li>
-                                            ))}
-                                        </ul>
-                                    </details>
-                                )}
-                                <button
-                                    onClick={() => navigate('/favorites')}
-                                    className="inline-flex items-center gap-1 text-sm text-cyan-400 hover:text-cyan-700"
-                                >
-                                    <ExternalLink className="w-4 h-4" />
-                                    Abrir Strategy Favorites
-                                </button>
-                                <button
-                                    onClick={() => navigate('/combo/discovery')}
-                                    className="inline-flex items-center gap-1 text-sm text-cyan-400 hover:text-cyan-700"
-                                >
-                                    <ExternalLink className="w-4 h-4" />
-                                    Descoberta sistemática (varredura)
-                                </button>
+                        {runNotice ? (
+                            <div
+                                className={runNotice.tone === 'alert' ? 'ap-alert' : 'ap-warn'}
+                                role={runNotice.tone === 'alert' ? 'alert' : 'status'}
+                                data-testid="run-warning"
+                            >
+                                <strong>{runNotice.title}</strong>
+                                {runNotice.body}
                             </div>
-                        )}
+                        ) : null}
+
+                        {batch.confirm.phase === 'loading' ? <BatchConfirmLoading /> : null}
+                        {batch.confirm.phase === 'ready' ? (
+                            <BatchConfirm
+                                preview={batch.confirm.preview}
+                                config={{ text: configText() }}
+                                busy={batch.starting}
+                                onConfirm={() => void confirmBatch((batch.confirm as { body: Record<string, unknown> }).body)}
+                                onBack={backFromConfirm}
+                            />
+                        ) : null}
+                        {batch.confirm.phase === 'error' ? (
+                            <BatchConfirmError message={batch.confirm.message} onBack={backFromConfirm} />
+                        ) : null}
+                        {batch.confirm.phase === 'paused' ? (
+                            <BatchPausedBlock
+                                job={batch.job}
+                                jobId={batch.confirm.jobId}
+                                onResume={() => {
+                                    batch.closeConfirm()
+                                    void batch.resumeById((batch.confirm as { jobId: string }).jobId)
+                                }}
+                                onCancel={() => {
+                                    batch.closeConfirm()
+                                    void batch.cancelById((batch.confirm as { jobId: string }).jobId)
+                                    requestAnimationFrame(() => panelRef.current?.focusTitle())
+                                }}
+                                onBack={backFromConfirm}
+                            />
+                        ) : null}
+                        {batch.job ? (
+                            <BatchPanel
+                                ref={panelRef}
+                                job={batch.job}
+                                pending={batch.pending}
+                                actionError={batch.actionError}
+                                onPause={() => void batch.pause()}
+                                onResume={() => void batch.resume()}
+                                onCancel={() => void batch.cancel()}
+                                showDiscoveryLink
+                            />
+                        ) : null}
                     </div>
                 </div>
             </main>

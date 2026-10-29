@@ -95,13 +95,29 @@ def main() -> int:
                 force_dry_run=False,
             )
 
+    # Card #1122: eventos por favorito, avisos de atraso e de transição e reservas sem resultado.
+    counts = (
+        f"signal_events={summary.get('signal_events', 0)} "
+        f"delay_notices={summary.get('delay_notices', 0)} "
+        f"transition_notices={summary.get('transition_notices', 0)} "
+        f"unknown={summary.get('unknown', 0)}"
+    )
+    if summary.get("unknown", 0) > 0:
+        unknown = ", ".join(
+            f"fav {item.get('favorite_id')} {item.get('symbol')} {item.get('candle_time')}"
+            for item in summary.get("results", [])
+            if item.get("result") == "unknown"
+        )
+        print(f"UNKNOWN {summary['unknown']} (não reenviados): {unknown}")
+
     if summary.get("sent", 0) > 0:
         results = ", ".join(
+            f"{item.get('kind', 'signal')} fav {item.get('favorite_id')} "
             f"{item.get('symbol')} {item.get('timeframe')} {item.get('status')}"
             for item in summary.get("results", [])
             if item.get("result") == "sent"
         )
-        print(f"SENT {summary['sent']}: {results}")
+        print(f"SENT {summary['sent']} ({counts}): {results}")
         return 0
 
     if summary.get("failed", 0) > 0:

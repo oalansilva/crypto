@@ -169,7 +169,7 @@ class TestDeletedFavoriteReconciliation:
             result_id="RS-EQUIV-948",
             actor="admin-948",
             idempotency_key=f"k-{uuid.uuid4().hex[:12]}",
-            payload={"tier": 3, "result_id": "RS-EQUIV-948"},
+            payload={"result_id": "RS-EQUIV-948"},
             db=db,
         )
         assert status == 409
@@ -211,14 +211,14 @@ class TestDeletedFavoriteReconciliation:
             result_id="RS-PROM-948",
             actor="admin-948",
             idempotency_key=f"k-{uuid.uuid4().hex[:12]}",
-            payload={"tier": 3, "result_id": "RS-PROM-948"},
+            payload={"result_id": "RS-PROM-948"},
             db=db,
         )
         assert status == 201
         new_id = int(body["favorite_id"])
         assert new_id != 77
         favorite = db.query(FavoriteStrategy).filter(FavoriteStrategy.id == new_id).one()
-        assert favorite.tier == 3
+        assert favorite.tier is None
         refreshed = db.query(DiscoveryResult).filter(DiscoveryResult.id == "RS-PROM-948").one()
         assert refreshed.dedup_state == "already_promoted"
         assert refreshed.dedup_reference == str(new_id)
@@ -256,7 +256,7 @@ class TestDeletedFavoriteReconciliation:
             result_id="RS-LIVE-948",
             actor="admin-948",
             idempotency_key=f"k-{uuid.uuid4().hex[:12]}",
-            payload={"tier": 3, "result_id": "RS-LIVE-948"},
+            payload={"result_id": "RS-LIVE-948"},
             db=db,
         )
         assert status == 409

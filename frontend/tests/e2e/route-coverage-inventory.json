@@ -60,8 +60,11 @@
     {
       "path": "/combo/discovery",
       "status": "covered",
-      "functional": "frontend/tests/e2e/discovery-visual-critical.spec.ts",
-      "visual": "frontend/tests/e2e/discovery-visual-critical.spec.ts"
+      "functional": "frontend/tests/e2e/card-1121-descoberta-acoes-etfs.spec.ts",
+      "visual": "frontend/tests/e2e/card-1121-discovery-visual-critical.spec.ts",
+      "also_covered_by": [
+        "frontend/tests/e2e/discovery-visual-critical.spec.ts"
+      ]
     },
     {
       "path": "/combo/optimize",

@@ -1,0 +1,187 @@
+/* Card #1120 — lote multiclasse (Combo e Otimização) e lista única de Favoritos.
+   Portado do `delta.css` do protótipo aprovado (frontend/public/prototypes/card-1120-lote-multiclasse/):
+   mesmas regras, cores só por token do produto (index.css e AssetPicker.css), prefixo `lote-`.
+   Contraste medido sobre #181a20/#1e2329: #eaecef 14,7:1 · #929aa5 6,1:1/5,6:1 · #fbbf24 8,9:1 ·
+   #93c5fd 9,6:1 · #ff8294 6,9:1 · #0ecb81 7,6:1 · #fcd535 11,9:1. `--fav-up` só existe dentro de
+   `.favorites-workbench`: fora de Favoritos vale o fallback #0ecb81 (o mesmo valor). */
+
+/* ---------- Chip de classe (mesmas cores do seletor vivo) ---------- */
+.lote-cls { display: inline-flex; align-items: center; min-height: 18px; padding: 0 6px; border: 1px solid var(--border-default); border-radius: 4px; font-size: 12px; font-weight: 600; line-height: 16px; white-space: nowrap; }
+.lote-cls[data-class="crypto"] { border-color: color-mix(in srgb, var(--accent-primary) 32%, transparent); color: var(--accent-primary); }
+.lote-cls[data-class="stock"] { border-color: var(--ap-info-border); color: var(--ap-info-text); }
+.lote-cls[data-class="etf"] { border-color: color-mix(in srgb, var(--fav-up, #0ecb81) 35%, transparent); color: var(--fav-up, #0ecb81); }
+.lote-cur { font-weight: 600; color: var(--text-secondary); letter-spacing: 0.02em; }
+
+/* ---------- Favoritos: filtro Classe, faixa do lote, linhas ---------- */
+@media (min-width: 1100px) { .favorites-workbench .fav-filters { grid-template-columns: repeat(6, minmax(120px, 1fr)); } }
+.sym-cell small.lote-symline { display: flex; flex-wrap: wrap; align-items: center; gap: 4px; margin-top: 3px; color: var(--text-tertiary); }
+/* P3 de Apply: o par classe · moeda nunca se parte ("Ação ·" e "USD" sozinho na linha a 1440). */
+.sym-cell small.lote-symline .lote-pair { display: inline-flex; align-items: center; gap: 4px; white-space: nowrap; }
+.favorites-workbench .strategy-cell .lote-rowdata, .lote-rowdata { display: grid; gap: 2px; margin-top: 4px; font-size: 12px; line-height: 1.45; color: var(--text-tertiary); }
+.lote-rowdata .lote-prec { display: inline-flex; align-items: flex-start; gap: 5px; color: var(--ap-info-text); }
+.lote-rowdata .lote-prec[data-tone="warn"] { color: var(--ap-warn-text); }
+.lote-rowdata .lote-prec[data-tone="muted"] { color: var(--text-tertiary); }
+.lote-rowdata svg { flex: none; width: 13px; height: 13px; margin-top: 2px; }
+.lote-rowdata .lote-conv { color: var(--text-tertiary); }
+.lote-rowdata .lote-lim { color: var(--text-tertiary); }
+.lote-rowdata .lote-lote-tag { color: var(--text-tertiary); }
+.favorites-workbench .muted-cell .lote-eff, .lote-eff { display: block; margin-top: 2px; font-size: 12px; line-height: 1.4; color: var(--text-tertiary); white-space: normal; }
+.fav-refresh-status.lote-pending-class { color: var(--text-tertiary); }
+.favorites-workbench .strategy-stack span.fav-refresh-status.lote-pending-class, .favorites-workbench .fav-mobile-card-head span.fav-refresh-status.lote-pending-class { white-space: normal; overflow: visible; text-overflow: clip; }
+
+/* Limitações e origem atrás de um <details>: classe, moeda, precisão, convenções e período efetivo seguem à vista. */
+.lote-more-info { min-width: 0; }
+.lote-more-info > summary { display: inline-flex; align-items: center; gap: 4px; min-height: 24px; width: fit-content; list-style: none; color: var(--ap-info-text); font-size: 12px; font-weight: 600; cursor: pointer; }
+.lote-more-info > summary::-webkit-details-marker { display: none; }
+.lote-more-info > summary::before { content: ""; flex: none; width: 6px; height: 8px; background: currentColor; clip-path: polygon(0 0, 100% 50%, 0 100%); transition: transform 120ms ease-out; }
+.lote-more-info[open] > summary::before { transform: rotate(90deg); }
+.lote-more-info > summary:focus-visible { outline: 2px solid var(--accent-primary); outline-offset: 2px; border-radius: 4px; }
+.lote-more-info > span { display: block; margin-top: 2px; }
+.favorites-workbench .strategy-stack .lote-more-info > span, .favorites-workbench .fav-mobile-card-head .lote-more-info > span { display: block; white-space: normal; }
+@media (pointer: coarse) { .lote-more-info > summary { min-height: 44px; } }
+@media (prefers-reduced-motion: reduce) { .lote-more-info > summary::before { transition: none; } }
+
+/* Ação/ETF: estrelas do Monitor, Telegram e Revalidar visíveis e focáveis, mas aria-disabled (o motivo vem por aria-describedby). */
+.favorites-workbench [data-lote-off], .favorites-workbench [data-lote-off]:hover { opacity: 0.5; cursor: not-allowed; }
+.favorites-workbench [data-lote-off]:focus-visible { opacity: 1; outline: 2px solid var(--accent-primary); outline-offset: 2px; }
+.lote-tier-note { margin: 10px 0 0; font-size: 12px; line-height: 1.5; color: var(--text-tertiary); }
+
+/* Filtros de Favoritos: o select vivo tira o outline; o foco precisa aparecer (o "Mostrar todos" devolve o foco ao Classe). */
+.favorites-workbench .fav-filters select:focus-visible { outline: 2px solid var(--accent-primary); outline-offset: 2px; }
+
+.lote-lote { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 16px; padding: 12px 16px; border: 1px solid var(--ap-info-border); border-radius: 8px; background: color-mix(in srgb, var(--accent-cyan) 8%, transparent); color: var(--text-secondary); font-size: 13px; line-height: 1.5; }
+.lote-lote[hidden] { display: none; }
+.lote-lote strong { color: var(--ap-info-text); font-weight: 600; }
+.lote-lote button { min-height: 44px; padding: 0 14px; border: 1px solid var(--border-default); border-radius: 8px; background: var(--bg-elevated); color: var(--text-secondary); font-size: 13px; font-weight: 600; cursor: pointer; }
+.lote-empty-row td { padding: 24px 16px; text-align: center; color: var(--text-tertiary); font-size: 13px; }
+.lote-empty-card { padding: 20px 16px; border: 1px dashed var(--border-default); border-radius: 12px; color: var(--text-tertiary); font-size: 13px; text-align: center; }
+.lote-empty-card[hidden], .lote-empty-row[hidden] { display: none; }
+
+/* As regras vivas da célula Estratégia (span em bloco, uma linha com reticências) não valem para o bloco novo. */
+.favorites-workbench .strategy-stack .lote-rowdata, .favorites-workbench .strategy-stack .lote-rowdata span { white-space: normal; overflow: visible; text-overflow: clip; font-size: 12px; }
+.favorites-workbench .strategy-stack .lote-rowdata span.lote-prec { display: flex; }
+.favorites-workbench .strategy-stack .lote-prec > span { display: inline; color: inherit; }
+.favorites-workbench .strategy-stack .lote-rowdata .lote-prec { color: var(--ap-info-text); }
+.favorites-workbench .strategy-stack .lote-rowdata .lote-prec[data-tone="warn"] { color: var(--ap-warn-text); }
+.favorites-workbench .strategy-stack .lote-rowdata .lote-prec[data-tone="muted"] { color: var(--text-tertiary); }
+.favorites-workbench .strategy-stack .lote-rowdata .lote-conv, .favorites-workbench .strategy-stack .lote-rowdata .lote-lim, .favorites-workbench .strategy-stack .lote-rowdata .lote-lote-tag { color: var(--text-tertiary); }
+/* Cartão móvel: o vivo põe todo span do cabeçalho em bloco (.fav-mobile-card-head span:not(.fav-direction)). */
+.favorites-workbench .fav-mobile-card-head span.lote-cardline { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 6px; font-size: 12px; }
+.favorites-workbench .fav-mobile-card-head span.lote-cardline > span { display: inline-flex; font-size: 12px; }
+.favorites-workbench .fav-mobile-card-head .lote-rowdata { display: grid; font-size: 12px; }
+.favorites-workbench .fav-mobile-card-head .lote-rowdata span { font-size: 12px; }
+.favorites-workbench .fav-mobile-card-head .lote-rowdata span.lote-prec { display: flex; color: var(--ap-info-text); }
+.favorites-workbench .fav-mobile-card-head .lote-rowdata span.lote-prec[data-tone="warn"] { color: var(--ap-warn-text); }
+.favorites-workbench .fav-mobile-card-head .lote-rowdata span.lote-prec[data-tone="muted"] { color: var(--text-tertiary); }
+.favorites-workbench .fav-mobile-card-head .lote-prec > span { display: inline; color: inherit; }
+.favorites-workbench .fav-mobile-card-head span.lote-cls[data-class="crypto"] { color: var(--accent-primary); }
+.favorites-workbench .fav-mobile-card-head span.lote-cls[data-class="stock"] { color: var(--ap-info-text); }
+.favorites-workbench .fav-mobile-card-head span.lote-cls[data-class="etf"] { color: var(--fav-up, #0ecb81); }
+.favorites-workbench .fav-mobile-card-head span.lote-cur { color: var(--text-secondary); }
+
+/* ---------- Combo e Otimização: texto antes de rodar ---------- */
+.lote-runcopy { margin: 0 0 16px; font-size: 14px; line-height: 1.55; color: var(--text-tertiary); }
+.lote-runcopy b { color: var(--text-secondary); font-weight: 600; }
+.lote-runcopy .lote-out { color: var(--ap-warn-text); }
+
+/* ---------- Confirmar lote (painel no fluxo, sem modal) ---------- */
+.lote-confirm { margin-top: 16px; padding: 18px 20px; border: 1px solid var(--border-default); border-radius: 12px; background: var(--bg-secondary); color: var(--text-secondary); }
+.lote-confirm[hidden] { display: none; }
+.lote-confirm h3 { margin: 0 0 12px; font-size: 16px; font-weight: 600; line-height: 1.35; color: var(--text-secondary); }
+.lote-confirm h3:focus { outline: none; }
+.lote-confirm h3:focus-visible { outline: 2px solid var(--accent-primary); outline-offset: 3px; border-radius: 4px; }
+.lote-confirm dl { display: grid; gap: 10px; margin: 0; }
+.lote-confirm dl > div { display: grid; grid-template-columns: 180px minmax(0, 1fr); gap: 4px 16px; }
+.lote-confirm dt { font-size: 13px; color: var(--text-tertiary); }
+.lote-confirm dd { margin: 0; font-size: 14px; line-height: 1.5; overflow-wrap: anywhere; }
+.lote-confirm dd .lote-big { font-weight: 600; font-variant-numeric: tabular-nums; }
+.lote-confirm dd .lote-out { color: var(--ap-warn-text); }
+.lote-confirm .lote-collect { padding: 10px 12px; border: 1px solid var(--ap-info-border); border-radius: 8px; background: color-mix(in srgb, var(--accent-cyan) 8%, transparent); }
+.lote-confirm .lote-collect .lote-big { color: var(--ap-info-text); }
+.lote-actions { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 16px; }
+.lote-btn { display: inline-flex; align-items: center; justify-content: center; gap: 6px; min-height: 44px; padding: 0 16px; border: 1px solid var(--border-default); border-radius: 8px; background: var(--bg-elevated); color: var(--text-secondary); font-size: 14px; font-weight: 600; cursor: pointer; }
+.lote-btn:hover { background: var(--bg-input, #2b3139); }
+.lote-btn:focus-visible, .lote-chip:focus-visible, .lote-lote button:focus-visible, .lote-more:focus-visible { outline: 2px solid var(--accent-primary); outline-offset: 2px; }
+.lote-btn.primary { border-color: var(--accent-primary); background: var(--accent-primary); color: var(--bg-secondary); }
+.lote-btn.primary:hover { background: var(--accent-primary-hover, #f0b90b); }
+.lote-btn.warn { border-color: var(--ap-warn-border); color: var(--ap-warn-text); }
+.lote-btn.danger { border-color: var(--ap-danger-border); color: var(--ap-danger-text); }
+.lote-btn[disabled], .lote-btn[aria-disabled="true"] { opacity: 0.55; cursor: not-allowed; }
+.lote-block { margin: 0; font-size: 14px; line-height: 1.5; color: var(--text-secondary); }
+.lote-btn svg { width: 16px; height: 16px; }
+
+/* ---------- Progresso do lote, ativo por ativo ---------- */
+.lote-batch { container-type: inline-size; margin-top: 16px; border: 1px solid var(--border-default); border-radius: 12px; background: var(--bg-secondary); color: var(--text-secondary); }
+.lote-batch[hidden] { display: none; }
+.lote-bhead { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 16px; padding: 16px 20px 12px; border-bottom: 1px solid var(--border-default); }
+.lote-bhead h3 { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin: 0; font-size: 16px; font-weight: 600; }
+.lote-bhead h3:focus { outline: none; }
+.lote-bhead h3:focus-visible { outline: 2px solid var(--accent-primary); outline-offset: 3px; border-radius: 4px; }
+.lote-pill { display: inline-flex; align-items: center; min-height: 22px; padding: 0 8px; border: 1px solid var(--border-default); border-radius: 999px; font-size: 12px; font-weight: 600; color: var(--text-tertiary); }
+.lote-pill[data-tone="run"] { border-color: var(--ap-info-border); color: var(--ap-info-text); }
+.lote-pill[data-tone="warn"] { border-color: var(--ap-warn-border); color: var(--ap-warn-text); }
+.lote-pill[data-tone="ok"] { border-color: color-mix(in srgb, var(--fav-up, #0ecb81) 35%, transparent); color: var(--fav-up, #0ecb81); }
+.lote-pill[data-tone="stop"] { border-color: var(--ap-danger-border); color: var(--ap-danger-text); }
+.lote-bmeta { margin: 0; font-size: 13px; color: var(--text-tertiary); font-variant-numeric: tabular-nums; }
+.lote-bbody { display: grid; gap: 14px; padding: 14px 20px 18px; }
+.lote-live { margin: 0; font-size: 14px; line-height: 1.5; color: var(--text-secondary); }
+.lote-bar { width: 100%; height: 6px; border-radius: 999px; background: var(--border-default); overflow: hidden; }
+.lote-bar > span { display: block; height: 100%; background: var(--accent-primary); }
+.lote-note { margin: 0; padding: 10px 12px; border: 1px solid var(--ap-warn-border); border-radius: 8px; background: color-mix(in srgb, var(--accent-warning) 8%, transparent); font-size: 13px; line-height: 1.5; color: var(--text-secondary); }
+.lote-note[data-tone="info"] { border-color: var(--ap-info-border); background: color-mix(in srgb, var(--accent-cyan) 8%, transparent); }
+.lote-note[hidden] { display: none; }
+.lote-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.lote-chip { display: inline-flex; align-items: center; gap: 6px; min-height: 36px; padding: 0 12px; border: 1px solid var(--border-default); border-radius: 999px; background: transparent; color: var(--text-tertiary); font-size: 13px; cursor: pointer; }
+.lote-chip b { color: var(--text-secondary); font-variant-numeric: tabular-nums; }
+.lote-chip[aria-pressed="true"] { border-color: var(--accent-primary); color: var(--accent-primary); }
+.lote-chip[aria-pressed="true"] b { color: var(--accent-primary); }
+@media (pointer: coarse) { .lote-chip { min-height: 44px; } }
+
+.lote-listhead, .lote-row { display: grid; grid-template-columns: minmax(150px, 1.1fr) minmax(170px, 1fr) minmax(0, 2.4fr); gap: 4px 16px; align-items: start; }
+.lote-listhead { padding: 0 12px 6px; font-size: 12px; font-weight: 600; letter-spacing: 0.02em; color: var(--text-tertiary); border-bottom: 1px solid var(--border-default); }
+.lote-list { display: grid; margin: 0; padding: 0; list-style: none; }
+.lote-row { padding: 10px 12px; border-bottom: 1px solid var(--border-default); font-size: 13px; line-height: 1.5; }
+.lote-row:last-child { border-bottom: 0; }
+.lote-row[hidden] { display: none; }
+.lote-asset { display: grid; gap: 2px; min-width: 0; }
+.lote-asset b { font-size: 14px; color: var(--text-secondary); overflow-wrap: anywhere; }
+.lote-asset span { display: flex; flex-wrap: wrap; align-items: center; gap: 4px; color: var(--text-tertiary); font-size: 12px; }
+.lote-state { display: inline-flex; align-items: flex-start; gap: 6px; font-weight: 600; color: var(--text-tertiary); }
+.lote-state svg { flex: none; width: 16px; height: 16px; margin-top: 2px; }
+.lote-row[data-state="success"] .lote-state { color: var(--fav-up, #0ecb81); }
+.lote-row[data-state="daily"] .lote-state, .lote-row[data-state="insufficient"] .lote-state { color: var(--ap-warn-text); }
+.lote-row[data-state="failed"] .lote-state, .lote-row[data-state="rejected"] .lote-state { color: var(--ap-danger-text); }
+.lote-row[data-state="collecting"] .lote-state, .lote-row[data-state="optimizing"] .lote-state { color: var(--ap-info-text); }
+.lote-detail { min-width: 0; color: var(--text-tertiary); overflow-wrap: anywhere; }
+.lote-detail b { color: var(--text-secondary); font-weight: 600; }
+.lote-detail a { color: var(--ap-info-text); text-decoration: underline; text-underline-offset: 2px; }
+.lote-detail progress { display: block; width: 100%; max-width: 260px; height: 6px; margin-top: 6px; border: 0; border-radius: 999px; background: var(--border-default); -webkit-appearance: none; appearance: none; overflow: hidden; }
+.lote-detail progress::-webkit-progress-bar { background: var(--border-default); border-radius: 999px; }
+.lote-detail progress::-webkit-progress-value { background: var(--accent-primary); border-radius: 999px; }
+.lote-detail progress::-moz-progress-bar { background: var(--accent-primary); }
+.lote-more { justify-self: start; min-height: 44px; padding: 0 14px; border: 1px solid var(--border-default); border-radius: 8px; background: var(--bg-elevated); color: var(--text-secondary); font-size: 13px; font-weight: 600; cursor: pointer; }
+.lote-more[hidden] { display: none; }
+.lote-links { display: flex; flex-wrap: wrap; gap: 8px 18px; }
+.lote-links a { display: inline-flex; align-items: center; min-height: 44px; color: var(--ap-info-text); font-size: 14px; font-weight: 600; text-decoration: underline; text-underline-offset: 3px; }
+.lote-links[hidden] { display: none; }
+.lote-spin { animation: lotespin 1.2s linear infinite; }
+@keyframes lotespin { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) { .lote-spin { animation: none; } }
+
+/* Otimização: na coluna larga, o lote ocupa o lugar de "Ready to Optimize"; sem margem extra no primeiro bloco. */
+.lg\:col-span-2 > .lote-confirm:first-child, .lg\:col-span-2 > .lote-confirm[hidden] + .lote-batch { margin-top: 0; }
+
+/* Lista em cartões quando o painel é estreito (celular e coluna da Otimização). */
+@container (max-width: 620px) {
+  .lote-listhead { display: none; }
+  .lote-row { grid-template-columns: minmax(0, 1fr) auto; gap: 4px 12px; }
+  .lote-row .lote-detail { grid-column: 1 / -1; }
+  .lote-state { justify-self: end; text-align: right; }
+  .lote-confirm dl > div { grid-template-columns: minmax(0, 1fr); }
+}
+@media (max-width: 640px) {
+  .lote-confirm dl > div { grid-template-columns: minmax(0, 1fr); }
+  .lote-bhead, .lote-bbody { padding-left: 14px; padding-right: 14px; }
+  .lote-confirm { padding: 16px 14px; }
+}
+

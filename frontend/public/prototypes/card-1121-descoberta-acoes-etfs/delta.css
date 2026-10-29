@@ -1,0 +1,136 @@
+/* Card #1121 — DELTA do protótipo: Descoberta com cripto, ação e ETF na mesma varredura.
+   Cores só por token do produto (`:root` do index.css vivo e do AssetPicker.css vivo): --bg-primary #0b0e11,
+   --bg-secondary #181a20, --bg-elevated #1e2329, --border-default #2b3139, --text-secondary #eaecef,
+   --text-tertiary #929aa5, --accent-primary #fcd535, --ap-info-text #93c5fd, --ap-info-border,
+   --ap-warn-text #fbbf24, --ap-warn-border, --ap-danger-text #ff8294, --ap-danger-border. Verde do ETF = #0ecb81
+   (o mesmo `--fav-up` de Favoritos, com fallback). Chips de classe = as cores do `.ap-fact.cls-*` vivo do seletor
+   e do `.b20-cls` do #1120. Contraste sobre #1e2329: #eaecef 14,7:1 · #929aa5 5,6:1 · #fbbf24 8,9:1 ·
+   #93c5fd 9,6:1 · #ff8294 6,9:1 · #0ecb81 7,6:1 · #fcd535 11,9:1. */
+
+/* Cola do clone: o AppNav vivo troca a barra lateral pelo topo abaixo de 1024px (AppNav.tsx). */
+@media (max-width: 1023.98px) {
+  html { --app-sidebar-width: 0px !important; }
+  .cf-desk { display: none !important; }
+}
+@media (min-width: 1024px) {
+  .cf-mob { display: none !important; }
+}
+.cf-desk, .cf-mob { display: contents; }
+.sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
+.d21-panel[hidden], .d21-modal[hidden], [data-d21][hidden] { display: none !important; }
+
+/* ---------- Chip de classe e moeda (mesmas cores do seletor vivo) ---------- */
+.d21-cls { display: inline-flex; align-items: center; min-height: 18px; padding: 0 6px; border: 1px solid var(--border-default); border-radius: 4px; font-size: 12px; font-weight: 600; line-height: 16px; white-space: nowrap; }
+.d21-cls[data-class="crypto"] { border-color: color-mix(in srgb, var(--accent-primary) 32%, transparent); color: var(--accent-primary); }
+.d21-cls[data-class="stock"] { border-color: var(--ap-info-border); color: var(--ap-info-text); }
+.d21-cls[data-class="etf"] { border-color: color-mix(in srgb, var(--fav-up, #0ecb81) 35%, transparent); color: var(--fav-up, #0ecb81); }
+.d21-cur { font-weight: 600; color: var(--text-secondary); letter-spacing: 0.02em; white-space: nowrap; }
+
+/* ---------- Linha do candidato: classe, moeda, precisão, convenções, período efetivo ---------- */
+.d21-rowdata { display: grid; gap: 2px; min-width: 0; max-width: 100%; white-space: normal; margin-top: 4px; font-size: 12px; line-height: 1.45; color: var(--text-tertiary); }
+.d21-symline { display: flex; flex-wrap: wrap; align-items: center; gap: 4px; color: var(--text-tertiary); }
+.d21-symline b { color: var(--text-secondary); font-weight: 600; }
+.d21-prec { display: flex; align-items: flex-start; gap: 5px; min-width: 0; color: var(--ap-info-text); }
+.d21-prec > span, .d21-conv { min-width: 0; overflow-wrap: anywhere; }
+.d21-prec[data-tone="warn"] { color: var(--ap-warn-text); }
+.d21-prec svg, .d21-pf-line svg, .d21-surv-lb svg, .d21-state svg { flex: none; width: 13px; height: 13px; margin-top: 2px; }
+.d21-conv { color: var(--text-tertiary); }
+.d21-modal-id { margin-top: 8px; }
+/* Linha do candidato compacta (r1): 2 linhas lógicas; cada grupo não quebra por dentro (sem «·» órfão nem moeda solta). */
+.d21-rowdata[data-tf] { display: block; }
+.d21-l1, .d21-l2 { display: block; }
+.d21-g { white-space: nowrap; }
+.d21-l1 .d21-g, .d21-l2 .d21-conv { margin-right: 4px; }
+.d21-l1 .d21-prec { display: inline; }
+.d21-l1 .d21-prec svg { display: inline-block; vertical-align: -2px; margin: 0 3px 0 0; }
+.d21-l1 .d21-prec > span { overflow-wrap: normal; }
+/* O bloco usa a largura que a coluna Candidato já tem (246 px a 1440), não os 180 px fixos do `.candidate-cell-min`
+   vivo; o mínimo de 180 px fica, então a tabela (min-width 1240 px) não cresce. No cartão (≤ 720 px) ocupa o resto da linha. */
+.candidate-cell-min:has(> .d21-rowdata[data-tf]) { width: auto; max-width: 232px; }
+@media (max-width: 720px) { .candidate-cell-min:has(> .d21-rowdata[data-tf]) { max-width: none; } }
+
+/* ---------- Preflight ---------- */
+.d21-pf { display: grid; gap: 8px; margin-top: 12px; }
+.d21-pf-line { display: block; margin: 0; padding: 10px; border: 1px solid var(--border-default); border-radius: 6px; background: var(--bg-secondary); font-size: 12px; line-height: 1.5; color: var(--text-secondary); }
+.d21-pf-line b { font-weight: 600; }
+.d21-pf-line.d21-info { border-color: var(--ap-info-border); color: var(--text-secondary); }
+.d21-pf-line.d21-info b { color: var(--ap-info-text); }
+.d21-pf-line.d21-warn { border-color: var(--ap-warn-border); color: var(--text-secondary); }
+.d21-pf-line.d21-warn svg, .d21-pf-line.d21-warn b { color: var(--ap-warn-text); }
+.d21-pf-line:has(> svg) { display: flex; gap: 6px; }
+.d21-pf-line.d21-surv { color: var(--text-tertiary); }
+.d21-pf-line.d21-surv b { color: var(--text-secondary); }
+.d21-limit { display: grid; gap: 4px; padding: 10px; border: 1px solid var(--ap-danger-border); border-radius: 6px; background: color-mix(in srgb, var(--ap-danger-text) 6%, transparent); font-size: 12px; line-height: 1.5; color: var(--text-secondary); }
+.d21-limit strong { color: var(--ap-danger-text); }
+
+/* ---------- Acompanhando: por ativo ---------- */
+.d21-assets { border: 1px solid var(--border-default); border-radius: 12px; background: var(--bg-elevated); container-type: inline-size; }
+.d21-assets-head { padding: 16px 20px; border-bottom: 1px solid var(--border-default); }
+.d21-assets-head h2 { margin: 0; font-size: 20px; font-weight: 600; color: var(--text-primary, #fff); }
+.d21-assets-head p { max-width: 75ch; margin: 4px 0 0; font-size: 12px; line-height: 1.5; color: var(--text-tertiary); }
+.d21-assets-head h2:focus-visible { outline: 2px solid var(--accent-primary); outline-offset: 2px; border-radius: 4px; }
+.d21-asset-list { margin: 0; padding: 0; list-style: none; }
+.d21-asset-cols, .d21-asset-list > li { display: grid; grid-template-columns: minmax(150px, 1.1fr) minmax(110px, 0.6fr) minmax(170px, 1fr) minmax(0, 2fr); gap: 4px 16px; padding: 12px 20px; }
+.d21-asset-cols { padding-top: 10px; padding-bottom: 10px; border-bottom: 1px solid var(--border-default); font-size: 12px; font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase; color: var(--text-tertiary); }
+.d21-asset-list > li { align-items: start; border-top: 1px solid var(--border-default); font-size: 13px; line-height: 1.45; color: var(--text-secondary); }
+.d21-asset-list > li:first-child { border-top: 0; }
+.d21-assets-more { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; padding: 12px 20px; border-top: 1px solid var(--border-default); font-size: 12px; color: var(--text-tertiary); }
+.d21-more-btn { min-height: 44px; padding: 0 14px; border: 1px solid var(--border-default); border-radius: 6px; background: var(--bg-secondary); color: var(--text-secondary); font-size: 13px; font-weight: 600; cursor: pointer; }
+.d21-more-btn:focus-visible { outline: 2px solid var(--accent-primary); outline-offset: 2px; }
+.d21-asset { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 6px; }
+.d21-asset b { font-weight: 600; }
+.d21-count { color: var(--text-tertiary); font-variant-numeric: tabular-nums; }
+.d21-state { display: inline-flex; align-items: flex-start; gap: 6px; font-weight: 600; }
+.d21-state[data-state="queued"] { color: var(--text-tertiary); }
+.d21-state[data-state="collecting"], .d21-state[data-state="running"] { color: var(--ap-info-text); }
+.d21-state[data-state="done"] { color: var(--fav-up, #0ecb81); }
+.d21-state[data-state="done_daily"], .d21-state[data-state="insufficient"], .d21-state[data-state="paused"] { color: var(--ap-warn-text); }
+.d21-state[data-state="failed"] { color: var(--ap-danger-text); }
+.d21-detail { color: var(--text-tertiary); font-size: 12px; }
+@container (max-width: 620px) {
+  .d21-asset-cols { display: none; }
+  .d21-asset-list > li { grid-template-columns: 1fr auto; padding: 12px 14px; }
+  .d21-asset-list > li .d21-state, .d21-asset-list > li .d21-detail { grid-column: 1 / -1; }
+}
+
+/* ---------- Decidir ---------- */
+.d21-surv-lb { display: flex; gap: 6px; margin: 8px 0 0; font-size: 12px; line-height: 1.5; color: var(--text-tertiary); }
+.d21-surv-lb b { color: var(--text-secondary); font-weight: 600; }
+@media (min-width: 768px) {
+  .grid:has(> [data-d21="class-filter"]) { grid-template-columns: repeat(4, minmax(130px, 1fr)) auto !important; }
+}
+.d21-surv-lb > span { max-width: 75ch; }
+.d21-noresult .d21-noresult-icon { display: inline-flex; color: var(--ap-danger-text); }
+.d21-noresult[data-kind="cancelled"] .d21-noresult-icon { color: var(--text-tertiary); }
+.d21-noresult b { color: var(--text-secondary); font-weight: 600; }
+.d21-linkbtn { display: inline-flex; align-items: center; min-height: 24px; padding: 0 2px; border: 0; background: none; color: var(--accent-primary); font: inherit; font-weight: 600; text-decoration: underline; cursor: pointer; }
+.d21-linkbtn:focus-visible { outline: 2px solid var(--accent-primary); outline-offset: 2px; border-radius: 4px; }
+.d21-lb-note { margin: 0; padding: 12px 20px; border-top: 1px solid var(--border-default); font-size: 12px; line-height: 1.5; color: var(--text-tertiary); }
+.d21-lb-note > span { display: block; max-width: 75ch; }
+select[data-testid="class-filter"]:focus-visible { outline: 2px solid var(--accent-primary); outline-offset: 2px; }
+@media (max-width: 767.98px) { select[data-testid="class-filter"] { min-height: 44px; } }
+.d21-empty td { padding: 20px !important; font-size: 13px; color: var(--text-tertiary); text-align: left; }
+.d21-empty .d21-linkbtn { min-height: 44px; }
+.d21-promoted { display: inline-grid; gap: 4px; justify-items: start; font-size: 12px; }
+.d21-promoted a { min-height: 44px; display: inline-flex; align-items: center; color: var(--accent-primary); font-weight: 600; text-decoration: underline; }
+.d21-promoted a:focus-visible { outline: 2px solid var(--accent-primary); outline-offset: 2px; border-radius: 4px; }
+tr.result-row[hidden] { display: none !important; }
+
+/* ---------- Modal: destino de ação e ETF ---------- */
+.d21-dest { padding: 10px; border: 1px solid var(--border-default); border-radius: 6px; background: var(--bg-secondary); font-size: 12px; line-height: 1.5; color: var(--text-tertiary); }
+.d21-dest small { display: block; font-size: 11.2px; color: var(--text-muted, var(--text-tertiary)); }
+.d21-dest strong { display: block; color: var(--ap-info-text); font-size: 14px; }
+.d21-dest span { display: block; margin-top: 4px; font-size: 12px; }
+
+/* Painel de demonstração: só no protótipo, no fim da página, no fluxo. */
+.demo-panel { margin: 32px auto 48px; max-width: 72rem; padding: 16px 20px; border: 1px dashed var(--border-default); border-radius: 12px; background: var(--bg-primary); color: var(--text-tertiary); font-size: 13px; line-height: 1.5; }
+@media (min-width: 1024px) { .demo-panel { margin-left: calc(var(--app-sidebar-width, 224px) + 32px); margin-right: 32px; } }
+@media (max-width: 1023.98px) { .demo-panel { margin-left: 16px; margin-right: 16px; } }
+.demo-panel h2 { margin: 0 0 6px; font-size: 14px; font-weight: 600; color: var(--text-secondary); }
+.demo-panel p { max-width: 75ch; margin: 0 0 10px; }
+.demo-panel .row { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-top: 8px; }
+.demo-panel .row > span { min-width: 120px; color: var(--text-tertiary); }
+.demo-panel button { min-height: 44px; padding: 0 12px; border: 1px solid var(--border-default); border-radius: 8px; background: var(--bg-elevated); color: var(--text-secondary); font-size: 13px; cursor: pointer; }
+.demo-panel button[aria-pressed="true"] { border-color: var(--accent-primary); color: var(--accent-primary); }
+.demo-panel button:focus-visible { outline: 2px solid var(--accent-primary); outline-offset: 2px; }
+@media (prefers-reduced-motion: reduce) { * { scroll-behavior: auto !important; } }

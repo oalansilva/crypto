@@ -1,0 +1,16 @@
+{
+  "bound_card": "1098",
+  "child_thread": "unavailable",
+  "code": "parent_sandbox_mismatch",
+  "detail": "parent_sandbox_mismatch: Code Review do #1098 impedido: garantia=parent_read_only; review spawn session must be observed read-only; recovery=operator may change native permissions in the same chat; revalidate runtime; no external session",
+  "host": "codex-tui",
+  "host_version": "0.163.0",
+  "observed": "unavailable",
+  "recovery": "operator may change native permissions in the same chat; revalidate runtime; no external session",
+  "result": "blocked",
+  "root": "/srv/apps/dev/criptofarol/crypto-worktrees/card-1098-codex-agentes-nativos",
+  "schema": "codex-rollout-evidence-v1",
+  "scope": "Real read-only preflight probe for a prospective birth; no child or stage work started by this probe.",
+  "session": "01a14a28-2482-7580-9090-d1ebb2dd8890",
+  "stage": "Code Review"
+}

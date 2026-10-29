@@ -15,8 +15,8 @@ Environment=DISCOVERY_SPOOL_DIR=/var/tmp/criptofarol-dev-discovery
 StateDirectory=criptofarol-dev-discovery
 StateDirectoryMode=0700
 MemoryAccounting=yes
-MemoryHigh=5G
-MemoryMax=6G
+MemoryHigh=3G
+MemoryMax=4G
 MemorySwapMax=512M
 OOMPolicy=kill
 KillMode=control-group

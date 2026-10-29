@@ -26,6 +26,21 @@ def test_discovery_worker_uses_solo_pool_for_nested_optimizer_workers():
     assert "-Q discovery" in unit_source
 
 
+def test_dev_discovery_unit_carries_the_1110_ceiling():
+    repo_root = Path(__file__).resolve().parents[3]
+    lines = (
+        (repo_root / "ops/systemd/criptofarol-dev-discovery-worker.service")
+        .read_text()
+        .splitlines()
+    )
+
+    # #1110: DEV warns at 3 GiB and cuts at 4 GiB (was 5/6 GiB in #1093).
+    assert "MemoryHigh=3G" in lines and "MemoryMax=4G" in lines
+    assert "MemorySwapMax=512M" in lines
+    assert "Environment=DISCOVERY_RESOURCE_PROFILE=dev" in lines
+    assert not any(line in ("MemoryHigh=5G", "MemoryMax=6G") for line in lines)
+
+
 def test_dev_worktree_restart_fails_closed_before_legacy_runtime(tmp_path):
     repo_root = Path(__file__).resolve().parents[3]
     simulated_worktree = repo_root / ".restart-contract-test"
@@ -77,6 +92,7 @@ import pytest
 REPO_ROOT = Path(__file__).resolve().parents[3]
 DISCOVERY_UNIT = "criptofarol-dev-discovery-worker.service"
 RUNTIME_UNIT = "criptofarol-dev-runtime-worker.service"
+BATCH_UNIT = "criptofarol-dev-batch-worker.service"
 BACKEND_UNIT = "criptofarol-dev-backend.service"
 FRONTEND_UNIT = "criptofarol-dev-frontend.service"
 OLD_UNIT_CONTENT = "OLD-UNIT-SENTINEL"
@@ -130,6 +146,7 @@ case "$cmd" in
     for u in "${rest[@]}"; do
       [[ "$u" == --now ]] && continue
       [[ "$u" == "$DISCOVERY" && -e "$FAKE/hold_dropin" ]] && continue
+      [[ "$u" == "$BATCH" && -e "$FAKE/batch_wont_start" ]] && continue
       touch "$FAKE/active/$u"
       [[ "$u" == "$DISCOVERY" ]] && echo "start-discovery" >>"$FAKE/calls.log"
     done
@@ -150,7 +167,7 @@ case "$cmd" in
     if [[ " ${rest[*]} " == *" ControlGroup "* ]]; then
       echo "/system.slice/$unit"
     else
-      echo "MemoryHigh=5368709120"
+      echo "MemoryHigh=3221225472"
     fi
     exit 0 ;;
   status)
@@ -207,7 +224,7 @@ class RestartHarness:
         self._exe(stubs / "systemctl", SYSTEMCTL_STUB)
         self.stubs = stubs
 
-        for unit in (BACKEND_UNIT, FRONTEND_UNIT, RUNTIME_UNIT, DISCOVERY_UNIT):
+        for unit in (BACKEND_UNIT, FRONTEND_UNIT, RUNTIME_UNIT, DISCOVERY_UNIT, BATCH_UNIT):
             (self.etc / unit).write_text(OLD_UNIT_CONTENT)
 
     @staticmethod
@@ -231,6 +248,7 @@ class RestartHarness:
             "FAKE_SYSTEMD": str(self.fake),
             "FAKE_ETC": str(self.etc),
             "DISCOVERY": DISCOVERY_UNIT,
+            "BATCH": BATCH_UNIT,
         }
         return subprocess.run(
             [str(self.root / "restart")],
@@ -433,3 +451,79 @@ def test_restart_source_does_not_restart_discovery_in_final_restart_call():
     assert "DEV_DISCOVERY_WORKER_UNIT" not in restart_call
     code = "\n".join(line for line in dev_block.splitlines() if not line.lstrip().startswith("#"))
     assert "reset-failed" not in code
+
+
+# ---------------------------------------------------------------------------
+# #1120: the batch_backtest queue has its own worker; ./restart installs it and
+# restarts it together with the DEV stack.
+# ---------------------------------------------------------------------------
+
+
+def test_restart_installs_and_starts_the_batch_worker_once(harness):
+    harness.set_active(DISCOVERY_UNIT, RUNTIME_UNIT, BACKEND_UNIT, FRONTEND_UNIT)
+
+    result = harness.run()
+
+    assert result.returncode == 0, result.stderr
+    calls = harness.calls
+    enable = calls[_index(calls, "enable --now")]
+    assert BATCH_UNIT in enable and DISCOVERY_UNIT in enable and RUNTIME_UNIT in enable
+    assert "crypto DEV batch worker: active" in result.stdout
+    assert "__ROOT_DIR__" not in harness.unit_text(BATCH_UNIT)
+    assert str(harness.root) in harness.unit_text(BATCH_UNIT)
+    assert "-Q batch_backtest" in harness.unit_text(BATCH_UNIT)
+    # Started by the installer's enable --now, never by a plain start/restart.
+    assert not any(c.startswith(("start ", "restart ")) and BATCH_UNIT in c for c in calls)
+
+
+def test_restart_stops_a_running_batch_worker_before_rewriting_its_unit(harness):
+    harness.set_active(BATCH_UNIT, DISCOVERY_UNIT, RUNTIME_UNIT, BACKEND_UNIT, FRONTEND_UNIT)
+
+    result = harness.run()
+
+    assert result.returncode == 0, result.stderr
+    calls = harness.calls
+    stop = _index(calls, f"stop {BATCH_UNIT}")
+    assert stop < _index(calls, "daemon-reload") < _index(calls, "enable --now")
+    assert f"Stopping dev batch worker ({BATCH_UNIT})" in result.stdout
+
+
+def test_restart_fails_when_the_batch_worker_does_not_become_active(harness):
+    harness.flag("batch_wont_start")
+    harness.set_active(DISCOVERY_UNIT, RUNTIME_UNIT, BACKEND_UNIT, FRONTEND_UNIT)
+
+    result = harness.run()
+
+    assert result.returncode != 0
+    assert (
+        "did not become active" in result.stderr or "Not every unit became active" in result.stderr
+    )
+
+
+def test_restart_batch_worker_stop_failure_installs_nothing(harness):
+    harness.flag(f"stop_fails/{BATCH_UNIT}")
+    harness.set_active(BATCH_UNIT, DISCOVERY_UNIT, RUNTIME_UNIT, BACKEND_UNIT, FRONTEND_UNIT)
+
+    result = harness.run()
+
+    assert result.returncode != 0
+    assert "batch worker did not stop" in result.stderr
+    assert harness.unit_text(BATCH_UNIT) == OLD_UNIT_CONTENT
+    assert not any(c.startswith(("daemon-reload", "enable", "restart")) for c in harness.calls)
+
+
+def test_restart_source_wires_the_batch_worker_without_restarting_it_twice():
+    source = (REPO_ROOT / "restart").read_text()
+    dev_block = source.split("# BEGIN CANONICAL DEV RESTART", 1)[1].split(
+        "# END CANONICAL DEV RESTART", 1
+    )[0]
+    assert 'DEV_BATCH_WORKER_UNIT="criptofarol-dev-batch-worker.service"' in dev_block
+    restart_call = dev_block.rsplit("systemctl restart", 1)[1].split("\n\n", 1)[0]
+    assert "DEV_BATCH_WORKER_UNIT" not in restart_call
+    assert 'is-active --quiet "$DEV_BATCH_WORKER_UNIT"' in dev_block
+
+
+def test_batch_worker_unit_consumes_only_the_batch_queue_with_a_solo_pool():
+    unit = (REPO_ROOT / "ops/systemd/criptofarol-dev-batch-worker.service").read_text()
+    assert "-Q batch_backtest'" in unit and "-Q discovery" not in unit
+    assert "--pool=solo" in unit and "--concurrency=1" in unit and "--prefetch-multiplier=1" in unit

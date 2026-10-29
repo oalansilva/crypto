@@ -1006,6 +1006,8 @@ def test_database_timescale_policy_verification_reports_missing_and_exception_pa
             if self.should_raise is not None:
                 raise self.should_raise
 
+            if "compression_enabled" in sql:
+                return _Scalar(self.values.get("compression_setting", False))
             if "timescaledb_information.hypertables" in sql:
                 return _Scalar(self.values.get("hypertable", False))
             if "FROM timescaledb_information.jobs" in sql:
@@ -1014,8 +1016,6 @@ def test_database_timescale_policy_verification_reports_missing_and_exception_pa
                     return _Scalar(self.values.get("retention", False))
                 if proc_name == "policy_compression":
                     return _Scalar(self.values.get("compression", False))
-            if "UNNEST(C.RELOPTIONS" in sql.upper():
-                return _Scalar(self.values.get("compression_setting", False))
             return _Scalar(False)
 
     warnings = []
@@ -1036,11 +1036,21 @@ def test_database_timescale_policy_verification_reports_missing_and_exception_pa
     database_module._verify_market_ohlcv_timescale_policies(conn)
     assert any("incomplete" in str(item) for item in warnings)
 
+    # Uma política de retenção ainda ativa (apaga candles por idade) deixa a verificação incompleta.
     warnings.clear()
+    infos.clear()
+    retained = _Conn(
+        {"hypertable": True, "retention": True, "compression": True, "compression_setting": True}
+    )
+    database_module._verify_market_ohlcv_timescale_policies(retained)
+    assert any("incomplete" in str(item) for item in warnings) and not infos
+
+    warnings.clear()
+    # Card #1118: completo = hypertable, compressão aos 30 dias e NENHUMA política de retenção.
     complete_conn = _Conn(
         {
             "hypertable": True,
-            "retention": True,
+            "retention": False,
             "compression": True,
             "compression_setting": True,
         }

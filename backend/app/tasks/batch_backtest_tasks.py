@@ -83,6 +83,9 @@ def run_batch_backtest_task(
     self: BatchBacktestTask, job_id: str, payload: dict[str, Any]
 ) -> dict[str, Any]:
     store = get_batch_backtest_store()
-    store.update_job(job_id, status="running", task_id=self.request.id)
-    run_batch_backtest(job_id, payload)
+    if not store.is_durable(job_id):
+        # Lote anterior ao #1120 (Redis): termina no caminho antigo, como estava.
+        store.update_job(job_id, status="running", task_id=self.request.id)
+    # Lote novo: ``run_batch_backtest`` assume o lote (um worker por vez, nunca pausado/final).
+    run_batch_backtest(job_id, payload, task_id=self.request.id)
     return {"job_id": job_id, "task_id": self.request.id}
