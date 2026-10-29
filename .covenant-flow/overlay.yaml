@@ -3,6 +3,8 @@ board:
   number: 1
   status_field_id: PVTSSF_lAHOAAHtBM4BV8b2zhRUdMM
   project_id: PVT_kwHOAAHtBM4BV8b2
+  executor:
+    repo: oalansilva/crypto-portao
   status_options:
     Em Refinamento: fed46e78
     Todo: 4c26ac72
@@ -25,7 +27,7 @@ design_globs:
 - frontend/public/prototypes/**
 integration_branch: develop
 production_branch: main
-pin: v1.1.22
+pin: v1.1.26
 canonical_paths:
   dev: /srv/apps/dev/criptofarol/source
   prod: /srv/apps/prod/criptofarol/source
