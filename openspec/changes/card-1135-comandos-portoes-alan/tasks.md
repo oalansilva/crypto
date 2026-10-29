@@ -35,13 +35,13 @@
 
 ## 5. Repositório do executor e migração
 
-- [ ] 5.1 Preparar o workflow do executor (checkout do `PIN`, environment `portao`, `concurrency` por card, `run-name` com o `request_id`) e o texto do passo a passo do operador (Migration Plan, passos 1, 3 e 5), com comandos para colar em bash comum. <!-- covenant-flow:after-commit -->
-- [ ] 5.2 Alan executa os passos 1 e 3 (conta do agente, repo do executor, ruleset, environment, PAT, `PIN` = SHA revisado, `install.sh --account`, revisão R/A, sessão nova). Registrar no card. <!-- covenant-flow:after-commit -->
-- [ ] 5.3 Ligar `board.executor` no overlay no último commit do card, só depois do ensaio 6.1 passar. <!-- covenant-flow:after-commit -->
+- [x] 5.1 Preparar o workflow do executor (checkout do `PIN`, environment `portao`, `concurrency` por card, `run-name` com o `request_id`) e o texto do passo a passo do operador (Migration Plan, passos 1, 3 e 5), com comandos para colar em bash comum. <!-- covenant-flow:after-commit -->
+- [ ] 5.2 Alan executa os passos 1 e 3 (conta do agente, repo do executor, ruleset, environment, PAT, `PIN` = SHA revisado, `install.sh --account`, revisão R/A, sessão nova). Registrar no card. Feito em 29/10: repo `oalansilva/crypto-portao`, ruleset, environment, PAT e `PIN` (PR #1 do executor). Falta: conta do agente e convites. <!-- covenant-flow:after-commit -->
+- [x] 5.3 Ligar `board.executor` no overlay no último commit do card, só depois do ensaio 6.1 passar. <!-- covenant-flow:after-commit -->
 - [ ] 5.4 Alan executa o passo 5 (login do `gh` da VM com a conta do agente, chave SSH, revogação do token do GitHub CLI do `oalansilva`, inventário de credenciais). Registrar no card. <!-- covenant-flow:after-qa -->
 
 ## 6. Verificação viva
 
-- [ ] 6.1 Num issue de ensaio no Project 1, com o Alan digitando no cli e no app desktop: cada comando certo move e deixa recibo; texto aproximado e o comando como comentário na issue não fazem nada; `/priorizar` termina em Design; arrasto para Todo fica em Todo; `/aprovar-design` com `design.md` alterado depois do T5 é recusado; `/cancelar` sem confirmação não move. Links dos recibos e runs no card. <!-- covenant-flow:after-commit -->
-- [ ] 6.2 `process_event pedir_review` (ou outra transição do agente no issue de ensaio) move pelo executor, e `process_event aprovar_design` é recusado. Pedido `pedir` forjado de `aprovar_design` direto ao executor é recusado com `actor`. <!-- covenant-flow:after-commit -->
+- [x] 6.1 Num issue de ensaio no Project 1, com o Alan digitando no cli e no app desktop: cada comando certo move e deixa recibo; texto aproximado e o comando como comentário na issue não fazem nada; `/priorizar` termina em Design; arrasto para Todo fica em Todo; `/aprovar-design` com `design.md` alterado depois do T5 é recusado; `/cancelar` sem confirmação não move. Links dos recibos e runs no card. <!-- covenant-flow:after-commit -->
+- [x] 6.2 `process_event pedir_review` (ou outra transição do agente no issue de ensaio) move pelo executor, e `process_event aprovar_design` é recusado. Pedido `pedir` forjado de `aprovar_design` direto ao executor é recusado com `actor`. <!-- covenant-flow:after-commit -->
 - [ ] 6.3 Depois do passo 5: no terminal do Alan, com o token do agente, `gh project item-edit` do Status falha por permissão; o inventário de credenciais da VM só mostra o token do agente. <!-- covenant-flow:after-qa -->
