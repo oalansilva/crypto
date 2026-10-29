@@ -238,7 +238,7 @@ jobs:
   process-fsm:
     name: process-fsm
     runs-on: ubuntu-24.04
-    timeout-minutes: 5
+    timeout-minutes: 10  # #1152: a máquina do GitHub varia de velocidade e com 5 min o job era cancelado com os testes passando; 10 min ≈ 2x a rodada mais lenta medida.
     steps:
       - name: Checkout
         uses: actions/checkout@v4
