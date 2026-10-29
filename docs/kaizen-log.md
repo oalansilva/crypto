@@ -1,5 +1,63 @@
 # Kaizen Log — Melhoria Contínua de Processo
 
+## 2026-10-29 — Kaizen release (cards 1098, 1110, 1117, 1118, 1119, 1120, 1121, 1122, 1123, 1133, 1135, 1152)
+
+Auditoria read-only do filho fecho-lote (Claude Code 2.1.309, app 4.29.0, claude-desktop, attempt a7d4f93f), completed com payload. Captura de nascimento claude-opus-5-5/high; proxy gravado com observado igual ao capturado. Nenhuma mudança pelo filho. Deploy, archive/sync, post e T16 ficam com o orquestrador.
+
+### Métricas
+
+- Doze Homologado no pacote; origin/main..origin/develop com 21 commits first-parent (19 PRs dos cards mais os merges #1113 e #1114 da release anterior), 566 arquivos, +103.418/−3.143. Seis changes com tarefas abertas no archive (#1110 2, #1120 3, #1121 1, #1123 1, #1133 8, #1135 3).
+- CI desde 16/10: 55 success, 8 failure (testes ou formatação, corrigidos no PR), 3 cancelled. process-fsm cortado por tempo 6 vezes em 4 cards; resolvido pelo #1152 (limite de 10 min).
+- release-guard audit: PASS, 102 warnings, zero blockers; card-1098, card-1110, card-1121 e card-1133 vistas como não mergeadas (squash).
+- Retrabalho: cinco T18 em três cards (#1120 ×2, #1122 ×2, #1123 ×1). Três I4 (#1098 com digest mudado; #1117 e #1122 mecânicos).
+- Transcripts Claude Code (worktrees dos cards e /source): 224 subagentes em 11 cards. Grelha: #1117=1, #1118=2, #1119=1, #1120=1, #1121=1, #1122=1, #1123=1, #1133=1, #1135=2, #1152=2; #1110 com marcador REST e sem subagente. Média 1,3 em dez cards, abaixo da meta de 1,5. Design (autor, crítico, Assessment A/B): 49 contra 13 de grelha.
+- Proxy modelo: todos os subagentes nasceram com effort high; execução em Sonnet 5.5 até 25/10 e Opus 5.5 desde 26/10 (política mudada em 26/10). Os 30 handoffs REST conferidos trazem observado igual ao pedido; o observado é eco da captura. #1098 (Codex) sem transcript local; proxies REST gpt-6.1-sol/high e gpt-6-astra/medium batem com a política. Cursor: nenhuma sessão na janela.
+
+### Achados
+
+F-1 P1: dependência Python nova (exchange_calendars, #1118) não é instalada por ./restart, pelos hooks release.* nem pelo runbook do PROD. O DEV precisou de pip install manual depois do Done com health 200; o venv do PROD não tinha o pacote e o import é preguiçoso. Nesta release o fechador instalou o pacote no venv do PROD dentro da janela e validou o calendário da NYSE. Card #1155.
+
+F-2 P1: com board.executor ligado (#1135), o T16 espera o executor por card; num lote de 3 ou mais pode estourar o Bash do agente e repetir duplica o comentário de Pronto (residual P2 do #1135). O T12 rerun_infra não roda o job de novo. Primeira release com executor e 12 cards. Card #1156.
+
+F-3 P2: dois de três I4 do pacote foram mecânicos (notas do Apply em design.md no #1117; branch card-1122-residuais diferente do change no #1122), cada um com novo T7 do Alan. Armadilhas do adapter Claude vivem só na memória local do operador. Card #1157.
+
+F-4 P1: #1120 e #1123 foram ao Done com as tarefas after-qa de verificação em DEV abertas, e o T18 do Alan pegou exatamente o que elas cobriam (lote parado na fila; coluna Contra SPY para cripto). Coberto por #1144 e #769.
+
+F-5 P1: residual P1 chegou ao Done (#1122, T18 de 26/10); residuais de risco do #1120 ficaram sem card de seguimento. Coberto por #979.
+
+F-6 P2: comentário canônico de Homologado ausente em 9 de 12 cards e Responsável/Prioridade/Tipo vazios em 11 de 12, pela quarta release seguida. Os dois homologados por /homologar pelo executor (#1135, #1152) já ganharam o comentário. Coberto por #658 (a reconciliar com o #1135) e #910.
+
+F-7 P2: o archive levou tarefas abertas ou superadas sem disposição formal: #1133 (8, com evidência no card), #1135 (5.2, 5.4 e 6.3 obsoletas pela decisão de 29/10 sobre a conta do agente), #1110 (7.1 cumprida no T16), #1098 (transferências para #1128, cancelado). Coberto por #769 e #979.
+
+F-8 P2: commit planejado pós-ensaio entrou com o card em QA por exceção decidida pelo Alan (#1135, task 5.3); o fluxo não tem aresta para isso. Junto do #1156.
+
+F-9 P2: release-guard vê branches do pacote mergeadas por squash como não mergeadas. Coberto por #1109.
+
+F-10 P2: "card nítido; sem grill" em #1117 a #1123 contradito por subagentes de grelha observados. Coberto por #963.
+
+F-11 P3: resolvidos no pacote: heads do Alembic (#1147 com teste de head única), timeout do process-fsm (#1152), runner ubuntu-26.04 (#1133), backend-format vermelho em #1110 e #1121.
+
+Observação do fechador: o CLI do OpenSpec recusa gravar spec sem requisito, então o delta do #1122 que remove os três requisitos de monitor-telegram-general-alerts abortou o archive do card; a spec foi aposentada à mão (ver docs/release-2026-10-29.md).
+
+### Cards kaizen criados nesta release
+
+| Card | Prioridade | Origem | Status |
+| --- | --- | --- | --- |
+| #1155 | P1 | F-1 | Em Refinamento |
+| #1156 | P1 | F-2, F-8 | Em Refinamento |
+| #1157 | P2 | F-3 | Em Refinamento |
+| (não criado) QA real no DEV antes do Done | P1 | F-4 | coberto por #1144 |
+| (não criado) residual P1 antes de Homologado | P1 | F-5 | coberto por #979 |
+| (não criado) comentário canônico na homologação | P2 | F-6 | coberto por #658 |
+| (não criado) campos obrigatórios antes de Homologado | P2 | F-6 | coberto por #910 |
+| (não criado) tarefas abertas no archive | P2 | F-7 | coberto por #769 |
+| (não criado) release-guard e branch squash-mergeada | P2 | F-9 | coberto por #1109 |
+| (não criado) reconciliação REST/transcripts | P2 | F-10 | coberto por #963 |
+
+### Limitações
+
+Sem transcripts Cursor na janela; #1098 rodou no Codex e não tem transcript local. O esforço observado é eco da captura. A auditoria rodou antes do archive, deploy, post e T16; o resultado desses passos está em docs/release-2026-10-29.md. A data exata de cada homologação não está registrada nos nove cards sem comentário canônico.
+
 ## 2026-10-16 — Kaizen release (cards 1071, 1086, 1087, 1091, 1093, 1095, 1101, 1103, 1106)
 
 Auditoria read-only do filho fecho-lote a4f91f089398023fc (Claude Code 2.1.299, app 2.42304.0, claude-desktop), completed com payload. Captura de nascimento claude-sonnet-5-5/high confirmada pelo transcript do próprio filho (78 de 78 mensagens). Nenhuma mudança pelo filho. PROD publicado no SHA 27f120713692ab4cae9ec5abd1ebb0a4af2f7094.

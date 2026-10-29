@@ -30,11 +30,11 @@ A trava do instalador SHALL continuar recusando a instalação com a Descoberta 
 - **THEN** o restart para com código diferente de zero, a mensagem diz o que restou, e nenhum unit é gravado, recarregado ou ligado
 
 ### Requirement: Descoberta religada uma vez com os limites do #1093
-Depois da trava passar, o restart SHALL ligar a Descoberta exatamente uma vez, já com os units recém-instalados, e SHALL só sair com sucesso com os quatro serviços ativos. Os limites efetivos da Descoberta SHALL ser MemoryHigh=5 GiB, MemoryMax=6 GiB e MemorySwapMax=512 MiB.
+Depois da trava passar, o restart SHALL ligar a Descoberta exatamente uma vez, já com os units recém-instalados, e SHALL só sair com sucesso com os quatro serviços ativos. Os limites efetivos da Descoberta SHALL ser MemoryHigh=3 GiB, MemoryMax=4 GiB e MemorySwapMax=512 MiB (valores do #1110 sobre a contenção do #1093).
 
 #### Scenario: Limites efetivos após o restart
 - **WHEN** o restart termina com a Descoberta antes ativa
-- **THEN** `systemctl show` da Descoberta informa 5368709120 / 6442450944 / 536870912 e a Descoberta tem um único start nesse restart
+- **THEN** `systemctl show` da Descoberta informa 3221225472 / 4294967296 / 536870912 e a Descoberta tem um único start nesse restart
 
 ### Requirement: Busca interrompida retoma pela recuperação existente
 Uma busca em andamento na hora do restart SHALL ser interrompida pela parada e SHALL retomar depois pela recuperação do #1093, gastando uma tentativa. Este contrato MUST NOT alterar tentativas, backoff, circuito ou limites.

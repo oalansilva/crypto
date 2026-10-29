@@ -4,24 +4,24 @@
 TBD - created by archiving change favorites-asset-type-filter. Update Purpose after archive.
 ## Requirements
 ### Requirement: Favorites can be filtered by asset type
-The system MUST keep the Favorites screen crypto-only while the MVP excludes stocks.
+The Favorites screen SHALL list crypto, ação and ETF favorites and MUST offer a "Classe" filter with the options Todas, Cripto, Ações and ETFs, each with its count. The default MUST be Todas.
 
-#### Scenario: Favorites default to crypto-only
+#### Scenario: Favorites default to all classes
 - **WHEN** the user opens the Favorites screen
-- **THEN** the Favorites list MUST show only items whose symbol contains `/`
+- **THEN** the Favorites list MUST show crypto pairs, ações and ETFs together
 
-#### Scenario: Stocks option is unavailable
-- **WHEN** the Favorites filter controls are rendered
-- **THEN** the screen MUST NOT show a Stocks asset-type option
+#### Scenario: Filter by class
+- **WHEN** the user picks Classe = ETFs
+- **THEN** the list MUST show only ETF favorites
 
 ### Requirement: Asset type filter applies to both desktop and mobile layouts
-The system MUST apply the crypto-only Favorites collection consistently across all responsive layouts.
+The system MUST apply the class filter consistently across all responsive layouts.
 
-#### Scenario: Mobile cards are crypto-only
-- **WHEN** the Favorites screen is rendered in mobile layout
-- **THEN** the mobile card list MUST include only crypto pairs whose symbol contains `/`
+#### Scenario: Mobile cards follow the class filter
+- **WHEN** the Favorites screen is rendered in mobile layout with Classe = Ações
+- **THEN** the mobile card list MUST include only ação favorites
 
-#### Scenario: Desktop table is crypto-only
-- **WHEN** the Favorites screen is rendered in desktop layout
-- **THEN** the desktop table MUST include only crypto pairs whose symbol contains `/`
+#### Scenario: Desktop table follows the class filter
+- **WHEN** the Favorites screen is rendered in desktop layout with Classe = Cripto
+- **THEN** the desktop table MUST include only crypto pairs
 
