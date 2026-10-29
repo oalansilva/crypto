@@ -1,5 +1,17 @@
 # Decision Log
 
+## 2026-10-29 - Ações e ETFs da Binance, lotes multiclasse, alertas por favorito e portões por comando (cards #1098, #1110, #1117, #1118, #1119, #1120, #1121, #1122, #1123, #1133, #1135, #1152)
+
+**Decisão homologada:** o produto passa a operar cripto, ações e ETFs da Binance: catálogo persistido (#1117), histórico confiável com calendário da NYSE (#1118), backtest com execução e stops realistas (#1119), lotes de Combo e Otimização multiclasse num worker próprio da fila `batch_backtest` em DEV e PROD (#1120), Descoberta com amostras reproduzíveis (#1121), favoritos e alertas no horário correto (#1122) e comparação com benchmark escolhido e exportação completa (#1123). O alerta do Telegram sai das estratégias que cada usuário acompanha no Monitor, com estrela e alerta ligado; o catálogo curado do admin deixa de alertar (decisões de Alan de 26/10 e 27/10).
+
+**Operação:** a Descoberta PROD ganha teto de memória (4 GiB aviso, 5 GiB corte, `OOMPolicy=kill`, 3 partidas em 15 min) e as migrações de PROD seguem `docs/prod-migration-runbook.md` (#1110). CI com runner fixo `ubuntu-24.04` e Playwright 1.64.1 (#1133) e 10 minutos para o job `process-fsm` (#1152).
+
+**Harness:** portões do Alan por comando exato no chat, pin v1.1.26 e executor do board ligado (`oalansilva/crypto-portao`) (#1135); Codex CLI com agentes nativos e revisão automática somente leitura (#1098). Por decisão de Alan em 29/10, o agente continua usando a conta `oalansilva`; as tarefas de conta separada do #1135 ficaram superadas.
+
+**Risco aceito e rastreado:** dependências Python novas não são instaladas pelo deploy nem pelo `./restart`; nesta release o fechador instalou `exchange_calendars` no venv do PROD à mão (#1155). Worker de lotes e Descoberta podem rodar juntos; vigiar `MemAvailable` na primeira semana. Responsável, Prioridade e Tipo seguem vazios em 11 dos 12 cards (#910).
+
+**Evidência:** PR de código #1154, PROD no SHA c0135f435b39cc1eccd5425c03b2c4059f8ee30a, migração 20261013_0001 → 20261028_0002 com backup verificado antes, seis units persistentes ativas (incluindo o novo batch-worker), teto da Descoberta PROD aplicado, health público 200; nota canônica docs/release-2026-10-29.md. Kaizen: #1155, #1156 e #1157.
+
 ## 2026-10-16 - Descoberta mais rápida e resiliente, adapter Claude Code e correções (cards #1071, #1086, #1087, #1091, #1093, #1095, #1101, #1103, #1106)
 
 **Decisão homologada:** acelerar a Descoberta com caches limitados e Numba sem alterar resultados (#1091); tornar a Descoberta recuperável sem OOM, com ledger durável de tentativas, leases e circuito por ambiente (#1093); corrigir o rompimento Donchian (#1086) e o calendário mensal do Combo e da Descoberta (#1087). O restart do DEV deixa de falhar com a Descoberta ativa (#1106).
