@@ -30,21 +30,21 @@ The system SHALL generate Monitor Telegram alert drafts from Monitor opportuniti
 - **AND** it SHALL record candidate alerts as dry run results
 
 ### Requirement: Alert anti-noise controls
-The system SHALL prevent repeated or excessive Monitor Telegram alerts through deduplication and rate limiting **per user**, including position-aware alerts and operational Binance failure notices.
+The system SHALL prevent repeated Monitor Telegram alerts through event identity **per user**, for signal alerts, data-delay warnings and the transition notice. A signal event is identified by user, favorite, new reading and the start of the closed candle that produced it; a data-delay warning by user, data source, asset and delay episode; the transition notice by user. The time-based minimum repeat window SHALL NOT decide duplicates anymore. Signal alerts and data-delay warnings of a scan SHALL NOT be capped by the per-user rate limit (Alan's decision 4, 26/10/2026): each one is its own message. The scan SHALL NOT send any operational Binance wallet notice (card #1122, 27/10/2026: the wallet no longer decides alerts), so the configurable rate limit (`monitor_telegram_rate_limit_count` / `monitor_telegram_rate_limit_window_minutes`) has no use in the scan.
 
-#### Scenario: Duplicate status inside minimum window is skipped per user
-- **WHEN** an alert for the same user, symbol, timeframe, and status was already recorded inside the configured minimum repeat window
-- **THEN** the system SHALL skip sending a duplicate alert to that user
-- **AND** it SHALL record or report the skip reason as duplicate
+#### Scenario: Same event is skipped per user
+- **WHEN** an alert with the same event key was already reserved, sent or dry-run for that user
+- **THEN** the system SHALL skip sending it again
+- **AND** it SHALL report the skip reason as duplicate
 
-#### Scenario: Rate limit caps messages per user per window
-- **WHEN** a user has reached the configured maximum alert count for the current rate-limit window
-- **THEN** the system SHALL skip additional sends to that user
-- **AND** it SHALL report the skip reason as rate limited
+#### Scenario: Scan alerts are not rate limited
+- **WHEN** seven favorites of a user, starred and with the alert on, change reading in the same scan and the configured limit is 5 messages per 60 minutes
+- **THEN** the system SHALL send seven messages to that user, one per favorite
+- **AND** it SHALL NOT report any of them as rate limited
 
-#### Scenario: Operational Binance failure DM is rate limited per user
-- **WHEN** multiple cron scans fail Binance wallet sync for the same user within the rate-limit window
-- **THEN** the system SHALL send at most one operational failure DM per user per window
+#### Scenario: No operational wallet notice
+- **WHEN** a user's Binance wallet is unavailable during a scan
+- **THEN** the scan SHALL NOT send an operational wallet DM to that user
 
 ### Requirement: Alert audit trail
 The system SHALL persist an audit trail for every sent or dry-run Monitor Telegram alert attempt, including the recipient user and destination chat.
@@ -103,80 +103,6 @@ The Monitor Telegram scan job SHALL load bot token and destination from canonica
 - **WHEN** `/root/.openclaw` is absent or unreadable
 - **THEN** the scan still resolves configuration from the canonical path
 - **AND** it SHALL NOT fail solely because OpenClaw home is missing
-
-### Requirement: Position-aware Monitor Telegram alerts per user
-The system SHALL send Monitor Telegram alerts as individual DMs to each eligible user when a status transition is relevant to that user's real Spot portfolio position and Em portfólio scope.
-
-#### Scenario: Bought user receives sell alert on HOLD to EXIT
-- **WHEN** a symbol is in the user's Em portfólio scope (`inPortfolio=true`)
-- **AND** the user holds an eligible Spot position in the symbol's base asset (`min_usd=1`)
-- **AND** any eligible catalog strategy for that symbol (`notify_telegram=true`) changes public status from `HOLD` to `EXIT`
-- **THEN** the system SHALL send a DM to that user's linked Telegram chat
-- **AND** the message SHALL include symbol, strategy/timeframe, previous reading Compra, and new reading Venda
-- **AND** the message SHALL include the educational disclaimer
-
-#### Scenario: Bought user receives stop sell alert with Motivo=Stop
-- **WHEN** a symbol is in the user's Em portfólio scope
-- **AND** the user holds an eligible Spot position
-- **AND** an eligible strategy changes to public status `EXIT` due to stop loss (`STOPPED_OUT` / `stop_breached_now`)
-- **THEN** the system SHALL send a DM to that user's chat with new reading Venda
-- **AND** the message SHALL include `Motivo=Stop`
-
-#### Scenario: Flat user receives buy alert on EXIT to HOLD
-- **WHEN** a symbol is in the user's Em portfólio scope
-- **AND** the user has no eligible Spot position (flat)
-- **AND** an eligible strategy changes public status from `EXIT` to `HOLD`
-- **THEN** the system SHALL send a DM to that user's chat with previous reading Venda and new reading Compra
-
-#### Scenario: Flat user suppresses HOLD to EXIT
-- **WHEN** a user is flat for a symbol in scope
-- **AND** an eligible strategy changes from `HOLD` to `EXIT`
-- **THEN** the system SHALL NOT send a position-aware alert to that user
-
-#### Scenario: Bought user suppresses EXIT to HOLD re-entry
-- **WHEN** a user holds an eligible Spot position
-- **AND** an eligible strategy changes from `EXIT` to `HOLD` while the position remains
-- **THEN** the system SHALL NOT send a position-aware alert to that user
-
-#### Scenario: Two users with different positions receive different alerts
-- **WHEN** user A holds Spot position for symbol X and user B is flat for symbol X
-- **AND** an eligible strategy for X changes from `HOLD` to `EXIT`
-- **THEN** user A SHALL receive a sell DM
-- **AND** user B SHALL NOT receive a position-aware alert for that transition
-
-#### Scenario: Strategy is_holding is not used as portfolio proxy
-- **WHEN** the scanner evaluates whether a user is bought
-- **THEN** it SHALL use that user's Spot wallet / derived `in_portfolio` rules
-- **AND** it SHALL NOT use strategy `is_holding` as a proxy
-
-### Requirement: Em portfólio scope resolution per user
-The position-aware scanner SHALL resolve Em portfólio scope per user using the same rules as Monitor UI `portfolioStatusBySymbol.inPortfolio`.
-
-#### Scenario: Crypto with Binance uses derived portfolio rule per user
-- **WHEN** the symbol is a rated crypto asset and the user has Binance credentials configured
-- **THEN** `inPortfolio` for that user SHALL be true when they hold an eligible Spot balance of the base asset
-
-#### Scenario: Non-derived symbols use manual preference per user
-- **WHEN** the derived portfolio rule is not active for a user and symbol
-- **THEN** `inPortfolio` SHALL follow that user's stored `MonitorPreference.in_portfolio`
-
-#### Scenario: Scope intersects monitored catalog
-- **WHEN** the scanner builds candidates for a user
-- **THEN** it SHALL consider only symbols in the admin curated catalog with at least one `notify_telegram=true` strategy
-- **AND** apply the Em portfólio filter for that user before the position-aware matrix
-
-### Requirement: Binance unavailability operational alert per user
-The system SHALL pause position-aware alerts for a user and notify them individually when that user's Binance wallet sync fails during a cron scan.
-
-#### Scenario: Binance failure sends rate-limited operational DM to user
-- **WHEN** the cron scan cannot fetch a user's Binance Spot balances
-- **THEN** the system SHALL send one operational DM to that user's linked chat stating wallet sync is unavailable and position-aware alerts are paused
-- **AND** the operational DM SHALL be rate limited per user
-
-#### Scenario: Binance failure suppresses only that user's position-aware alerts
-- **WHEN** Binance wallet sync fails for user A but succeeds for user B in the same scan
-- **THEN** user A SHALL NOT receive position-aware signal alerts in that scan
-- **AND** user B SHALL continue to receive alerts normally
 
 ### Requirement: Position-aware destination is individual user DM only
 Position-aware Monitor Telegram alerts SHALL be delivered only to each eligible user's linked Telegram DM and SHALL NOT be sent to the internal Grupo Crypto topic.
