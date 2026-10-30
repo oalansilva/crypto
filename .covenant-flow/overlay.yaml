@@ -69,7 +69,6 @@ environments:
     services:
     - criptofarol-prod-backend.service
     - criptofarol-prod-frontend.service
-    - criptofarol-prod-leads.service
     - criptofarol-prod-runtime-worker.service
     - criptofarol-prod-discovery-worker.service
     - criptofarol-prod-batch-worker.service

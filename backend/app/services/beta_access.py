@@ -22,8 +22,9 @@ BETA_ACCESS_APP_URL = os.getenv("BETA_ACCESS_APP_URL", "https://criptofarol.com.
 
 
 def _default_beta_access_gog_env_file() -> str:
-    project_root = Path(__file__).resolve().parents[3]
-    return str(project_root / "ops" / "landing-leads" / ".env.leads")
+    # Card #1160 (PR-2): ops/landing-leads/ saiu do repo. O env do gog só vem de
+    # BETA_ACCESS_GOG_ENV_FILE; sem a variável, nenhum arquivo é carregado.
+    return ""
 
 
 BETA_ACCESS_GOG_ENV_FILE = os.getenv(
@@ -218,8 +219,10 @@ def send_welcome_email_smtp(message: WelcomeEmail) -> bool:
 
 def _load_env_file(path: str) -> dict[str, str]:
     env: dict[str, str] = {}
+    if not str(path or "").strip():
+        return env
     env_path = Path(path)
-    if not env_path.exists():
+    if not env_path.is_file():
         return env
 
     for raw_line in env_path.read_text(encoding="utf-8").splitlines():

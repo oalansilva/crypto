@@ -645,15 +645,12 @@ def test_beta_lead_access_persists_social_attribution_metadata(auth_db_session):
     assert "TemporaryPass123!" not in str(audit.metadata_json)
 
 
-def test_beta_access_gog_env_file_default_is_repo_local():
-    expected = (
-        beta_access_service.Path(beta_access_service.__file__).resolve().parents[3]
-        / "ops"
-        / "landing-leads"
-        / ".env.leads"
-    )
-
-    assert beta_access_service._default_beta_access_gog_env_file() == str(expected)
+def test_beta_access_gog_env_file_has_no_repo_default():
+    # Card #1160 (PR-2): ops/landing-leads/ saiu do repo; o arquivo de env do gog só vem de
+    # BETA_ACCESS_GOG_ENV_FILE, e sem a variável nada é carregado.
+    assert beta_access_service._default_beta_access_gog_env_file() == ""
+    assert "landing-leads" not in beta_access_service._default_beta_access_gog_env_file()
+    assert beta_access_service._load_env_file("") == {}
 
 
 def test_beta_lead_existing_user_preserves_password_and_records_audit(auth_db_session):
@@ -745,46 +742,13 @@ def test_leads_route_returns_safe_response_without_temporary_password(auth_db_se
     }
 
 
-def test_leads_stats_counts_active_users_and_remaining_spots(auth_db_session):
-    initial = leads_routes.get_lead_stats(auth_db_session)
-    base_registered = initial.registered
-    base_spots_left = initial.spotsLeft
-
-    landing_user = User(
-        id=uuid.uuid4(),
-        email=f"landing-stats-{uuid.uuid4().hex}@example.com",
-        password_hash="hash",
-        name="Landing Stats",
-        status="active",
-        is_banned=False,
-        access_invitation_source="landing",
+def test_leads_stats_endpoint_is_removed():
+    # Card #1160 (PR-2): sem contador de vagas, GET /api/leads/stats e BETA_TOTAL_SPOTS saem.
+    assert not hasattr(leads_routes, "get_lead_stats")
+    assert not hasattr(leads_routes, "BETA_TOTAL_SPOTS")
+    assert all(
+        getattr(route, "path", "") != "/api/leads/stats" for route in leads_routes.router.routes
     )
-    admin_created_user = User(
-        id=uuid.uuid4(),
-        email=f"admin-created-stats-{uuid.uuid4().hex}@example.com",
-        password_hash="hash",
-        name="Admin Created Stats",
-        status="active",
-        is_banned=False,
-        access_invitation_source="admin",
-    )
-    banned_landing_user = User(
-        id=uuid.uuid4(),
-        email=f"banned-landing-stats-{uuid.uuid4().hex}@example.com",
-        password_hash="hash",
-        name="Banned Landing Stats",
-        status="banned",
-        is_banned=True,
-        access_invitation_source="landing",
-    )
-    auth_db_session.add_all([landing_user, admin_created_user, banned_landing_user])
-    auth_db_session.commit()
-
-    stats = leads_routes.get_lead_stats(auth_db_session)
-
-    assert stats.totalSpots == 50
-    assert stats.registered == min(50, base_registered + 2)
-    assert stats.spotsLeft == max(0, base_spots_left - 2)
 
 
 def test_beta_lead_does_not_commit_unknown_password_when_email_not_sent(auth_db_session):

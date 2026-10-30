@@ -187,7 +187,7 @@ Antes de reiniciar, confira o limite de partidas (seção 4).
 Release que já tem a unit do worker de lote:
 
 ```
-systemctl restart criptofarol-prod-backend.service criptofarol-prod-frontend.service criptofarol-prod-leads.service
+systemctl restart criptofarol-prod-backend.service criptofarol-prod-frontend.service
 systemctl restart criptofarol-prod-runtime-worker.service
 systemctl restart criptofarol-prod-discovery-worker.service
 systemctl restart criptofarol-prod-batch-worker.service
@@ -197,7 +197,7 @@ systemctl start criptofarol-prod-candle-writer.timer criptofarol-prod-telegram-a
 Primeira release com o worker de lote (#1120): a unit do batch-worker ainda não existe em PROD, então não há `restart` dela; instale-a com `./install-discovery-workers-systemd.sh --root /srv/apps/prod/criptofarol/source --batch-only` (seção 5), que já a liga:
 
 ```
-systemctl restart criptofarol-prod-backend.service criptofarol-prod-frontend.service criptofarol-prod-leads.service
+systemctl restart criptofarol-prod-backend.service criptofarol-prod-frontend.service
 systemctl restart criptofarol-prod-runtime-worker.service
 systemctl restart criptofarol-prod-discovery-worker.service
 ./install-discovery-workers-systemd.sh --root /srv/apps/prod/criptofarol/source --batch-only

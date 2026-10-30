@@ -40,9 +40,12 @@ Nao tenta parecer casa de aposta, corretora agressiva ou influencer.
 
 ### Tipografia
 
-- Titulos: `Inter`
-- Texto corrido: `IBM Plex Sans`
+Duas famílias, no máximo (card #1160, Open Question 4: saiu a `IBM Plex Sans`):
+
+- Titulos e texto corrido: `Inter`
 - Numeros/labels tecnicos: `JetBrains Mono`
+
+Na landing pública, as duas são servidas pelo próprio site (`/lp/fonts/`, `woff2` variável em subconjunto latino, licença SIL OFL 1.1), sem Google Fonts.
 
 ## Componentes Base
 
