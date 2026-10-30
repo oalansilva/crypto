@@ -1,0 +1,748 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <!-- COPIED:start -->
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <!-- COPIED:end -->
+    <!-- DELTA:start cabeçalho: título, descrição com acentos, canonical, Open Graph, Twitter Card, ícones, 2 famílias de fonte servidas pelo próprio site, JSON-LD -->
+    <meta
+      name="description"
+      content="O Cripto Farol mostra quando faz sentido comprar ou vender cripto, ações e ETFs da Binance, com a análise pronta de cada estratégia e alerta no Telegram nas que você acompanha com estrela. Beta fechado, grátis por 6 meses."
+    />
+    <title>Cripto Farol: sinais para cripto, ações e ETFs da Binance</title>
+    <link rel="canonical" href="https://criptofarol.com.br/" />
+    <meta property="og:type" content="website" />
+    <meta property="og:locale" content="pt_BR" />
+    <meta property="og:site_name" content="Cripto Farol" />
+    <meta property="og:url" content="https://criptofarol.com.br/" />
+    <meta property="og:title" content="Comprar ou vender cripto, ações e ETFs? O Cripto Farol responde." />
+    <meta property="og:description" content="Cripto, ações e ETFs da Binance, com análise pronta das estratégias e alerta no Telegram nas que você acompanha com estrela. Beta fechado, grátis por 6 meses." />
+    <meta property="og:image" content="https://criptofarol.com.br/lp/og-1200x630.jpg" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:image:alt" content="Cripto Farol: comprar ou vender cripto? O Cripto Farol responde. Cripto, ações e ETFs da Binance, com análise pronta e alerta no Telegram nas estratégias com estrela. Beta fechado, 6 meses grátis." />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="Comprar ou vender cripto, ações e ETFs? O Cripto Farol responde." />
+    <meta name="twitter:description" content="Cripto, ações e ETFs da Binance, com análise pronta das estratégias e alerta no Telegram nas que você acompanha com estrela. Beta fechado, grátis por 6 meses." />
+    <meta name="twitter:image" content="https://criptofarol.com.br/lp/og-1200x630.jpg" />
+    <meta name="theme-color" content="#03111f" />
+    <link rel="icon" href="./assets/cripto-farol-mark.svg" type="image/svg+xml" />
+    <link rel="preload" as="font" type="font/woff2" href="./assets/fonts/inter-latin.woff2" crossorigin />
+    <link rel="preload" as="image" type="image/webp" href="./assets/hero-1600.webp" imagesrcset="./assets/hero-640.webp 640w, ./assets/hero-1024.webp 1024w, ./assets/hero-1600.webp 1600w" imagesizes="100vw" />
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@graph": [
+          {
+            "@type": "Organization",
+            "name": "Cripto Farol",
+            "url": "https://criptofarol.com.br/",
+            "logo": "https://criptofarol.com.br/lp/cripto-farol-mark.svg"
+          },
+          {
+            "@type": "FAQPage",
+            "mainEntity": [
+              { "@type": "Question", "name": "Preciso saber operar como trader?", "acceptedAnswer": { "@type": "Answer", "text": "Não. A leitura é em português claro, e cada métrica vem com uma explicação curta." } },
+              { "@type": "Question", "name": "É um robô que opera por mim?", "acceptedAnswer": { "@type": "Answer", "text": "Não. O Cripto Farol não opera sozinho: cada compra ou venda de cripto pede a sua confirmação. E ele nunca faz saque." } },
+              { "@type": "Question", "name": "Vocês têm acesso ao meu dinheiro?", "acceptedAnswer": { "@type": "Answer", "text": "Não para sacar. O Farol lê seu saldo na Binance para acompanhar a carteira. Se você quiser, libera também compra e venda de cripto à vista, sempre com a sua confirmação. Nunca pedimos senha e nunca sacamos." } },
+              { "@type": "Question", "name": "Por que vocês liberam 6 meses grátis?", "acceptedAnswer": { "@type": "Answer", "text": "Estamos validando o produto com os primeiros usuários. A sua experiência durante esse período ajuda a moldar a versão final." } },
+              { "@type": "Question", "name": "E depois dos 6 meses?", "acceptedAnswer": { "@type": "Answer", "text": "Você decide se vale assinar. Não tem cobrança automática, não tem cartão cadastrado." } },
+              { "@type": "Question", "name": "Funciona com ações e ETFs?", "acceptedAnswer": { "@type": "Answer", "text": "Sim. Você acompanha cripto, ações e ETFs da Binance no Monitor, com a análise de cada estratégia. O alerta no Telegram vale para as estratégias que você acompanha com estrela, depois que você conecta o Telegram no Perfil; as estratégias de exemplo do catálogo aparecem no Monitor sem alerta. Ações e ETFs seguem o pregão de Nova York: com o mercado fechado, o aviso aparece só na tela. Comprar e vender pelo Farol vale só para cripto; ações e ETFs você acompanha e recebe o alerta, e a decisão de operar é sua, fora do Farol." } }
+            ]
+          }
+        ]
+      }
+    </script>
+    <!-- DELTA:end -->
+    <!-- COPIED:start -->
+    <link rel="stylesheet" href="./styles.css" />
+    <!-- COPIED:end -->
+    <!-- DELTA:start estilos do delta (rodapé, aviso no hero, métricas visíveis, formulário honesto, recortes) -->
+    <link rel="stylesheet" href="./delta.css" />
+    <!-- DELTA:end -->
+  </head>
+  <body>
+    <!-- COPIED:start -->
+    <header class="site-header">
+      <a class="brand" href="#topo" aria-label="Cripto Farol">
+    <!-- COPIED:end -->
+        <!-- DELTA:start logo sem caminho de protótipo -->
+        <img
+          src="./assets/cripto-farol-logo-v6-transparent.svg"
+          width="420"
+          height="112"
+          alt="Cripto Farol"
+        />
+        <!-- DELTA:end -->
+      <!-- COPIED:start -->
+      </a>
+      <!-- COPIED:end -->
+      <!-- DELTA:start acentos no rótulo e CTA de cadastro na navegação -->
+      <nav class="nav" aria-label="Navegação principal">
+      <!-- DELTA:end -->
+        <!-- COPIED:start -->
+        <a href="#como-funciona">Como funciona</a>
+        <a href="#produto">Produto</a>
+        <a href="#beneficios">Benefícios</a>
+        <a href="#faq">FAQ</a>
+        <a href="/login">Já tenho acesso</a>
+        <!-- COPIED:end -->
+        <!-- DELTA:start -->
+        <a class="nav-cta" href="#lista" data-cta="nav">Entrar na lista</a>
+        <!-- DELTA:end -->
+      <!-- COPIED:start -->
+      </nav>
+    </header>
+
+    <main id="topo">
+      <section class="hero" aria-labelledby="hero-title">
+      <!-- COPIED:end -->
+        <!-- DELTA:start hero em WebP responsivo (srcset) no lugar do PNG de 1,4 MB -->
+        <picture>
+          <source
+            type="image/webp"
+            srcset="./assets/hero-640.webp 640w, ./assets/hero-1024.webp 1024w, ./assets/hero-1600.webp 1600w"
+            sizes="100vw"
+          />
+          <img
+            class="hero-image"
+            src="./assets/hero-1024.webp"
+            width="1600"
+            height="900"
+            fetchpriority="high"
+            alt="Mesa de análise com painéis de mercado e atmosfera de farol no mar"
+          />
+        </picture>
+        <!-- DELTA:end -->
+        <!-- COPIED:start -->
+        <div class="hero-overlay"></div>
+        <div class="hero-grid">
+          <div class="hero-copy">
+          <!-- COPIED:end -->
+            <!-- DELTA:start cripto, ações e ETFs da Binance (decisão do Alan no T6, 29/10/2026) -->
+            <p class="eyebrow">Beta fechado · cripto, ações e ETFs da Binance</p>
+            <!-- DELTA:end -->
+            <!-- COPIED:start -->
+            <h1 id="hero-title">Comprar ou vender cripto? O Cripto Farol responde.</h1>
+            <p class="hero-lead">
+            <!-- COPIED:end -->
+              <!-- DELTA:start -->
+              Leitura simples do mercado de cripto, ações e ETFs, com base no histórico real de cada ativo na Binance. Acesso
+              gratuito por 6 meses.
+              <!-- DELTA:end -->
+            <!-- COPIED:start -->
+            </p>
+            <!-- COPIED:end -->
+            <!-- DELTA:start acentos no rótulo e marcação do CTA para o funil -->
+            <div class="hero-actions" aria-label="Ações principais">
+              <a class="button button-primary" href="#lista" data-cta="hero">Quero meus 6 meses grátis</a>
+            <!-- DELTA:end -->
+              <!-- COPIED:start -->
+              <a class="login-link" href="/login">Já tenho acesso</a>
+              <a class="anchor-link" href="#como-funciona">Como funciona ↓</a>
+            </div>
+            <div class="trust-row" aria-label="Resumo da proposta">
+              <span>6 meses grátis</span>
+              <span>Histórico real da Binance</span>
+              <!-- COPIED:end -->
+              <!-- DELTA:start alerta no Telegram nas estratégias com estrela (frase honesta, OQ12) -->
+              <span>Alerta no Telegram nas estratégias com estrela</span>
+              <!-- DELTA:end -->
+            <!-- COPIED:start -->
+            </div>
+            <!-- COPIED:end -->
+            <!-- DELTA:start aviso de risco visível desde o hero (cobre cripto, ações e ETFs) -->
+            <p class="hero-risk">
+              Apoio à decisão, não recomendação de investimento. Cripto, ações e ETFs têm risco, e nenhuma análise garante
+              resultado.
+            </p>
+            <!-- DELTA:end -->
+          <!-- COPIED:start -->
+          </div>
+          <!-- COPIED:end -->
+
+          <!-- DELTA:start print novo do Monitor (clone homologado do #1122, layout de cartões do app), legível no desktop e no celular -->
+          <aside class="signal-console hero-product-preview" aria-label="Monitor do Cripto Farol com as estratégias acompanhadas">
+            <img
+              src="./assets/monitor.webp"
+              width="680"
+              height="1070"
+              alt="Monitor do Cripto Farol: o ETF SPY em posição no gráfico diário, com o alerta do Telegram ligado, o pregão de Nova York aberto e a entrada, o stop e a distância até ele; abaixo, ETH/USDT em saída / cobertura no gráfico de 4 horas, com o alerta desligado"
+            />
+          <!-- DELTA:end -->
+          <!-- COPIED:start -->
+          </aside>
+        </div>
+      </section>
+
+      <section class="section routine-section" id="como-funciona">
+        <div class="section-copy">
+          <p class="section-kicker">Como funciona a sua rotina</p>
+          <h2>Em poucos minutos, você sabe o que merece atenção.</h2>
+          <!-- COPIED:end -->
+          <!-- DELTA:start rotina com o Monitor e a análise pronta de hoje (cripto, ações e ETFs) -->
+          <p>Três passos para parar de comprar e vender no chute.</p>
+        </div>
+        <div class="routine-grid">
+          <article>
+            <span>01</span>
+            <h3>Veja o que merece atenção primeiro</h3>
+            <p>O Monitor junta as estratégias que você acompanha, de BTC e ETH a ações como NVDA e ETFs como SPY, e mostra quais estão em posição e quais já deram sinal de saída. Nas que você acompanha com estrela, o alerta também vai para o Telegram.</p>
+          </article>
+          <article>
+            <span>02</span>
+            <h3>Confira como a estratégia se saiu antes</h3>
+            <p>Abra a análise pronta da estratégia: o gráfico marca cada compra e cada venda no histórico real da Binance, para você ver como ela se saiu antes de seguir o sinal de hoje.</p>
+          </article>
+          <!-- DELTA:end -->
+          <!-- COPIED:start -->
+          <article>
+            <span>03</span>
+            <h3>Experimente sem pagar nada</h3>
+            <p>Os primeiros aprovados no beta usam tudo de graça por 6 meses e ajudam a moldar a versão final do produto.</p>
+          </article>
+        </div>
+      </section>
+
+      <section class="section product-section" id="produto">
+        <div class="section-heading">
+          <p class="section-kicker">Produto real</p>
+          <h2>Veja a principal funcionalidade em ação.</h2>
+          <!-- COPIED:end -->
+          <!-- DELTA:start o Monitor fica no hero; aqui fica a análise pronta (gráfico com as operações marcadas) -->
+          <p>
+            Além do Monitor que você viu acima, aqui está a análise pronta de uma estratégia que você acompanha: o gráfico marca
+            todas as operações no período, com as linhas da estratégia, para você decidir com calma.
+          </p>
+        </div>
+        <div class="product-showcase" aria-label="Imagem real da análise de uma estratégia no Cripto Farol">
+          <figure class="product-frame product-frame-primary">
+            <figcaption>
+              <span>02</span>
+              <strong>Confira como a estratégia se saiu antes</strong>
+              <em>Todas as compras e vendas da estratégia marcadas no gráfico, com o resultado de cada saída.</em>
+            </figcaption>
+            <picture>
+              <source media="(max-width: 560px)" type="image/webp" srcset="./assets/grafico-analise-recorte.webp" width="348" height="573" />
+              <img
+                src="./assets/grafico-analise.webp"
+                width="848"
+                height="569"
+                loading="lazy"
+                alt="Análise da estratégia Médias: tendência na ação NVDA, gráfico diário no Cripto Farol, com as compras e as vendas marcadas e o resultado de cada saída, e as duas médias da estratégia; último fechamento US$ 206,64"
+              />
+            </picture>
+          </figure>
+        </div>
+      </section>
+      <!-- DELTA:end -->
+
+      <!-- COPIED:start -->
+      <section class="section benefits-section" id="beneficios">
+        <div class="section-heading">
+          <p class="section-kicker">Benefícios do beta</p>
+          <h2>O que você ganha entrando agora.</h2>
+          <p>Tudo isso liberado durante os 6 meses gratuitos.</p>
+        </div>
+        <div class="benefits-grid">
+        <!-- COPIED:end -->
+          <!-- DELTA:start backtest vira análise pronta das estratégias acompanhadas; alerta no Telegram nas estratégias com estrela, com o Telegram conectado no Perfil -->
+          <article>
+            <span>01</span>
+            <h3>Análise pronta de cada estratégia</h3>
+            <p>Para cada estratégia que você acompanha, o backtest no histórico real da Binance já está feito: o gráfico marca todas as operações e as métricas mostram como ela se saiu.</p>
+          </article>
+          <article>
+            <span>02</span>
+            <h3>Alerta no Telegram por estratégia</h3>
+            <p>Conecte o Telegram no Perfil, e cada estratégia que você acompanha com estrela no Monitor avisa as entradas e as saídas, em cripto, ações e ETFs. O alerta já vem ligado, e você desliga estratégia por estratégia.</p>
+          </article>
+          <!-- DELTA:end -->
+          <!-- COPIED:start -->
+          <article>
+            <span>03</span>
+            <h3>Métricas claras para comparar estratégias</h3>
+            <p>Veja quanto rendeu, quantas vezes acertou e qual foi a maior queda no caminho.</p>
+            <!-- COPIED:end -->
+            <!-- DELTA:start cada métrica com explicação visível (inclusive no celular), sem depender do title -->
+            <dl class="metric-list">
+              <div><dt>Sharpe</dt><dd>retorno ajustado ao risco</dd></div>
+              <div><dt>Trades</dt><dd>quantas operações a estratégia fez</dd></div>
+              <div><dt>Win%</dt><dd>em quantas operações acertou</dd></div>
+              <div><dt>Return</dt><dd>quanto rendeu no período</dd></div>
+              <div><dt>Max DD</dt><dd>a maior queda no caminho</dd></div>
+              <div><dt>PF</dt><dd>quanto ganhou para cada 1 que perdeu</dd></div>
+              <div><dt>SQN</dt><dd>quão consistente é o resultado</dd></div>
+              <div><dt>Max L</dt><dd>a maior sequência de perdas</dd></div>
+              <div><dt>ATR</dt><dd>quanto o preço costuma oscilar</dd></div>
+            </dl>
+          </article>
+          <article>
+            <span>04</span>
+            <h3>Carteira Binance conectada com segurança</h3>
+            <p>Veja saldo e resultado da sua Binance no Farol. Se quiser, libere também compra e venda de cripto à vista: cada ordem só sai depois que você confirma. Saque, nunca.</p>
+          </article>
+          <!-- DELTA:end -->
+        <!-- COPIED:start -->
+        </div>
+      </section>
+
+      <section class="section signal-section" id="sinais">
+      <!-- COPIED:end -->
+        <!-- DELTA:start os dois estados com o vocabulário atual do Monitor (Em posição / Saída / cobertura) -->
+        <div class="section-heading">
+          <p class="section-kicker">Os dois sinais</p>
+          <h2>Dois estados simples, com os mesmos nomes do Monitor.</h2>
+        </div>
+        <div class="signal-grid">
+          <article class="signal-card buy">
+            <span>Sinal de entrada</span>
+            <strong>Em posição</strong>
+            <p>A estratégia entrou. O Monitor mostra a entrada, o stop e quanto falta até ele, para você saber o risco que está correndo.</p>
+          </article>
+          <article class="signal-card sell">
+            <span>Sinal de saída</span>
+            <strong>Saída / cobertura</strong>
+            <p>A estratégia saiu. Pode ser hora de vender, reduzir ou proteger o que você já tem.</p>
+          </article>
+        </div>
+        <!-- DELTA:end -->
+      <!-- COPIED:start -->
+      </section>
+
+      <section class="section trust-section">
+        <div>
+          <p class="section-kicker">Confiança e segurança</p>
+          <h2>Feito para apoiar sua decisão, não para decidir por você.</h2>
+        </div>
+        <div class="trust-list">
+          <!-- COPIED:end -->
+          <!-- DELTA:start confiança 1 sem o grupo de mensagens (o alerta no Telegram é benefício), confiança 2 sem negar as médias que a análise mostra; texto de Spot sem nomes internos e mais curto -->
+          <article>
+            <strong>Leitura objetiva</strong>
+            <p>Você vê sinal, contexto e risco em linguagem simples, sem depender de opinião solta de influencer ou de grupo de sinais.</p>
+          </article>
+          <article>
+            <strong>Menos complexidade</strong>
+            <p>A tela destaca o que importa para decidir. O Monitor diz em palavras se cada estratégia está em posição ou em saída; o gráfico fica para quando você quiser conferir.</p>
+          </article>
+          <article>
+            <strong>Sem senha, sem saque</strong>
+            <p>O Farol nunca pede sua senha e nunca faz saque. Comprar e vender cripto pelo Farol é opcional, e cada ordem só sai depois que você confirma.</p>
+          </article>
+          <!-- DELTA:end -->
+        <!-- COPIED:start -->
+        </div>
+      </section>
+
+      <section class="section faq-section" id="faq">
+        <div class="section-heading">
+          <p class="section-kicker">FAQ</p>
+          <h2>Perguntas frequentes.</h2>
+        </div>
+        <div class="faq-list">
+          <details>
+            <summary>Preciso saber operar como trader?</summary>
+            <!-- COPIED:end -->
+            <!-- DELTA:start -->
+            <p>Não. A leitura é em português claro, e cada métrica vem com uma explicação curta.</p>
+          </details>
+          <details>
+            <summary>É um robô que opera por mim?</summary>
+            <p>Não. O Cripto Farol não opera sozinho: cada compra ou venda de cripto pede a sua confirmação. E ele nunca faz saque.</p>
+          </details>
+          <details>
+            <summary>Vocês têm acesso ao meu dinheiro?</summary>
+            <p>Não para sacar. O Farol lê seu saldo na Binance para acompanhar a carteira. Se você quiser, libera também compra e venda de cripto à vista, sempre com a sua confirmação. Nunca pedimos senha e nunca sacamos.</p>
+          </details>
+          <!-- DELTA:end -->
+          <!-- COPIED:start -->
+          <details>
+            <summary>Por que vocês liberam 6 meses grátis?</summary>
+            <p>Estamos validando o produto com os primeiros usuários. A sua experiência durante esse período ajuda a moldar a versão final.</p>
+          </details>
+          <details>
+            <summary>E depois dos 6 meses?</summary>
+            <p>Você decide se vale assinar. Não tem cobrança automática, não tem cartão cadastrado.</p>
+          </details>
+          <!-- COPIED:end -->
+          <!-- DELTA:start outra exchange vira ações e ETFs: o que é acompanhado e o que é operado -->
+          <details>
+            <summary>Funciona com ações e ETFs?</summary>
+            <p>Sim. Você acompanha cripto, ações e ETFs da Binance no Monitor, com a análise de cada estratégia. O alerta no Telegram vale para as estratégias que você acompanha com estrela, depois que você conecta o Telegram no Perfil; as estratégias de exemplo do catálogo aparecem no Monitor sem alerta. Ações e ETFs seguem o pregão de Nova York: com o mercado fechado, o aviso aparece só na tela. Comprar e vender pelo Farol vale só para cripto; ações e ETFs você acompanha e recebe o alerta, e a decisão de operar é sua, fora do Farol.</p>
+          </details>
+          <!-- DELTA:end -->
+          <!-- COPIED:start -->
+        </div>
+      </section>
+
+      <section class="signup-section" id="lista">
+        <div class="signup-copy">
+        <!-- COPIED:end -->
+          <!-- DELTA:start sem contador de vagas: frase fixa de beta fechado em levas -->
+          <p class="section-kicker">Entre na lista do beta</p>
+          <h2>Beta limitado aos primeiros aprovados.</h2>
+          <p>6 meses gratuitos, sem cartão.</p>
+          <p class="beta-waves">
+            Beta fechado, com entrada em levas. Você entra na lista e a gente te chama quando abrir a próxima leva.
+          </p>
+          <!-- DELTA:end -->
+          <!-- COPIED:start -->
+          <div class="signup-assets" aria-label="Exemplos de ativos que podem ser acompanhados">
+            <span>BTC</span>
+            <span>ETH</span>
+            <span>SOL</span>
+            <span>ADA</span>
+            <span>BNB</span>
+            <span>LINK</span>
+            <span>AVAX</span>
+            <!-- COPIED:end -->
+            <!-- DELTA:start MATIC agora é POL; ações e ETFs da Binance ao lado da cripto -->
+            <span>POL</span>
+            <span>NVDA · ação</span>
+            <span>SPY · ETF</span>
+            <span>QQQ · ETF</span>
+            <!-- DELTA:end -->
+          <!-- COPIED:start -->
+          </div>
+          <!-- COPIED:end -->
+          <!-- DELTA:start aviso de risco do cadastro cobre ações e ETFs -->
+          <p class="risk-note">
+            O Cripto Farol é uma ferramenta de apoio à leitura de mercado. Mostramos, sugerimos e organizamos; quem decide é sempre você. Investir em cripto, ações e ETFs envolve risco e nenhuma análise garante resultado.
+          </p>
+          <!-- DELTA:end -->
+          <!-- COPIED:start -->
+        </div>
+        <form class="signup-form" data-lead-form>
+          <div class="form-step active" data-form-step="1">
+            <p class="form-step-title">Passo 1</p>
+            <label>
+              <span>Nome</span>
+              <input type="text" name="name" placeholder="Seu nome" autocomplete="name" required />
+            </label>
+            <label>
+              <span>E-mail</span>
+              <input type="email" name="email" placeholder="voce@email.com" autocomplete="email" required />
+            </label>
+            <!-- COPIED:end -->
+            <!-- DELTA:start passo 1 salva o lead; aviso de privacidade junto ao botão -->
+            <button class="button button-primary button-full" type="button" data-save-step1>Entrar na lista do beta</button>
+            <p class="form-consent">
+              Ao enviar, você concorda com a
+              <a href="./privacidade.html" target="_blank" rel="noopener">Política de Privacidade<span class="sr-only"> (abre em nova aba)</span></a>.
+            </p>
+          </div>
+          <div class="form-step" data-form-step="2" aria-hidden="true">
+            <p class="form-step-title" data-step2-title tabindex="-1">Cadastro salvo. Quer contar um pouco sobre você? É opcional.</p>
+            <label>
+              <span>WhatsApp (opcional)</span>
+              <input type="tel" name="whatsapp" placeholder="(51) 99999-9999" autocomplete="tel" />
+            </label>
+            <label>
+              <span>Nível com cripto (opcional)</span>
+              <select name="profile">
+                <option value="">Prefiro não dizer</option>
+                <option value="Iniciante">Iniciante</option>
+                <option value="Intermediário">Intermediário</option>
+                <option value="Trader">Trader</option>
+              </select>
+            </label>
+            <label>
+              <span>Sua maior dificuldade hoje com cripto (opcional)</span>
+              <textarea name="pain" rows="4" placeholder="Excesso de informação, timing, saída, risco..."></textarea>
+            </label>
+            <button class="button button-primary button-full" type="submit">Enviar respostas</button>
+            <button class="form-skip" type="button" data-skip-step2>Pular esta etapa</button>
+          </div>
+          <div class="form-step form-done" data-form-step="done" aria-hidden="true" tabindex="-1">
+            <p class="form-done-title">Recebemos seu cadastro.</p>
+            <p>Vamos te chamar quando abrir a próxima leva do beta.</p>
+          </div>
+          <!-- DELTA:end -->
+          <!-- COPIED:start -->
+          <p class="form-message" data-form-message role="status" aria-live="polite"></p>
+        </form>
+      </section>
+    </main>
+    <!-- COPIED:end -->
+
+    <!-- DELTA:start rodapé: Política, Termos, aviso de risco e CTA (sem responsável, CNPJ, contato ou redes) -->
+    <footer class="site-footer">
+      <div class="footer-top">
+        <a class="footer-brand" href="#topo" aria-label="Cripto Farol, voltar ao topo">
+          <img src="./assets/cripto-farol-mark.svg" width="32" height="32" alt="" />
+          <span>Cripto Farol</span>
+        </a>
+        <nav class="footer-links" aria-label="Rodapé">
+          <a href="./privacidade.html">Política de Privacidade</a>
+          <a href="./termos.html">Termos de Uso</a>
+          <a href="/login">Já tenho acesso</a>
+        </nav>
+        <a class="button button-primary footer-cta" href="#lista" data-cta="footer">Quero meus 6 meses grátis</a>
+      </div>
+      <p class="footer-risk">
+        O Cripto Farol é uma ferramenta de apoio à leitura de mercado e não faz recomendação de investimento.
+        Investir em cripto, ações e ETFs envolve risco de perda. Resultados passados, inclusive de backtest, não garantem
+        resultados futuros. Quem decide é sempre você.
+      </p>
+      <p class="footer-copy">© 2026 Cripto Farol</p>
+    </footer>
+
+    <script>
+      // Protótipo: sem chave do PostHog e sem envio real. Os eventos do funil ficam em window.__eventosLanding.
+      window.CRIPTOFAROL_POSTHOG = { key: "", host: "/ingest" };
+      window.__eventosLanding = [];
+    </script>
+    <!-- DELTA:end -->
+    <script>
+      // COPIED:start
+      const form = document.querySelector("[data-lead-form]");
+      const message = document.querySelector("[data-form-message]");
+      // COPIED:end
+      // DELTA:start
+      const saveStepOneButton = document.querySelector("[data-save-step1]");
+      const skipStepTwoButton = document.querySelector("[data-skip-step2]");
+      const stepDone = document.querySelector("[data-form-step='done']");
+      const stepTwoTitle = document.querySelector("[data-step2-title]");
+      // DELTA:end
+      // COPIED:start
+      const stepOne = document.querySelector("[data-form-step='1']");
+      const stepTwo = document.querySelector("[data-form-step='2']");
+      // COPIED:end
+      // DELTA:start sem contador e sem endpoint de stats; envio simulado no protótipo
+      const PROTOTYPE_SIMULATED_SUBMIT = true;
+      let leadRef = null;
+      // DELTA:end
+      // COPIED:start
+      const attributionStorageKey = "criptofarol_attribution";
+      const attributionKeys = ["utm_source", "utm_medium", "utm_campaign", "utm_content", "utm_term"];
+
+      function getStoredAttribution() {
+        try {
+          const raw = window.localStorage.getItem(attributionStorageKey);
+          return raw ? JSON.parse(raw) : null;
+        } catch (error) {
+          return null;
+        }
+      }
+
+      function safeReferrer(value) {
+        if (!value) return undefined;
+        try {
+          const url = new URL(value);
+          return `${url.origin}${url.pathname}`.slice(0, 500);
+        } catch (error) {
+          const sanitized = value.split("?")[0].split("#")[0].slice(0, 500);
+          return sanitized || undefined;
+        }
+      }
+
+      function safeLandingPath(url) {
+        const params = new URLSearchParams();
+        attributionKeys.forEach((key) => {
+          const value = url.searchParams.get(key);
+          if (value) params.set(key, value);
+        });
+        const query = params.toString();
+        return `${url.pathname}${query ? `?${query}` : ""}`.slice(0, 500);
+      }
+
+      function safeCurrentUrl(url) {
+        return `${url.origin}${url.pathname}`.slice(0, 500);
+      }
+
+      function captureAttribution() {
+        const url = new URL(window.location.href);
+        const existing = getStoredAttribution();
+        const utms = {};
+        attributionKeys.forEach((key) => {
+          const value = url.searchParams.get(key);
+          if (value) utms[key] = value.slice(0, 200);
+        });
+
+        const hasUtm = Object.keys(utms).length > 0;
+        if (existing) return existing;
+
+        const referrer = safeReferrer(document.referrer);
+        if (!hasUtm && !referrer) return null;
+
+        const attribution = {
+          ...utms,
+          referrer,
+          landing_path: safeLandingPath(url),
+          first_seen_at: new Date().toISOString(),
+        };
+
+        try {
+          window.localStorage.setItem(attributionStorageKey, JSON.stringify(attribution));
+        } catch (error) {
+          // Ignore storage failures; the current payload can still carry attribution.
+        }
+        return attribution;
+      }
+
+      const currentAttribution = captureAttribution();
+
+      function attributionProperties() {
+        const attribution = currentAttribution || getStoredAttribution() || {};
+        const allowedKeys = ["utm_source", "utm_medium", "utm_campaign", "utm_content", "utm_term", "landing_path", "first_seen_at"];
+        const properties = Object.fromEntries(
+          allowedKeys
+            .map((key) => [key, attribution[key]])
+            .filter(([, value]) => value !== undefined && value !== null && value !== "")
+        );
+        if (attribution.referrer) {
+          try {
+            properties.referrer_domain = new URL(attribution.referrer).hostname;
+          } catch (error) {
+            properties.referrer_domain = attribution.referrer.split("/")[0];
+          }
+        }
+        return properties;
+      }
+      // COPIED:end
+
+      // DELTA:start
+      function compactProperties(properties) {
+        return Object.fromEntries(
+          Object.entries(properties).filter(([, value]) => value !== undefined && value !== null && value !== "")
+        );
+      }
+
+      // No produto, esta função é a captureAnalyticsEvent da v4 (PostHog). No protótipo, só registra.
+      function captureAnalyticsEvent(eventName, properties = {}) {
+        const event = { event: eventName, properties: compactProperties(properties) };
+        window.__eventosLanding.push(event);
+        console.info("[evento do funil]", eventName, event.properties);
+      }
+
+      captureAnalyticsEvent("landing_pageview", {
+        path: window.location.pathname,
+        origin: "landing",
+        ...attributionProperties(),
+      });
+
+      document.querySelectorAll("[data-cta]").forEach((link) => {
+        link.addEventListener("click", () => {
+          captureAnalyticsEvent("landing_cta_clicked", {
+            cta_location: link.dataset.cta,
+            origin: "landing",
+            ...attributionProperties(),
+          });
+        });
+      });
+
+      function showStep(next) {
+        [stepOne, stepTwo, stepDone].forEach((step) => {
+          const active = step === next;
+          step.classList.toggle("active", active);
+          if (active) step.removeAttribute("aria-hidden");
+          else step.setAttribute("aria-hidden", "true");
+        });
+      }
+
+      // Simulação: no passo 1, e-mail que começa com "erro" mostra a falha do passo 1;
+      // no passo 2, dificuldade que começa com "erro" mostra a falha do passo 2.
+      function simulatedSave(payload) {
+        const trigger = payload.step === 1 ? payload.email : payload.pain;
+        return new Promise((resolve, reject) => {
+          window.setTimeout(() => {
+            if (String(trigger || "").trim().toLowerCase().startsWith("erro")) reject(new Error("submit_failed"));
+            else resolve({ status: "accepted", lead_ref: "prototipo-" + Date.now() });
+          }, 450);
+        });
+      }
+
+      async function saveLead(payload) {
+        if (PROTOTYPE_SIMULATED_SUBMIT) return simulatedSave(payload);
+        return null;
+      }
+
+      // Botão "Entrar na lista do beta" e Enter/"Ir" no passo 1 seguem o mesmo caminho.
+      async function saveStepOne() {
+        const name = form.elements.name;
+        const email = form.elements.email;
+        if (saveStepOneButton.disabled) return;
+        if (!name.reportValidity() || !email.reportValidity()) return;
+        saveStepOneButton.disabled = true;
+        message.textContent = "Salvando seu cadastro...";
+        message.className = "form-message";
+        captureAnalyticsEvent("lead_form_submit_started", { step: 1, origin: "landing", ...attributionProperties() });
+        try {
+          const result = await saveLead({
+            step: 1,
+            name: name.value,
+            email: email.value,
+            origin: "landing",
+            ...(currentAttribution || getStoredAttribution() || {}),
+          });
+          leadRef = result && result.lead_ref;
+          captureAnalyticsEvent("lead_step1_completed", { origin: "landing", ...attributionProperties() });
+          showStep(stepTwo);
+          // Foco no título do passo 2: o leitor de tela lê "Cadastro salvo… É opcional"
+          // e o teclado do celular não abre por cima de "Pular esta etapa".
+          stepTwoTitle.focus();
+          message.textContent = "Pronto, seu cadastro está salvo.";
+          message.className = "form-message success";
+        } catch (error) {
+          message.textContent = "Não conseguimos salvar agora. Tente de novo em alguns minutos.";
+          message.className = "form-message error";
+          captureAnalyticsEvent("lead_form_submit_failed", { step: 1, failure: "submit_failed", origin: "landing" });
+        } finally {
+          saveStepOneButton.disabled = false;
+        }
+      }
+
+      saveStepOneButton.addEventListener("click", saveStepOne);
+
+      function finish() {
+        form.reset();
+        showStep(stepDone);
+        message.textContent = "";
+        message.className = "form-message";
+        stepDone.focus();
+      }
+
+      skipStepTwoButton.addEventListener("click", () => {
+        captureAnalyticsEvent("lead_step2_skipped", { origin: "landing" });
+        finish();
+      });
+
+      form.addEventListener("submit", async (event) => {
+        event.preventDefault();
+        // Enter/"Ir" num campo do passo 1 dispara o envio do formulário: segue o caminho do passo 1.
+        if (stepOne.classList.contains("active")) {
+          saveStepOne();
+          return;
+        }
+        if (!stepTwo.classList.contains("active")) return;
+        const submitButton = form.querySelector("button[type='submit']");
+        const formData = new FormData(form);
+        submitButton.disabled = true;
+        message.textContent = "Enviando suas respostas...";
+        message.className = "form-message";
+        captureAnalyticsEvent("lead_form_submit_started", { step: 2, origin: "landing" });
+        try {
+          await saveLead({
+            step: 2,
+            lead_ref: leadRef,
+            email: formData.get("email"),
+            whatsapp: formData.get("whatsapp"),
+            profile: formData.get("profile"),
+            pain: formData.get("pain"),
+          });
+          captureAnalyticsEvent("lead_form_submit_accepted", { step: 2, origin: "landing" });
+          finish();
+        } catch (error) {
+          message.textContent = "Seu cadastro já está salvo, mas estas respostas não foram. Tente de novo ou pule esta etapa.";
+          message.className = "form-message error";
+          captureAnalyticsEvent("lead_form_submit_failed", { step: 2, failure: "submit_failed", origin: "landing" });
+        } finally {
+          submitButton.disabled = false;
+        }
+      });
+      // DELTA:end
+    </script>
+  </body>
+</html>

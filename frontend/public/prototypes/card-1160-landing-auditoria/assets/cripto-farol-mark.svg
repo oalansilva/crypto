@@ -1,0 +1,16 @@
+<svg width="256" height="256" viewBox="0 0 256 256" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Cripto Farol">
+  <rect width="256" height="256" rx="52" fill="#03111F"/>
+  <circle cx="128" cy="128" r="92" fill="#062640"/>
+  <circle cx="128" cy="128" r="92" stroke="#9DEAFF" stroke-width="10"/>
+  <path d="M44 150C75 127 101 128 128 151C156 175 185 178 212 154V202H44V150Z" fill="#083B5D"/>
+  <path d="M44 151C75 128 101 128 128 151C156 175 185 178 212 154" stroke="#9DEAFF" stroke-width="11" stroke-linecap="round"/>
+  <path d="M69 108C95 82 131 67 195 52" stroke="#F2C95B" stroke-width="14" stroke-linecap="round"/>
+  <path d="M82 127C113 106 143 98 194 93" stroke="#12B7CA" stroke-width="10" stroke-linecap="round" opacity="0.95"/>
+  <path d="M123 49L154 91L145 183H104L94 91L123 49Z" fill="#03111F" stroke="#F7F4EA" stroke-width="9" stroke-linejoin="round"/>
+  <path d="M109 98H140" stroke="#9DEAFF" stroke-width="9" stroke-linecap="round"/>
+  <path d="M106 126H143" stroke="#9DEAFF" stroke-width="9" stroke-linecap="round"/>
+  <path d="M113 183L101 207" stroke="#F7F4EA" stroke-width="9" stroke-linecap="round"/>
+  <path d="M136 183L151 207" stroke="#F7F4EA" stroke-width="9" stroke-linecap="round"/>
+  <circle cx="123" cy="49" r="8" fill="#F2C95B"/>
+  <circle cx="125" cy="157" r="10" fill="#F2C95B"/>
+</svg>

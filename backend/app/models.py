@@ -312,6 +312,34 @@ class BetaInvite(Base):
     __table_args__ = (Index("ix_beta_invites_email_created_at", "email", "created_at"),)
 
 
+class LandingLead(Base):
+    """Lead of the public landing form, saved at step 1 (card #1160, D1).
+
+    One row per normalized e-mail.  Step 1 (name + e-mail) creates or updates
+    the row; step 2 (WhatsApp, level, difficulty, all optional) only enriches
+    it.  No account is created here (#689 still holds).
+    """
+
+    __tablename__ = "landing_leads"
+
+    id = Column(Integer, primary_key=True, index=True)
+    email = Column(String(320), nullable=False)
+    name = Column(String(120), nullable=True)
+    whatsapp = Column(String(40), nullable=True)
+    profile = Column(String(80), nullable=True)
+    pain = Column(String(500), nullable=True)
+    origin = Column(String(80), nullable=True)
+    attribution_json = Column(JSONType, nullable=True)
+    step_reached = Column(Integer, nullable=False, default=1, server_default="1")
+    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+    updated_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+
+    __table_args__ = (
+        UniqueConstraint("email", name="uq_landing_leads_email"),
+        Index("ix_landing_leads_created_at", "created_at"),
+    )
+
+
 class BetaAccessAuditLog(Base):
     __tablename__ = "beta_access_audit_logs"
 
