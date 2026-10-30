@@ -1108,6 +1108,15 @@
       "regression_risk": "high",
       "decision": "keep",
       "evidence": "PostgreSQL de teste (unit_database_url) com schema privado descartado no fim"
+    },
+    {
+      "file": "backend/tests/unit/test_card_1160_landing_leads.py",
+      "protected_behavior": "Lead da landing (#1160): passo 1 salva nome e e-mail em landing_leads, passo 2 opcional enriquece o mesmo lead sem duplicar, payload sem step (v4) = passo 1 + 2, 202 neutro, auditoria do #689 sem conta nem convite consumido, aviso por Telegram aos admins (novo e completou; falha só em log sem dado pessoal; nenhum envio com CRYPTO_TELEGRAM_ALERT_SCAN_BLOCK_PROD_BOT=1) e migração Alembic idempotente com downgrade",
+      "production_reachability": "reachable",
+      "persistence_need": "postgres",
+      "regression_risk": "high",
+      "decision": "keep",
+      "evidence": "PostgreSQL de teste (unit_database_url); TestClient do router de leads; Telegram simulado; schema privado descartado no fim"
     }
   ]
 }

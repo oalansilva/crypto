@@ -1,0 +1,18 @@
+<svg width="420" height="112" viewBox="0 0 420 112" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Cripto Farol">
+  <g transform="translate(12 12)">
+    <path d="M88 44C88 67.748 68.748 87 45 87C21.252 87 2 67.748 2 44C2 20.252 21.252 1 45 1C56.5 1 66.95 5.52 74.67 12.88" stroke="#12B7CA" stroke-width="7" stroke-linecap="round"/>
+    <path d="M11 70C23 60.5 34.5 60.5 45.4 70C56.4 79.55 68.8 80.55 82 69.5" stroke="#12B7CA" stroke-width="7" stroke-linecap="round"/>
+    <path d="M17 82C30 76.2 42.4 76.7 54.2 83.5C63.6 88.95 72.3 89.2 82 84.4" stroke="#0E8794" stroke-width="6" stroke-linecap="round"/>
+    <path d="M58 36L147 16V57L58 44V36Z" fill="#F2C95B"/>
+    <path d="M36 17L52 29L47 77H24L20 29L36 17Z" fill="#F7F4EA"/>
+    <path d="M36 17L52 29L47 77H24L20 29L36 17Z" stroke="#03111F" stroke-width="3" stroke-linejoin="round"/>
+    <path d="M25 29H49" stroke="#03111F" stroke-width="6" stroke-linecap="round"/>
+    <path d="M24 42H48" stroke="#03111F" stroke-width="6" stroke-linecap="round"/>
+    <path d="M28 77L21 91" stroke="#F7F4EA" stroke-width="6" stroke-linecap="round"/>
+    <path d="M42 77L50 91" stroke="#F7F4EA" stroke-width="6" stroke-linecap="round"/>
+    <path d="M25 8H46L38 1L25 8Z" fill="#F7F4EA"/>
+    <circle cx="36" cy="55" r="5" fill="#03111F"/>
+  </g>
+  <text x="170" y="62" fill="#F7F4EA" font-family="Inter, Arial, sans-serif" font-size="40" font-weight="800" letter-spacing="-0.3">Cripto</text>
+  <text x="298" y="62" fill="#12B7CA" font-family="Inter, Arial, sans-serif" font-size="40" font-weight="800" letter-spacing="-0.3">Farol</text>
+</svg>
