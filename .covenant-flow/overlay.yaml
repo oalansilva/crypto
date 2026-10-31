@@ -27,7 +27,7 @@ design_globs:
 - frontend/public/prototypes/**
 integration_branch: develop
 production_branch: main
-pin: v1.1.26
+pin: v1.1.27
 canonical_paths:
   dev: /srv/apps/dev/criptofarol/source
   prod: /srv/apps/prod/criptofarol/source
@@ -62,6 +62,9 @@ environments:
     - criptofarol-dev-batch-worker.service
     - criptofarol-dev-candle-writer.service
     - criptofarol-dev-telegram-alert-scan.service
+    oneshot_services:
+    - criptofarol-dev-candle-writer.service
+    - criptofarol-dev-telegram-alert-scan.service
   prod:
     source: /srv/apps/prod/criptofarol/source
     url: https://criptofarol.com.br
@@ -83,3 +86,41 @@ release:
   migrate: alembic upgrade head
   build: npm --prefix frontend run build
   health_url: https://criptofarol.com.br/api/health
+qa_dev:
+  enabled: false
+  autor_relatorio: oalansilva
+  session_cmd: scripts/qa/dev_session.py
+  scan_cmd: scripts/qa/dev_session.py --scan
+  evidence_cmd: scripts/qa/publish_evidence.py
+  espera_max_min: 20
+  teto_total_min: 120
+  telas_regressao:
+  - /monitor
+  - /favorites
+  - /combo/discovery
+  - /combo/select
+  caminhos_sem_produto:
+  - openspec/**
+  - docs/**
+  - tests/**
+  - frontend/tests/**
+  - frontend/public/prototypes/**
+  - scripts/process-fsm/**
+  - scripts/qa/**
+  - .agents/**
+  - .claude/**
+  - .codex/**
+  - .covenant-flow/**
+  - .cursor/**
+  - .dsh/**
+  - .github/**
+  - .grok/**
+  - .impeccable/**
+  - .opencode/**
+  - AGENTS.md
+  - CLAUDE.md
+  - CONTRIBUTING.md
+  - DESIGN.md
+  - PRODUCT.md
+  - README.md
+  - rules.md
