@@ -302,6 +302,7 @@ def record_lead_submission(
     origin: str = "landing",
     attribution: dict | None = None,
     invite_state: str | None = None,
+    step: int | None = None,
 ) -> BetaLeadAccessResult:
     """Funnel-only landing submission (card #689, D10).
 
@@ -312,6 +313,9 @@ def record_lead_submission(
     ``must_change_password``, or temporary-password expiry is produced here;
     those semantics belong only to the legacy ``create_beta_access_for_lead``
     path, which the route no longer calls.
+
+    Card #1160: ``step`` (1 or 2, absent for the single-step page) goes into the
+    audit metadata; the lead row itself lives in ``landing_leads``.
     """
 
     normalized_email = _normalize_email(email)
@@ -322,6 +326,8 @@ def record_lead_submission(
         origin=origin,
         attribution=attribution,
     )
+    if step is not None:
+        lead_metadata["step"] = step
 
     invite_validated = invite_state == "valid"
     if invite_validated:
