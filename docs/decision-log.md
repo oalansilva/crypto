@@ -1,5 +1,15 @@
 # Decision Log
 
+## 2026-10-30 - Landing nova em repo próprio e lead no banco (card #1160)
+
+**Decisão homologada:** a landing pública sai do `crypto` e passa a vir do repo `oalansilva/cripto-farol-landing`, com Política de Privacidade, Termos de Uso, SEO e performance auditados. O lead é salvo em `landing_leads` já no passo 1, e o aviso vai por Telegram aos admins. Sem e-mail ao lead, sem contador de vagas e sem conta criada pela landing.
+
+**Decisões do Alan no fecho:** os 9 leads antigos não são importados; a planilha fica guardada só para root e a cópia do Drive da Clara é apagada. A Clara e o grupo não dependem dela. O limite de taxa em `POST /api/leads` segue depois do corte, no card #1165. A remoção do código antigo (fase F6) entraria neste fecho, salvo se a revisão do PR #1163 achasse problema.
+
+**Risco aceito e rastreado:** a revisão achou 3 P2 e 3 P3, e a F6 passou ao lote seguinte (#1166). Até lá, a unit do Node fica desabilitada mas presente, e o código antigo segue no repo sem ser servido. `POST /api/leads` fica sem limite de taxa até o #1165. O commit `847af85` da landing veio depois da homologação, sem onda de revisão.
+
+**Evidência:** PR de código #1164, PROD no SHA 0e82a0ae41b4c7e6e617837060c2e2ad9ebfc75a, migração 20261028_0002 → 20261030_0001 com backup verificado antes, landing no commit 847af8590edefab7201b20d5f4bacf5885fa312e, Lighthouse móvel com Performance 97 a 99 e SEO 100. Detalhes em `docs/release-2026-10-30.md`.
+
 ## 2026-10-29 - Ações e ETFs da Binance, lotes multiclasse, alertas por favorito e portões por comando (cards #1098, #1110, #1117, #1118, #1119, #1120, #1121, #1122, #1123, #1133, #1135, #1152)
 
 **Decisão homologada:** o produto passa a operar cripto, ações e ETFs da Binance: catálogo persistido (#1117), histórico confiável com calendário da NYSE (#1118), backtest com execução e stops realistas (#1119), lotes de Combo e Otimização multiclasse num worker próprio da fila `batch_backtest` em DEV e PROD (#1120), Descoberta com amostras reproduzíveis (#1121), favoritos e alertas no horário correto (#1122) e comparação com benchmark escolhido e exportação completa (#1123). O alerta do Telegram sai das estratégias que cada usuário acompanha no Monitor, com estrela e alerta ligado; o catálogo curado do admin deixa de alertar (decisões de Alan de 26/10 e 27/10).

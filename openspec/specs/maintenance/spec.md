@@ -34,19 +34,13 @@ Operational scripts and service templates SHALL avoid hardcoded references to th
 - **THEN** it SHALL change directory to the repository checkout that contains `init.sh`
 - **AND** it SHALL NOT require `/root/.openclaw/workspace/crypto` to exist
 
-#### Scenario: Beta access loads repo-local lead environment by default
+#### Scenario: Beta access lead environment is explicit
 - **WHEN** `BETA_ACCESS_GOG_ENV_FILE` is not set
-- **THEN** beta access SHALL default to `ops/landing-leads/.env.leads` under the active repository checkout
+- **THEN** beta access SHALL NOT load any environment file by default, and SHALL NOT point at `ops/landing-leads/`, which left the repository with the Node lead service (card #1160)
 - **AND** explicit `BETA_ACCESS_GOG_ENV_FILE` overrides SHALL continue to work
 
 #### Scenario: Production systemd templates point at production checkout
-- **WHEN** the production frontend or leads systemd unit templates are installed
-- **THEN** their working directories and file paths SHALL point at `/srv/apps/prod/criptofarol/source`
-- **AND** they SHALL NOT point at `/root/.openclaw/workspace/crypto`
+- **WHEN** the production frontend systemd unit template is installed
+- **THEN** its working directory and file paths SHALL point at `/srv/apps/prod/criptofarol/source`
+- **AND** it SHALL NOT point at `/root/.openclaw/workspace/crypto`
 
-### Requirement: Leads systemd template does not use OpenClaw HOME
-The leads service template SHALL NOT set `HOME` or `CODEX_HOME` to paths under `/root/.openclaw`. Canonical Hermes or repo-local paths SHALL be used instead.
-
-#### Scenario: Leads unit has no OpenClaw home
-- **WHEN** an operator inspects the installed leads unit
-- **THEN** `HOME` and `CODEX_HOME` do not point at `/root/.openclaw`

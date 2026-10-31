@@ -1,5 +1,55 @@
 # Kaizen Log — Melhoria Contínua de Processo
 
+## 2026-10-30 — Kaizen release (card 1160)
+
+Auditoria read-only do filho fecho-lote (Claude Code 2.1.309, claude-desktop), completed com payload, **parcial**: o orquestrador entrou no worktree do fecho com o filho no ar, e ele perdeu o Bash (F-7). Captura de nascimento claude-opus-5-5/high. Nenhuma mudança pelo filho. As notas do fechador abaixo completam o que o filho não leu.
+
+### Métricas
+
+- Um Homologado no pacote; `/homologar` com comentário canônico. origin/main..origin/develop com o PR #1162 e o merge do fechamento anterior. Retrabalho: 1 T6 e 1 Apply de correção; nenhum T18.
+- release-guard audit: PASS, 87 warnings, zero blockers. Git: develop limpa, stash vazio, 44 worktrees extras.
+- CI do PR #1164: rodada do pull_request verde; qa-gate e deploy-staging pulados por desenho em PR para main.
+- OpenSpec: 214/214 antes do archive e 217/217 depois. Uma change arquivada, com a 6.7 aberta (#1166).
+- Grelha: #1160 = 1 (proxy REST). Em Refinamento contra Design: 1 contra 6 filhos (2 autor, 4 Assessment), ou 8 com os 2 reworks.
+- Proxy modelo: fecho-lote e revisores em execução, claude-opus-5-5/high; o observado é eco da captura.
+
+### Achados
+
+F-1 P3: o guard process-fsm negou duas vezes um curl somente leitura com `->` no formato entre aspas; sem o `->`, passou. O filho não achou o trecho na amostra; o registro é do fechador. Mesma classe registrada no #1101, já em Pronto. Card #1168.
+
+F-2 P2: a primeira onda de revisão do PR #1163 foi descartada. O diff-reviewer foi negado por falta de model_selection_wave_capture, o code-reviewer nasceu na mesma mensagem, e verify-wave exige uma mensagem-pai só. A armadilha estava na memória do operador e voltou: a nota sozinha não basta. Coberto por #1157, com pré-validação da onda antes do primeiro spawn.
+
+F-3 P2: o overlay manda `gh pr checks --watch`, e a descrição do get_status orienta usá-lo no lugar de `gh pr checks`. É orientação, não proibição: nada bloqueou o watcher. Card #1167.
+
+F-4 P2: logo depois de abrir o PR #1164, o get_status mostrou 11 verdes, do push de 13:33; a rodada do PR seguia em andamento. A fonte recomendada é cache. O fechador percebeu e não fez merge. Card #1167.
+
+F-5 P3: três divergências do plano de corte, sem card porque o roteiro é de uso único: o caminho público do F3 responde 200 do Node, não 202; o snippet do Caddy precisa vir antes do primeiro import; o F5 pede aviso "novo" com um e-mail que o F3 já criou.
+
+F-6 P3: o isolamento do worktree recusa texto com git dentro de `sudo bash -c` e caminho com a palavra source, sem operação de git. Custo baixo, reexecução. Card #1168.
+
+F-7 P1: entrar em worktree com filho vivo quebra o filho: qualquer Bash recusado, EnterWorktree recusado, transcript movido e parent_transcript do receipt apontando para arquivo inexistente. O proxy recusou com worktree_mismatch fora da raiz do receipt. Card #1168.
+
+F-8 P2: o fechador marcou 6.4 a 6.6 sem nota sobre Telegram e sobre o 200; o filho apontou e as notas entraram antes do commit. Coberto por #769 e #979.
+
+F-9 P2: o commit 847af85 da landing foi a PROD depois da homologação, sem onda de revisão; o fluxo não tem aresta para isso. Mesma classe do F-8 de 29/10. Coberto por #1156.
+
+Observação do fechador: a recorrência F-1/#1022 (fail_closed em release-* unbound) não apareceu: `openspec archive` passou direto na branch release-closeout-2026-10-30. A comparação é mais fraca que nas releases anteriores, porque este archive veio depois do merge e do deploy, com base em origin/main.
+
+### Cards kaizen criados nesta release
+
+| Card | Prioridade | Origem | Status |
+| --- | --- | --- | --- |
+| #1167 | P2 | F-3, F-4 | Em Refinamento |
+| #1168 | P1 | F-1, F-6, F-7 | Em Refinamento |
+| (não criado) onda de revisão pré-validada | P2 | F-2 | coberto por #1157 |
+| (não criado) tasks marcadas com verificação pendente | P2 | F-8 | coberto por #769 |
+| (não criado) residual sem seguimento | P2 | F-8 | coberto por #979 |
+| (não criado) commit fora de onda depois da homologação | P2 | F-9 | coberto por #1156 |
+
+### Limitações
+
+Bash do filho bloqueado depois do primeiro comando: sem board, sem openspec validate, sem checks finais; transcripts só por amostra, e os dos filhos não lidos. Comentários e issues vieram de GET público, com resposta resumida por modelo. A dedupe do filho cobriu parte da lista de issues; o fechador conferiu o Status dos cards citados no board. Fonte Cursor não consultada.
+
 ## 2026-10-29 — Kaizen release (cards 1098, 1110, 1117, 1118, 1119, 1120, 1121, 1122, 1123, 1133, 1135, 1152)
 
 Auditoria read-only do filho fecho-lote (Claude Code 2.1.309, app 4.29.0, claude-desktop, attempt a7d4f93f), completed com payload. Captura de nascimento claude-opus-5-5/high; proxy gravado com observado igual ao capturado. Nenhuma mudança pelo filho. Deploy, archive/sync, post e T16 ficam com o orquestrador.
