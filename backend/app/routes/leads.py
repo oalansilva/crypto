@@ -7,7 +7,6 @@ from pydantic import BaseModel, EmailStr, Field, field_validator, model_validato
 from sqlalchemy.orm import Session
 
 from app.database import get_db
-from app.models import User
 from app.services.beta_access import record_lead_submission
 from app.services.beta_invites import validate_invite
 from app.services.landing_leads import (
@@ -17,8 +16,6 @@ from app.services.landing_leads import (
 )
 
 router = APIRouter(prefix="/api/leads", tags=["leads"])
-
-BETA_TOTAL_SPOTS = 50
 
 
 class LeadAccessRequest(BaseModel):
@@ -78,30 +75,6 @@ class LeadAccessRequest(BaseModel):
 class LeadAccessResponse(BaseModel):
     status: str
     message: str
-
-
-class LeadStatsResponse(BaseModel):
-    totalSpots: int
-    registered: int
-    spotsLeft: int
-
-
-@router.get("/stats", response_model=LeadStatsResponse)
-def get_lead_stats(db: Session = Depends(get_db)):
-    registered = (
-        db.query(User)
-        .filter(
-            User.status != "banned",
-            User.is_banned.is_(False),
-        )
-        .count()
-    )
-    capped_registered = min(BETA_TOTAL_SPOTS, registered)
-    return LeadStatsResponse(
-        totalSpots=BETA_TOTAL_SPOTS,
-        registered=capped_registered,
-        spotsLeft=max(0, BETA_TOTAL_SPOTS - capped_registered),
-    )
 
 
 @router.post("", response_model=LeadAccessResponse, status_code=status.HTTP_202_ACCEPTED)

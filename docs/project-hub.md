@@ -120,8 +120,7 @@ Decisao da release: piloto comercial pequeno e controlado, com DM/WhatsApp para 
   - `frontend/public/brand/cripto-farol-wordmark.svg`
 - `#140` landing page para captacao:
   - `docs/landing-page.md`
-  - `frontend/public/prototypes/cripto-farol-landing/index.html`
-  - `frontend/public/prototypes/cripto-farol-landing/styles.css`
+  - landing de produção no repo `oalansilva/cripto-farol-landing` (`site/`) desde o #1160; os protótipos antigos de landing saíram de `frontend/public/prototypes/`
 
 ## Itens Ainda em Execucao Real
 

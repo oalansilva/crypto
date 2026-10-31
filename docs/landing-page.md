@@ -1,160 +1,62 @@
 # Landing Page - Cripto Farol
 
-## Objetivo
+## Onde a landing mora
 
-Captar interessados para o beta fechado do Cripto Farol com uma pagina simples, clara e pronta para compartilhar por link.
+Desde o card [#1160](https://github.com/oalansilva/crypto/issues/1160) (decisão do Alan no Design, 29/10/2026), a landing pública de `https://criptofarol.com.br/` **não mora mais neste repo**. A fonte de produção é o repo **`oalansilva/cripto-farol-landing`**:
 
-## CTA Principal
+- `site/index.html`: a landing (v4 do #790 + delta do #1160);
+- `site/privacidade/index.html` e `site/termos/index.html`: Política de Privacidade (`/privacidade`) e Termos de Uso (`/termos`);
+- `site/robots.txt`, `site/sitemap.xml`, `site/favicon.ico`, `site/apple-touch-icon.png`;
+- `site/lp/`: CSS único, `landing.js` (medição, CTAs e formulário), imagens WebP, imagem de compartilhamento `og-1200x630.jpg`, logo, marca e fontes (Inter e JetBrains Mono, servidas pelo próprio site);
+- `scripts/deploy.sh`, `tests/` e `README.md` (como testar, publicar e reverter).
 
-**Quero 6 meses grátis**
+`frontend/public/prototypes/` deste repo guarda **só protótipos** de Design. A v4 (`cripto-farol-landing-v4/`), os assets antigos (`cripto-farol-landing/`), as variantes `-v3` e `-skill-v2` e `frontend/public/posthog-config.js` saíram no PR de remoções do #1160. O protótipo aprovado do card fica em `frontend/public/prototypes/card-1160-landing-auditoria/` e é autossuficiente.
 
-CTA secundario: **Já tenho acesso**
-Link ancora: **Como funciona ↓**
+Mudança de copy, layout ou SEO da landing = PR no `oalansilva/cripto-farol-landing`, não neste repo.
 
-## Estrutura da Pagina
+## Fluxo real do formulário
 
-1. Hero
-2. Melhores ativos para olhar hoje
-3. Como funciona a sua rotina
-4. Print/tela do produto
-5. Beneficios do beta
-6. Os dois sinais
-7. Confianca e seguranca
-8. Prova social
-9. FAQ
-10. Formulario de cadastro em 2 passos
-11. Guardrail etico
+O formulário tem 2 passos e posta em `/api/leads` (caminho relativo), que é servido pelo backend **deste** repo (`backend/app/routes/leads.py`):
 
-## Copy Base
+1. **Passo 1** (obrigatório): nome e e-mail. O botão "Entrar na lista do beta" (ou Enter num campo do passo 1) manda `step: 1` e o lead **já fica salvo** na tabela `landing_leads` do PostgreSQL (um lead por e-mail normalizado).
+2. **Passo 2** (opcional): WhatsApp, nível com cripto e maior dificuldade. Manda `step: 2` com o mesmo e-mail e **enriquece o mesmo lead**, sem duplicar. "Pular esta etapa" (ou passo 2 vazio) não envia nada.
+3. Payload sem `step` (a v4, que é o commit-base de rollback da landing) = passo 1 + passo 2 juntos.
 
-### Hero
+Regras que seguem do #689: resposta `202` neutra para todo envio aceito, auditoria em `beta_access_audit_logs` (`record_lead_submission`, agora com o `step`), convite validado mas nunca consumido, nenhuma conta criada.
 
-- Headline: **Saiba quando faz sentido comprar e quando faz sentido vender cripto, sem virar trader.**
-- Subheadline: O Cripto Farol le o historico real da Binance, compara estrategias e acompanha sua carteira em uma tela so. Acesso gratuito por 6 meses para os primeiros do beta.
-- CTA: **Quero meus 6 meses grátis**
-- Apoio acima da dobra:
-  - 6 meses gratuitos no beta;
-  - histórico de mercado da Binance;
-  - carteira com leitura para acompanhamento (e Spot Trade opcional, sem saque, para operar no Farol).
+**Aviso ao Alan:** depois do commit, fora do tempo da resposta, o backend manda uma mensagem pelo bot do Cripto Farol (`MONITOR_TELEGRAM_BOT_TOKEN`) para cada admin com Telegram vinculado (`users.telegram_chat_id`): "Novo lead na landing" (nome, e-mail, origem, campanha) no passo 1 e "Lead completou o cadastro" (WhatsApp, nível, dificuldade) no passo 2. Reenvio do passo 1 do mesmo e-mail não avisa. Falha do Telegram só gera log, sem dado pessoal; o lead e a tela de sucesso não dependem dele.
 
-### Melhores Ativos Para Olhar Hoje
+**O que não existe mais:**
 
-- Previa do beta com cards BTC/USDT em `Compra` e ADA/USDT em `Venda`.
-- Outras moedas em monitoramento: ETH, SOL, BNB, LINK, AVAX e MATIC.
-- Microcopy deve explicar que a previa e simplificada e que o painel completo mostra contexto e risco em linguagem clara.
+- e-mail ao lead ou ao Alan (a tela final diz só "Recebemos seu cadastro. Vamos te chamar quando abrir a próxima leva do beta.");
+- contador de vagas e `GET /api/leads/stats` / `BETA_TOTAL_SPOTS` (no lugar, a frase fixa de beta fechado em levas);
+- o serviço Node `ops/landing-leads/` (`criptofarol-prod-leads.service`), a planilha `.xlsx`, o tópico do grupo no Telegram e a criação de conta pela landing.
 
-### Como Funciona
+## Medição (PostHog)
 
-- Veja primeiro quais moedas merecem atencao.
-- Rode backtest no historico real da Binance antes de seguir o sinal atual.
-- Experimente o beta por 6 meses sem pagar.
+A landing carrega o PostHog pelo caminho próprio `/ingest` (mesmo projeto do app), com gravação de sessão, pesquisas e autocapture desligados. Eventos, sem nome, e-mail, WhatsApp nem respostas: `$pageview` (manual, endereço sem parâmetros), `landing_pageview`, `landing_cta_clicked` (`cta_location` = `hero` | `nav` | `footer`), `lead_form_submit_started` / `lead_form_submit_accepted` / `lead_form_submit_failed` (com `step`), `lead_step1_completed` e `lead_step2_skipped`. A chave é escrita no deploy da landing em `lp/posthog-config.js` (fora do git).
 
-### Print / Tela do Produto
+## Publicação e reversão (próprias, fora da release do `crypto`)
 
-- Mostrar uma previa sanitizada da tela que o usuario vai usar.
-- A previa deve mostrar compra, venda e resultado de estrategia no historico da Binance.
-- Nao expor parametros internos, valores sensiveis ou controles administrativos.
+Cada ambiente tem um checkout da landing com `repo/`, `releases/<commit>/site` e o link `current`; o Caddy serve sempre `<raiz>/current/site`:
 
-### Beneficios Comerciais do Card #193
+| Ambiente | Raiz | URL |
+|---|---|---|
+| DEV (QA e homologação) | `/srv/apps/dev/criptofarol/landing` | `https://landing-dev.163.176.208.0.sslip.io/` (`X-Robots-Tag: noindex, nofollow`; `/api/*` vai ao backend DEV) |
+| PROD | `/srv/apps/prod/criptofarol/landing` | `https://criptofarol.com.br/` |
 
-- Backtest dos ativos usando todo o periodo disponivel na Binance.
-- Beta gratuito nos primeiros 6 meses para os participantes iniciais.
-- Comparacao de estrategias com metricas: Sharpe, Trades, Win%, Return, Max DD, PF, SQN, Max L e ATR.
-- Conexao com carteira Binance para acompanhar saldos e resultados (leitura); com permissao Spot Trade (sem saque, opcional) permite enviar comprar / stop / vender Spot no Farol apos confirmacao no Operar — nunca saque. Nao opera sozinho: o Operar confirma cada clique.
-- As metricas devem ter explicacao via hover/tooltips quando exibidas como chips.
+- Publicar: `scripts/deploy.sh <dev|prod> <commit>` no repo da landing (exporta `site/` do commit, troca `?v=` dos assets, escreve a config do PostHog, troca o link `current` de forma atômica, registra em `deploys.log` e confere por HTTP).
+- Reverter: `scripts/deploy.sh prod <commit anterior do deploys.log>` (só troca o link; sem reload do Caddy e sem restart do `crypto`). O alvo de rollback de emergência é o **commit-base** (a v4 com caminhos `/lp/`).
+- O Caddy serve `/`, `/privacidade`, `/termos`, `/robots.txt`, `/sitemap.xml` e os ícones com `no-cache` e `/lp/*` com cache longo (`immutable`); os caminhos antigos (`/cripto-farol-landing/assets/*`, `/prototypes/cripto-farol-landing-v4/assets/*`) redirecionam para `/lp/*` e os protótipos antigos de landing para `/`.
+- `www.criptofarol.com.br` redireciona (308) para o domínio sem www, e o domínio sai com HSTS, `X-Content-Type-Options`, `Referrer-Policy` e `frame-ancestors 'none'`.
 
-### Dois Sinais
+O corte em PROD seguiu as fases F0–F7 do `design.md` do #1160 (`openspec/changes/archive/*-card-1160-landing-auditoria/`).
 
-- `Compra`: ajuda a avaliar melhor momento de entrar e sugere ponto de saida se o mercado virar.
-- `Venda`: indica quando pode ser hora de sair, reduzir ou proteger o que o usuario ja tem.
+## Guardrails de copy
 
-### Confianca e Seguranca
-
-- Leitura objetiva em linguagem simples.
-- Menos complexidade para nao depender de interpretacao de grafico ou indicador tecnico.
-- API Binance com leitura para acompanhar carteira e Home; com permissao Spot Trade (sem saque, opcional) o Operar confirma cada clique. O Cripto Farol nunca pede sua senha e nunca faz saque.
-
-### Prova Social E FAQ
-
-- Prova social segue a copy enviada em `refazer.txt` ate haver depoimentos reais definitivos.
-- FAQ deve responder: necessidade de saber operar, se e robo, acesso ao dinheiro, motivo dos 6 meses gratis, pos-beta e exchanges suportadas.
-- FAQ do robo: nao opera sozinho; o Operar confirma cada clique. Nunca saque. Nao afirmar «nao e bot 24/7» como absoluto.
-- FAQ do dinheiro: leitura para acompanhar; Spot opcional para o Operar (com confirmacao); nunca senha, nunca saque.
-
-### Formulario
-
-Fluxo:
-
-- Passo 1 captura nome e email com o botao `Garantir minha vaga`.
-- Passo 2 aparece depois e qualifica o lead.
-- O envio ao endpoint ocorre no submit final do passo 2.
-
-Campos:
-
-- nome;
-- email;
-- WhatsApp opcional;
-- nivel com cripto;
-- principal dificuldade hoje;
-
-## Captacao Operacional
-
-- Formulario da landing envia os leads para o endpoint VPS `http://72.60.150.140:5174/api/leads`.
-- O endpoint operacional de leads fica neste repo em `ops/landing-leads/`; o antigo repo/diretorio separado `cripto-farol-landing` nao deve mais ser usado como fonte de codigo.
-- Os leads sao gravados em uma planilha `.xlsx` no Google Drive da Clara: `https://docs.google.com/spreadsheets/d/1cWFpAEfbTHcPJ8akzTf-oHRLRS-QmVNf/edit?usp=drivesdk&ouid=109602176178341361243&rtpof=true&sd=true`.
-- A cada inscricao, o endpoint tambem envia aviso no topico Telegram do projeto cripto, e-mail para Alan em `o.alan.silva@gmail.com` e e-mail de boas-vindas para o lead com link de acesso.
-- Se o e-mail ainda nao existir no sistema, o endpoint cria automaticamente um usuario ativo do beta com senha temporaria aleatoria, salva apenas o hash no banco e envia a senha somente no e-mail de boas-vindas com copia para Alan.
-- Observacao tecnica: a API nativa do Google Sheets esta bloqueada no OAuth atual; por isso a integracao usa arquivo `.xlsx` no Drive, atualizado pela VPS.
-
-## Disclaimer
-
-O Cripto Farol e uma ferramenta de apoio a leitura de mercado.
-As decisoes de investimento e os riscos continuam sendo do usuario.
-Evitar no topo frases defensivas como "sem lucro garantido"; o guardrail deve aparecer de forma discreta no fim da pagina ou em contexto juridico/regulatorio.
-
-## Entregavel Tecnico
-
-Protótipo estatico em:
-
-- `frontend/public/prototypes/cripto-farol-landing/index.html`
-- `frontend/public/prototypes/cripto-farol-landing/styles.css`
-
-## Opcao Comparativa V4
-
-Quarta opcao de landing criada para comparacao comercial:
-
-- `frontend/public/prototypes/cripto-farol-landing-v4/index.html`
-- `frontend/public/prototypes/cripto-farol-landing-v4/styles.css`
-- `frontend/public/prototypes/cripto-farol-landing-v4/rationale.md`
-
-Direcao: rotina curta de decisao, lista de atencao, menos dispersao e acesso ao beta. A versao comparativa V4 usa `Compra` e `Venda` por decisao explicita do Alan, preserva o endpoint de leads e evita expor parametros internos.
-
-## Regra Visual dos Prints
-
-Nao usar screenshots que exponham parametros internos, valores de indicadores, medias moveis ou informacoes que o cliente beta nao tera acesso.
-
-A landing deve mostrar uma previa sanitizada da experiencia: status, leitura de contexto, oportunidade e risco, sem detalhes tecnicos internos.
-
-## Direcao Visual
-
-A landing deve usar azul oceano como base visual, mantendo o amarelo como feixe/CTA. A metafora do farol precisa aparecer de forma clara, com sensacao de mar e um feixe de luz no hero, sem abandonar a percepcao de produto tecnico e confiavel.
-
-## Regra de Status
-
-Nao usar `Espera`/`waiting` na landing. Verificacao no codigo em 2026-05-09 mostrou que o board principal do Monitor exibe `Compra` e `Venda`; `Espera`, `NEUTRAL`, `BUY_SIGNAL` e `BUY_NEAR` ficam ocultos/nao acionaveis na tela principal. A landing deve comunicar dois sinais visiveis: acompanhamento/manutencao (`Compra`) e saida/venda (`Venda`).
-
-## Revisao Card #193
-
-Revisao de marketing para aumentar cadastros:
-
-- CTA principal orientado a beneficio: `Quero 6 meses grátis`.
-- Proposta de valor mais concreta antes da primeira rolagem.
-- Nova secao `Por que entrar agora` com backtest Binance, 6 meses gratis, metricas e carteira Binance.
-- Nova secao de metricas de backtest para tornar o diferencial tangivel.
-- Guardrail mantido: ferramenta de apoio a leitura de mercado, sem promessa de lucro.
-
-## Publicacao Atual
-
-Em producao, `https://criptofarol.com.br/` serve a variante `frontend/public/prototypes/cripto-farol-landing-v4/`.
-O frontend publico roda via `cripto-farol-frontend.service`, apontando para o frontend deste repo `crypto`.
-Mudancas de conversao que precisam aparecer no dominio publico devem ser feitas nesta variante canônica; nao manter copia paralela da landing em repo ou diretorio externo.
+- Apoio à decisão, não recomendação de investimento; aviso de risco visível desde o hero, no cadastro e no rodapé, cobrindo cripto, ações e ETFs.
+- Cripto, ações e ETFs da Binance são acompanhados e alertados; comprar e vender pelo Farol é **só cripto** (Spot opcional, confirmação a cada ordem, nunca saque, nunca senha).
+- Sinais com os nomes do Monitor: "Em posição" e "Saída / cobertura"; sem alvo.
+- Alerta no Telegram só nas estratégias que a pessoa acompanha com estrela, com o Telegram conectado no Perfil; sem frequência e sem "na hora", "assim que" ou "em tempo real".
+- Prints do produto limpos (sem controles de desenvolvedor, preço em formato BR, sem parâmetros internos) e legíveis no celular (texto efetivo ≥ 11 px a 390 px).
+- Rodapé sem responsável, CNPJ, contato ou redes; o canal do titular (`contato@criptofarol.com.br`) fica dentro da Política.

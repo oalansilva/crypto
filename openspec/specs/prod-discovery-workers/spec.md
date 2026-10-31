@@ -34,7 +34,7 @@ The discovery-worker installer SHALL accept `/srv/apps/dev/criptofarol/source` (
 
 #### Scenario: PROD API/UI units stay untouched
 - **WHEN** discovery workers are installed in PROD
-- **THEN** `criptofarol-prod-backend`, `criptofarol-prod-frontend`, and `criptofarol-prod-leads` are not rewritten or restarted by the installer
+- **THEN** `criptofarol-prod-backend` and `criptofarol-prod-frontend` are not rewritten or restarted by the installer
 
 ### Requirement: PROD overlay lists the discovery worker for release closeout
 Production overlay `environments.prod.services` SHALL include `criptofarol-prod-discovery-worker.service` so the authorized production publish window restarts the long-running Celery discovery worker together with the other in-memory product processes. The installer path and unit templates remain the existing PROD discovery worker; this requirement MUST NOT create a new production restart command outside release closeout and MUST NOT change DEV `./restart`.
