@@ -254,6 +254,9 @@ jobs:
           python -m pip install pytest pyyaml
           python -m pytest -q scripts/process-fsm
 
+      - name: Run DEV test helpers (scripts/qa)
+        run: python -m pytest -q -c /dev/null -p no:cacheprovider scripts/qa
+
       - name: Synthetic secret-remediation checks (no repository inventory)
         run: |
           python scripts/secret-remediation/install_scanner.py --restricted-root "$RUNNER_TEMP/card-1071-scanner"
@@ -535,6 +538,23 @@ jobs:
       - e2e-playwright
       - new-route-playwright-coverage
     steps:
+      # O checkout do PR é o merge com a base: HEAD^1 é a base, HEAD^2 é o head. Este passo vem da
+      # base, então alcança branch antiga, que rodaria o motor antigo, sem o teste no DEV (#1144).
+      - name: Checkout merge commit
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Refuse branch without qa_dev when the base has it on
+        run: |
+          python -m pip install pyyaml
+          python scripts/qa/check_qa_dev_key.py --base HEAD^1 --head HEAD^2
+
       - name: Require all QA checks to finish green
         shell: bash
         run: |
